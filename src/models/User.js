@@ -19,13 +19,15 @@ const userSchema = new mongoose.Schema({
     required: [true, "Phone number is required"],
     unique: true,
     trim: true,
-    match: [/^\d{10,15}$/, "Please enter a valid phone number"],
+    match: [
+      /^(07[2-8]\d{7}|\+2507[2-8]\d{7})$/,
+      "Please enter a valid phone number",
+    ],
   },
   nationalId: {
-    type: String,
+    type: Number,
     required: [true, "National ID is required"],
     unique: true,
-    trim: true,
     match: [/^\d{16}$/, "National ID must be exactly 16 digits"],
   },
   role: {
