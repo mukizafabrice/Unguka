@@ -27,6 +27,7 @@ const stockSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: [0, "Cash must be a non-negative number"],
+    default: 0,
   },
 
   createdAt: {

@@ -8,6 +8,12 @@ const productSchema = new mongoose.Schema({
     trim: true,
     minlength: [2, "Product name must be at least 2 characters"],
   },
+  unitPrice: {
+    type: Number,
+    required: true,
+    min: [0, "Unit price must be a positive number"],
+  },
+
   createdAt: {
     type: Date,
     default: Date.now,

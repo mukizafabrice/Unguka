@@ -3,8 +3,8 @@ import Product from "../models/Product.js";
 // Register a new product
 
 export const registerProduct = async (req, res) => {
-  const { productName } = req.body;
-  if (!productName) {
+  const { productName, unitPrice } = req.body;
+  if (!productName || !unitPrice) {
     return res.status(400).json({ message: "Please fill the field" });
   }
   const productToLower = productName.toLowerCase();
@@ -20,6 +20,7 @@ export const registerProduct = async (req, res) => {
 
     const newProduct = new Product({
       productName: productToLower,
+      unitPrice: unitPrice,
     });
     await newProduct.save();
     res.status(200).json({
@@ -66,52 +67,54 @@ export const getProductById = async (req, res) => {
 // Update a product by ID
 
 export const updateProduct = async (req, res) => {
+  const { id } = req.params;
+  const { productName, unitPrice } = req.body;
 
-    const { id } = req.params;
-    const { productName } = req.body;
-    
-    if (!id || !productName) {
-        return res.status(400).json({ message: "Product ID and name are required" });
+  if (!id || !productName || !unitPrice) {
+    return res
+      .status(400)
+      .json({ message: "Product ID and name are required" });
+  }
+
+  try {
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { productName: productName.toLowerCase() },
+      { new: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ message: "Product not found" });
     }
-    
-    try {
-        const updatedProduct = await Product.findByIdAndUpdate(
-        id,
-        { productName: productName.toLowerCase() },
-        { new: true }
-        );
-    
-        if (!updatedProduct) {
-        return res.status(404).json({ message: "Product not found" });
-        }
-    
-        res.status(200).json({
-        message: "Product updated successfully",
-        product: updatedProduct,
-        });
-    } catch (error) {
-        console.error("Error updating product:", error);
-        res.status(500).json({ message: "Internal server error" });
-    }
-    }
+
+    res.status(200).json({
+      message: "Product updated successfully",
+      product: updatedProduct,
+      unitPrice: unitPrice,
+    });
+  } catch (error) {
+    console.error("Error updating product:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 // Delete a product by ID
-export const deleteProduct = async (req, res) => {  
-    const { id } = req.params;
-    
-    if (!id) {
-        return res.status(400).json({ message: "Product ID is required" });
+export const deleteProduct = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ message: "Product ID is required" });
+  }
+
+  try {
+    const deletedProduct = await Product.findByIdAndDelete(id);
+
+    if (!deletedProduct) {
+      return res.status(404).json({ message: "Product not found" });
     }
-    
-    try {
-        const deletedProduct = await Product.findByIdAndDelete(id);
-    
-        if (!deletedProduct) {
-        return res.status(404).json({ message: "Product not found" });
-        }
-    
-        res.status(200).json({ message: "Product deleted successfully" });
-    } catch (error) {
-        console.error("Error deleting product:", error);
-        res.status(500).json({ message: "Internal server error" });
-    }
-    }
+
+    res.status(200).json({ message: "Product deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
