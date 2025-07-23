@@ -43,7 +43,7 @@ const salesSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["paid", "unpaid"],
-    default: "unpaid", // Optional: defaults for loan
+    default: "unpaid", 
   },
 
   createdAt: {

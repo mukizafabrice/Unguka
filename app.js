@@ -8,6 +8,8 @@ import seasonRoutes from "./src/routes/seasonRoutes.js";
 import stockRoutes from "./src/routes/stockRoutes.js";
 import loanRoutes from "./src/routes/loanRoutes.js";
 import productionRoutes from "./src/routes/productionRoutes.js";
+import salesRoutes from "./src/routes/salesRoutes.js";
+import purchaseInputRoutes from "./src/routes/purchaseInputRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -26,6 +28,8 @@ app.use("/api/seasons", seasonRoutes);
 app.use("/api/stocks", stockRoutes);
 app.use("/api/loans", loanRoutes);
 app.use("/api/productions", productionRoutes);
+app.use("/api/sales", salesRoutes);
+app.use("/api/purchaseInputs", purchaseInputRoutes);
 
 // handle  files uploads
 const uploadDir = path.join(process.cwd(), "uploads");
