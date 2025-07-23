@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { type } from "os";
 
 const loanSchema = new mongoose.Schema({
   userId: {
@@ -7,28 +6,41 @@ const loanSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+
   productId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Product",
     required: true,
-    trim: true,
   },
+  seasonId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Season",
+    required: true,
+  },
+
   quantity: {
     type: Number,
     required: true,
-    trim: true,
+    min: [1, "Quantity must be at least 1"],
+    validate: {
+      validator: Number.isInteger,
+      message: "Quantity must be an integer",
+    },
   },
 
   totalPrice: {
     type: Number,
     required: true,
-    trim: true,
+    min: [0, "Total price must be a positive number"],
   },
+
   status: {
-    type: Enum("pending", "repaid"),
+    type: String,
+    enum: ["pending", "repaid"],
     required: true,
     default: "pending",
   },
+
   createdAt: {
     type: Date,
     default: Date.now,

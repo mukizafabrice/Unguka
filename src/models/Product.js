@@ -6,11 +6,13 @@ const productSchema = new mongoose.Schema({
     unique: true,
     required: true,
     trim: true,
+    minlength: [2, "Product name must be at least 2 characters"],
   },
-  createAt: {
+  createdAt: {
     type: Date,
     default: Date.now,
   },
 });
+
 const Product = mongoose.model("Product", productSchema);
 export default Product;

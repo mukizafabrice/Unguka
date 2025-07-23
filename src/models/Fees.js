@@ -1,28 +1,34 @@
 import mongoose from "mongoose";
-import { type } from "os";
 
 const feesSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: User,
+    ref: "User",
     required: true,
-    trim: true,
   },
+  seasonId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Season",
+    required: true,
+  },
+
   amount: {
     type: Number,
     required: true,
-    trim: true,
+    min: [0, "Amount must be a positive number"],
   },
+
   status: {
     type: String,
     enum: ["paid", "unpaid"],
     required: true,
   },
+
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-const Contribution = mongoose.model("Contribution", contributionSchema);
+const Fees = mongoose.model("Fees", feesSchema);
 export default Fees;

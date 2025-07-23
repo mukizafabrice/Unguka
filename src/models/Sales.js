@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { type } from "os";
 
 const salesSchema = new mongoose.Schema({
   productId: {
@@ -7,33 +6,51 @@ const salesSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
+  seasonId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Season",
+    required: true,
+  },
+
   quantity: {
     type: Number,
     required: true,
-    trim: true,
+    min: [1, "Quantity must be at least 1"],
+    validate: {
+      validator: Number.isInteger,
+      message: "Quantity must be an integer",
+    },
   },
+
   totalPrice: {
     type: Number,
     required: true,
-    trim: true,
+    min: [0, "Total price must be a positive number"],
   },
+
   buyer: {
     type: String,
     required: true,
-    trim: false,
+    trim: true,
   },
+
   paymentType: {
-    type: Enum("cash", "loan"),
+    type: String,
+    enum: ["cash", "loan"],
     required: true,
-    status: {
-      type: String,
-      enum: ["paid", "unpaid"],
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
+  },
+
+  status: {
+    type: String,
+    enum: ["paid", "unpaid"],
+    default: "unpaid", // Optional: defaults for loan
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now,
   },
 });
-const Sales = mongoose.model("sales", salesSchema);
+
+const Sales = mongoose.model("Sales", salesSchema);
 export default Sales;
