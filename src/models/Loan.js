@@ -1,20 +1,10 @@
 import mongoose from "mongoose";
 
-const loanSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
 
-  productId: {
+const loanSchema = new mongoose.Schema({
+  purchaseInputId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Product",
-    required: true,
-  },
-  seasonId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Season",
+    ref: "PurchaseInput",
     required: true,
   },
 

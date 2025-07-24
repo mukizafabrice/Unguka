@@ -23,10 +23,30 @@ export const createPurchaseInput = async (req, res) => {
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // ✅ Calculate totalPrice automatically
+    // ✅ Calculate totalPrice
     const totalPrice = product.unitPrice * quantity;
 
-    // Create the purchase record
+    // 🔁 Check stock of the product
+    const stock = await Stock.findOne({ productId });
+    if (!stock)
+      return res.status(404).json({ message: "Stock for product not found" });
+
+    // ❌ Ensure enough stock is available
+    if (stock.quantity < quantity) {
+      return res.status(400).json({ message: "Not enough stock available" });
+    }
+
+    // ✅ Subtract purchased quantity from stock
+    stock.quantity -= quantity;
+
+    // ✅ If payment is cash, increase cash in stock
+    if (paymentType === "cash") {
+      stock.cash += totalPrice;
+    }
+
+    await stock.save();
+
+    // ✅ Create purchase input
     const newPurchase = await PurchaseInput.create({
       userId,
       productId,
@@ -36,28 +56,22 @@ export const createPurchaseInput = async (req, res) => {
       paymentType,
     });
 
-    // Handle payment type
-    if (paymentType === "cash") {
-      const stock = await Stock.findOne();
-      if (!stock) return res.status(404).json({ message: "Stock not found" });
-
-      stock.cash += totalPrice;
-      await stock.save();
-    } else if (paymentType === "loan") {
+    // ✅ If it's a loan, create loan entry
+    if (paymentType === "loan") {
       await Loan.create({
-        userId,
-        productId,
-        seasonId,
+        purchaseInputId: newPurchase._id,
         quantity,
         totalPrice,
         status: "pending",
       });
     }
 
-    res
-      .status(201)
-      .json({ message: "Purchase created", purchase: newPurchase });
+    res.status(201).json({
+      message: "Purchase recorded successfully",
+      purchase: newPurchase,
+    });
   } catch (error) {
+    console.error("Error creating purchase input:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

@@ -1,115 +1,141 @@
 import Loan from "../models/Loan.js";
+import Stock from "../models/Stock.js";
+import PurchaseInput from "../models/PurchaseInput.js";
+import User from "../models/User.js";
+import mongoose from "mongoose";
 
-// Create a new loan
-export const createLoan = async (req, res) => {
-  try {
-    const { userId, productId, seasonId, quantity, totalPrice, status } =
-      req.body;
-
-    if (!userId || !productId || !seasonId || !quantity || !totalPrice) {
-      return res
-        .status(400)
-        .json({ message: "Please fill all required fields" });
-    }
-
-    const newLoan = new Loan({
-      userId,
-      productId,
-      seasonId,
-      quantity,
-      totalPrice,
-      status: status || "pending",
-    });
-
-    await newLoan.save();
-    res
-      .status(201)
-      .json({ message: "Loan created successfully", loan: newLoan });
-  } catch (error) {
-    console.error("Error creating loan:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Get all loans with populated user, product, and season info
 export const getAllLoans = async (req, res) => {
   try {
     const loans = await Loan.find()
-      .populate("userId", "names phoneNumber role")
-      .populate("productId", "productName")
-      .populate("seasonId", "seasonName startDate endDate")
+      .populate({
+        path: "purchaseInputId",
+        populate: [
+          { path: "productId", select: "name unitPrice" },
+          { path: "userId", select: "names phoneNumber" },
+          { path: "seasonId", select: "name" },
+        ],
+      })
       .sort({ createdAt: -1 });
 
-    res.status(200).json(loans);
+    res.status(200).json({
+      message: "Loans fetched successfully",
+      count: loans.length,
+      loans,
+    });
   } catch (error) {
     console.error("Error fetching loans:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      message: "Server error while fetching loans",
+      error: error.message,
+    });
   }
 };
 
-// Get a single loan by ID
-export const getLoanById = async (req, res) => {
+export const markLoanAsRepaid = async (req, res) => {
   try {
-    const loan = await Loan.findById(req.params.id)
-      .populate("userId", "names phoneNumber role")
-      .populate("productId", "productName")
-      .populate("seasonId", "seasonName startDate endDate");
+    const { id } = req.params;
 
+    // Validate loan ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid loan ID" });
+    }
+
+    // Find the loan
+    const loan = await Loan.findById(id);
     if (!loan) {
       return res.status(404).json({ message: "Loan not found" });
     }
 
-    res.status(200).json(loan);
+    if (loan.status === "repaid") {
+      return res.status(400).json({ message: "Loan already repaid" });
+    }
+
+    // Find the stock record
+    const stock = await Stock.findOne();
+    if (!stock) {
+      return res.status(404).json({ message: "Stock not found" });
+    }
+
+    // Update stock cash
+    stock.cash += loan.totalPrice;
+    await stock.save();
+
+    // Update loan status
+    loan.status = "repaid";
+    await loan.save();
+
+    res.status(200).json({
+      message: "Loan marked as repaid and stock cash updated",
+      loan,
+    });
   } catch (error) {
-    console.error("Error fetching loan:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// Update a loan by ID
+export const getLoansByPhoneNumber = async (req, res) => {
+  try {
+    const { phoneNumber } = req.params;
+
+    // Find the user
+    const user = await User.findOne({ phoneNumber });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Find all purchases for this user
+    const purchases = await PurchaseInput.find({ userId: user._id }).select(
+      "_id"
+    );
+
+    const purchaseIds = purchases.map((p) => p._id);
+
+    // Find all loans for these purchases
+    const loans = await Loan.find({
+      purchaseInputId: { $in: purchaseIds },
+    }).populate({
+      path: "purchaseInputId",
+      populate: { path: "productId", select: "name" },
+    });
+
+    res.status(200).json({ loans });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+//update loan by id
 export const updateLoan = async (req, res) => {
   try {
-    const { userId, productId, seasonId, quantity, totalPrice, status } =
-      req.body;
+    const { id } = req.params;
+    const updates = req.body;
 
-    const updatedLoan = await Loan.findByIdAndUpdate(
-      req.params.id,
-      {
-        userId,
-        productId,
-        seasonId,
-        quantity,
-        totalPrice,
-        status,
-      },
-      { new: true }
-    );
+    const updatedLoan = await Loan.findByIdAndUpdate(id, updates, {
+      new: true,
+    });
 
     if (!updatedLoan) {
       return res.status(404).json({ message: "Loan not found" });
     }
 
-    res
-      .status(200)
-      .json({ message: "Loan updated successfully", loan: updatedLoan });
+    res.status(200).json({ message: "Loan updated", loan: updatedLoan });
   } catch (error) {
-    console.error("Error updating loan:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// Delete a loan by ID
+//delete loan by id
 export const deleteLoan = async (req, res) => {
   try {
-    const deletedLoan = await Loan.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
 
+    const deletedLoan = await Loan.findByIdAndDelete(id);
     if (!deletedLoan) {
       return res.status(404).json({ message: "Loan not found" });
     }
 
-    res.status(200).json({ message: "Loan deleted successfully" });
+    res.status(200).json({ message: "Loan deleted" });
   } catch (error) {
-    console.error("Error deleting loan:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
