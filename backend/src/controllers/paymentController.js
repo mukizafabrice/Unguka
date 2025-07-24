@@ -79,6 +79,7 @@ export const getPaymentById = async (req, res) => {
       populate: [
         { path: "seasonId", select: "seasonName" },
         { path: "productId", select: "productName" },
+        { path: "userId", select: "names phoneNumber" },
       ],
     });
 
@@ -123,7 +124,7 @@ export const getPaymentsByPhoneNumber = async (req, res) => {
       path: "productionId",
       populate: [
         { path: "userId", select: "name phoneNumber" },
-        { path: "productId", select: "name" },
+        { path: "productId", select: "productName" },
         { path: "seasonId", select: "name" },
       ],
     });
