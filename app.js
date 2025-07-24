@@ -10,7 +10,7 @@ import loanRoutes from "./src/routes/loanRoutes.js";
 import productionRoutes from "./src/routes/productionRoutes.js";
 import salesRoutes from "./src/routes/salesRoutes.js";
 import purchaseInputRoutes from "./src/routes/purchaseInputRoutes.js";
-
+import paymentRoutes from "./src/routes/paymentRoutes.js";
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -30,6 +30,7 @@ app.use("/api/loans", loanRoutes);
 app.use("/api/productions", productionRoutes);
 app.use("/api/sales", salesRoutes);
 app.use("/api/purchaseInputs", purchaseInputRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // handle  files uploads
 const uploadDir = path.join(process.cwd(), "uploads");

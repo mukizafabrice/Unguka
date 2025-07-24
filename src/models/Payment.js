@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 const paymentSchema = new mongoose.Schema({
   productionId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -14,3 +16,6 @@ const paymentSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+const Payment = mongoose.model("Payment", paymentSchema);
+export default Payment;

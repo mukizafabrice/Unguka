@@ -101,6 +101,38 @@ export const getAllSales = async (req, res) => {
   }
 };
 
+// 🔍 GET SALE BY ID
+
+export const getSaleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const sale = await Sales.findById(id)
+      .populate({
+        path: "stockId",
+        populate: [
+          { path: "seasonId", select: "seasonName" },
+          { path: "productId", select: "productName" },
+        ],
+      })
+      .populate({
+        path: "userId",
+        select: "phoneNumber",
+      });
+
+    if (!sale) {
+      return res.status(404).json({ message: "Sale not found" });
+    }
+
+    res.status(200).json({
+      message: "Sale retrieved successfully",
+      data: sale,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // 🔍 GET SALE BY PHONE NUMBER
 export const getSalesByPhoneNumber = async (req, res) => {
   try {
@@ -136,48 +168,56 @@ export const getSalesByPhoneNumber = async (req, res) => {
   }
 };
 
-// 🔍 GET SALE BY ID
-export const getSaleById = async (req, res) => {
-  try {
-    const sale = await Sales.findById(req.params.id)
-      .populate("productId", "name")
-      .populate("seasonId", "name");
-
-    if (!sale) {
-      return res.status(404).json({ message: "Sale not found" });
-    }
-
-    res.status(200).json(sale);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving sale", error: error.message });
-  }
-};
-
-// ✏️ UPDATE SALE (Optional: Update quantity and recalculate)
+// ✏️ UPDATE SALE
 export const updateSale = async (req, res) => {
   try {
-    const { quantity, buyer, paymentType, status } = req.body;
+    const { id } = req.params;
+    const updates = req.body;
 
-    const sale = await Sales.findById(req.params.id);
+    const sale = await Sales.findById(id);
     if (!sale) {
       return res.status(404).json({ message: "Sale not found" });
     }
 
-    // Only allow updating limited fields
-    if (quantity) sale.quantity = quantity;
-    if (buyer) sale.buyer = buyer;
-    if (paymentType) sale.paymentType = paymentType;
-    if (status) sale.status = status;
+    const stock = await Stock.findById(sale.stockId).populate("productId");
+    if (!stock) {
+      return res.status(404).json({ message: "Stock not found" });
+    }
 
-    await sale.save();
+    const product = stock.productId;
+    if (!product || !product.unitPrice) {
+      return res
+        .status(404)
+        .json({ message: "Product not found or missing unitPrice" });
+    }
 
-    res.status(200).json({ message: "Sale updated", data: sale });
+    // If quantity is updated, adjust totalPrice
+    if (updates.quantity !== undefined) {
+      if (!Number.isInteger(updates.quantity) || updates.quantity < 1) {
+        return res
+          .status(400)
+          .json({ message: "Quantity must be a positive integer" });
+      }
+
+      updates.totalPrice = updates.quantity * product.unitPrice;
+    }
+
+    // If paymentType is updated, adjust status accordingly
+    if (updates.paymentType) {
+      updates.status = updates.paymentType === "cash" ? "paid" : "unpaid";
+    }
+
+    const updatedSale = await Sales.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    res.status(200).json({
+      message: "Sale updated successfully",
+      data: updatedSale,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to update sale", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -212,12 +252,10 @@ export const updateSaleToPaid = async (req, res) => {
     sale.status = "paid";
     await sale.save();
 
-    res
-      .status(200)
-      .json({
-        message: "Sale updated to paid and stock cash adjusted",
-        data: sale,
-      });
+    res.status(200).json({
+      message: "Sale updated to paid and stock cash adjusted",
+      data: sale,
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

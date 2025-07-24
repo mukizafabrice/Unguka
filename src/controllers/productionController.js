@@ -118,8 +118,8 @@ export const createProduction = async (req, res) => {
 export const getAllProductions = async (req, res) => {
   try {
     const productions = await Production.find()
-      .populate("userId", "fullName")
-      .populate("productId", "name")
+      .populate("userId", "names phoneNumber")
+      .populate("productId", "ProductName")
       .populate("seasonId", "name");
 
     res.status(200).json(productions);
