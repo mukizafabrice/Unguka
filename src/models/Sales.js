@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 
 const salesSchema = new mongoose.Schema({
-  productId: {
+  stockId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Product",
+    ref: "Stock",
     required: true,
   },
   seasonId: {
@@ -33,6 +33,15 @@ const salesSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  phoneNumber: {
+    type: String,
+    required: true,
+    trim: true,
+    match: [
+      /^(07[2-8]\d{7}|\+2507[2-8]\d{7})$/,
+      "Please enter a valid phone number",
+    ],
+  },
 
   paymentType: {
     type: String,
@@ -43,7 +52,7 @@ const salesSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["paid", "unpaid"],
-    default: "unpaid", 
+    default: "unpaid",
   },
 
   createdAt: {
