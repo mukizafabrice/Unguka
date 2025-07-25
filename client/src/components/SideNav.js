@@ -1,0 +1,233 @@
+import React, { useState } from "react";
+import { NavLink } from "react-router-dom";
+import Logout from "./Logout";
+
+import {
+  Home,
+  Package,
+  Users,
+  Factory,
+  Sprout,
+  ShoppingCart,
+  PiggyBank,
+  CreditCard,
+  ScrollText,
+  Calendar,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  Megaphone,
+} from "lucide-react";
+
+import "../assets/styles/dashboard.css";
+
+function SideNav({ isHide }) {
+  const [openMenus, setOpenMenus] = useState({
+    inventory: false,
+    operations: false,
+    financials: false,
+    admin: false,
+  });
+
+  const toggleMenu = (menu) => {
+    setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
+  };
+
+  return (
+    <div className={`sidebar ${isHide ? "hide" : ""}`}>
+      <div className="sidebar-header">Unguka CO</div>
+      <ul className="sidebar-menu">
+        <li>
+          <NavLink
+            to="/admin/dashboard"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <Home size={18} className="me-2" /> Dashboard
+          </NavLink>
+        </li>
+
+        {/* Inventory Section */}
+        <li className="sidebar-parent" onClick={() => toggleMenu("inventory")}>
+          <div className="sidebar-link cursor-pointer">
+            <Package size={18} className="me-2" /> Inventory
+            {openMenus.inventory ? (
+              <ChevronDown size={16} className="ms-auto" />
+            ) : (
+              <ChevronRight size={16} className="ms-auto" />
+            )}
+          </div>
+          {openMenus.inventory && (
+            <ul className="sidebar-submenu">
+              <li>
+                <NavLink
+                  to="/admin/products"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <Package size={16} className="me-2" /> Products
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/stocks"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <Layers size={16} className="me-2" /> Stocks
+                </NavLink>
+              </li>
+            </ul>
+          )}
+        </li>
+
+        {/* Operations Section */}
+        <li className="sidebar-parent" onClick={() => toggleMenu("operations")}>
+          <div className="sidebar-link cursor-pointer">
+            <Factory size={18} className="me-2" /> Operations
+            {openMenus.operations ? (
+              <ChevronDown size={16} className="ms-auto" />
+            ) : (
+              <ChevronRight size={16} className="ms-auto" />
+            )}
+          </div>
+          {openMenus.operations && (
+            <ul className="sidebar-submenu">
+              <li>
+                <NavLink
+                  to="/admin/productions"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <Factory size={16} className="me-2" /> Production
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/plots"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <Sprout size={16} className="me-2" /> Plots
+                </NavLink>
+              </li>
+            </ul>
+          )}
+        </li>
+
+        {/* Financials Section */}
+        <li className="sidebar-parent" onClick={() => toggleMenu("financials")}>
+          <div className="sidebar-link cursor-pointer">
+            <CreditCard size={18} className="me-2" /> Financials
+            {openMenus.financials ? (
+              <ChevronDown size={16} className="ms-auto" />
+            ) : (
+              <ChevronRight size={16} className="ms-auto" />
+            )}
+          </div>
+          {openMenus.financials && (
+            <ul className="sidebar-submenu">
+              <li>
+                <NavLink
+                  to="/admin/sales"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <ShoppingCart size={16} className="me-2" /> Sales
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/loans"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <PiggyBank size={16} className="me-2" /> Loans
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/payments"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <CreditCard size={16} className="me-2" /> Payments
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/purchase-inputs"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <ScrollText size={16} className="me-2" /> Purchases
+                </NavLink>
+              </li>
+            </ul>
+          )}
+        </li>
+
+        {/* Admin Section */}
+        <li className="sidebar-parent" onClick={() => toggleMenu("admin")}>
+          <div className="sidebar-link cursor-pointer">
+            <Users size={18} className="me-2" /> Administration
+            {openMenus.admin ? (
+              <ChevronDown size={16} className="ms-auto" />
+            ) : (
+              <ChevronRight size={16} className="ms-auto" />
+            )}
+          </div>
+          {openMenus.admin && (
+            <ul className="sidebar-submenu">
+              <li>
+                <NavLink
+                  to="/admin/users"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <Users size={16} className="me-2" /> Users
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/seasons"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <Calendar size={16} className="me-2" /> Seasons
+                </NavLink>
+              </li>
+            </ul>
+          )}
+        </li>
+        <li>
+          <NavLink
+            to="/admin/announcements"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <Megaphone size={18} className="me-2" /> Announcements
+          </NavLink>
+        </li>
+
+        <div className="mt-auto">
+          <Logout />
+        </div>
+      </ul>
+    </div>
+  );
+}
+
+export default SideNav;

@@ -1,0 +1,261 @@
+/* src/assets/styles/dashboard.css */
+
+/* --- General Font & Text Colors (Assuming parent provides dark background) --- */
+body { /* Basic font family for consistent rendering */
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Bootstrap Overrides for elements used within AdminDashboard */
+.text-white { color: #fff !important; }
+.text-muted { color: #a0a0a0 !important; }
+
+/* Card styles */
+.card {
+    background-color: #2c313a !important; /* Darker background for general cards */
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Table styles */
+.table {
+    --bs-table-bg: #2c313a; /* Background for dark tables */
+    --bs-table-color: #e0e0e0;
+    --bs-table-striped-bg: #343a40; /* Darker stripe */
+    --bs-table-hover-bg: #3a4046; /* Hover effect */
+    border-color: #444 !important; /* Border color for table cells */
+}
+.table-responsive {
+    border-radius: 8px;
+    overflow: hidden; /* Ensures rounded corners on table */
+}
+
+/* Badge styles */
+.badge {
+    padding: 0.4em 0.7em;
+    border-radius: 0.375rem;
+    font-weight: 600;
+}
+.bg-success { background-color: #4CAF50 !important; }
+.bg-warning { background-color: #ff9800 !important; }
+
+
+/* --- AdminDashboard Content Styling --- */
+.admin-content-dashboard {
+  /* This is the root div of AdminDashboard.js */
+  /* It will inherit background/padding from main-content-area-dashboard */
+  color: #fff; /* Ensure text is white */
+  /* No fixed height or overflow here, as it's handled by the parent main tag */
+}
+
+.inventory-header-section {
+  /* No background here, as main-content-area-dashboard provides it */
+  padding-bottom: 20px; /* Space below the cards */
+  margin-bottom: 20px; /* Space below this section before other widgets */
+}
+
+.header-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 15px; /* Space between title and dashboard subtitle */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* Subtle separator */
+  margin-bottom: 15px; /* Space between separator and subtitle */
+}
+
+.inventory-title {
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: #f8f8f8;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.inventory-title svg { /* Lucide Info icon styling */
+  font-size: 1.2rem;
+  margin-left: 12px;
+  color: #a0a0a0;
+}
+
+.dashboard-subtitle {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #f8f8f8;
+}
+
+.stat-cards-row {
+  display: flex;
+  flex-wrap: nowrap; /* Keep cards on one line */
+  overflow-x: auto; /* Allow horizontal scrolling */
+  padding-bottom: 10px; /* Space for scrollbar */
+  margin-left: -10px; /* Counteract column padding */
+  margin-right: -10px;
+}
+
+/* Hide scrollbar for cleaner look */
+.stat-cards-row::-webkit-scrollbar { display: none; }
+.stat-cards-row { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Column adjustments for cards (Bootstrap grid classes) */
+.col-lg-3, .col-md-4, .col-sm-6 {
+    padding-left: 10px; /* Padding between cards */
+    padding-right: 10px;
+    margin-bottom: 0; /* No bottom margin on columns */
+    flex-shrink: 0; /* Prevent cards from shrinking */
+    width: 25%; /* Default for lg */
+}
+
+
+/* --- StatCard Overrides (Targeting the 'card' class within AdminDashboard) --- */
+.admin-content-dashboard .card {
+  min-height: 85px !important;
+  max-height: 95px !important;
+  padding: 10px !important;
+  border: none !important;
+  background-color: #fff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.admin-content-dashboard .card .d-flex.align-items-center.justify-content-between {
+    margin-bottom: 0 !important;
+    height: 35px;
+}
+
+.admin-content-dashboard .card .rounded-circle.stat-card-icon-circle { /* Specific class for icon circle */
+  background-color: #e0f2f1 !important;
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-content-dashboard .card .stat-card-icon-circle svg { /* Lucide Package icon */
+  width: 20px !important;
+  height: 20px !important;
+  color: #00796b !important;
+}
+
+.admin-content-dashboard .card .stat-card-arrow-icon { /* Lucide ArrowUpRight icon */
+  width: 18px !important;
+  height: 18px !important;
+  color: #ccc !important;
+}
+
+.admin-content-dashboard .card .mt-3 {
+    margin-top: 5px !important;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.admin-content-dashboard .card .stat-card-title-text { /* Specific class for title */
+  font-size: 0.8rem !important;
+  margin-bottom: 2px !important;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.admin-content-dashboard .card .stat-card-value-text { /* Specific class for value */
+  font-size: 1.6rem !important;
+  margin-bottom: 0 !important;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* Specific value colors */
+.admin-content-dashboard .card .stat-card-value-text[style*="orange"] { color: #ff9800 !important; }
+.admin-content-dashboard .card .stat-card-value-text[style*="red"] { color: #ef5350 !important; }
+.admin-content-dashboard .card .stat-card-value-text[style*="black"] { color: #333 !important; }
+
+
+/* --- Other Dashboard Widgets Area --- */
+.other-dashboard-widgets {
+  /* No background here, inherits from main-content-area-dashboard */
+  padding: 20px; /* Padding inside the widget section */
+  color: #ccc;
+}
+.bg-dark-card { background-color: #2c313a !important; }
+
+
+/* --- Responsive Adjustments (Relevant to AdminDashboard content) --- */
+@media (max-width: 991px) { /* Medium screens (tablets) */
+    .col-md-4 {
+        width: 33.3333%;
+        flex: 0 0 33.3333%;
+    }
+    .col-lg-3 {
+        width: auto;
+        flex: auto;
+    }
+}
+
+@media (max-width: 767px) { /* Small screens (phones in landscape) */
+    .inventory-title {
+      font-size: 1.8rem;
+    }
+    .dashboard-subtitle {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+    .stat-cards-row {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .col-sm-6 {
+        width: 50%;
+        flex: 0 0 50%;
+    }
+    .col-md-4 {
+        width: auto;
+        flex: auto;
+    }
+    .admin-content-dashboard .card {
+        min-height: 75px !important;
+        max-height: 85px !important;
+        padding: 8px !important;
+    }
+    .admin-content-dashboard .card .rounded-circle.stat-card-icon-circle {
+        width: 35px !important;
+        height: 35px !important;
+    }
+    .admin-content-dashboard .card .stat-card-icon-circle svg {
+        width: 16px !important;
+        height: 16px !important;
+    }
+    .admin-content-dashboard .card .stat-card-arrow-icon {
+        width: 16px !important;
+        height: 16px !important;
+    }
+    .admin-content-dashboard .card .stat-card-title-text {
+        font-size: 0.7rem !important;
+    }
+    .admin-content-dashboard .card .stat-card-value-text {
+        font-size: 1.4rem !important;
+    }
+}
+
+@media (max-width: 575px) {
+    .col-sm-6 {
+        width: 100%;
+        flex: 0 0 100%;
+    }
+}

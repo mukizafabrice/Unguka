@@ -34,8 +34,8 @@ const LoginForm = () => {
         login(formData.phoneNumber, formData.password);
 
         const role = response.user.role;
-        if (role === "admin") navigate("/admin/dashboard");
-        else if (role === "manager") navigate("/manager/dashboard");
+        if (role === "manager") navigate("/admin/dashboard");
+        else if (role === "accountant") navigate("/manager/dashboard");
         else navigate("/member/dashboard");
       } else {
         setError(response.message || "Login failed. Please try again.");

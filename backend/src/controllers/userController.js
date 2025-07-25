@@ -29,7 +29,7 @@ export const registerUser = async (req, res) => {
       password: hashedPassword,
       phoneNumber: cleanPhone,
       nationalId: cleanNationalId,
-      role: role || "farmer",
+      role: role || "member",
     });
 
     await newUser.save();
