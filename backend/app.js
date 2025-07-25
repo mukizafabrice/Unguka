@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import connectDB from "./db.js";
 import fs from "fs";
 import path from "path";
@@ -12,17 +13,21 @@ import salesRoutes from "./src/routes/salesRoutes.js";
 import purchaseInputRoutes from "./src/routes/purchaseInputRoutes.js";
 import paymentRoutes from "./src/routes/paymentRoutes.js";
 import plotRoutes from "./src/routes/plotRoutes.js";
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 connectDB();
 
+// Middleware
+app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Unguka API is running");
 });
-//apis
+
+// APIs
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/seasons", seasonRoutes);
@@ -34,7 +39,7 @@ app.use("/api/purchaseInputs", purchaseInputRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/plot", plotRoutes);
 
-// handle  files uploads
+// handle file uploads
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });

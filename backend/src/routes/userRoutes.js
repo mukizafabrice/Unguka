@@ -14,7 +14,7 @@ const upload = multer({ dest: "uploads/" });
 const router = express.Router();
 
 router.post("/register", registerUser);
-router.get("/login", loginUser);
+router.post("/login", loginUser);
 router.get("/all", getAllUsers);
 router.put("/update/:id", updateUser);
 router.delete("/delete/:id", deleteUser);
