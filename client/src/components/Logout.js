@@ -14,7 +14,7 @@ const Logout = () => {
   return (
     <button
       onClick={handleLogout}
-      className="sidebar-link w-100 text-start text-danger bg-transparent border-0 d-flex align-items-center px-3 py-2 text-white"
+      className="sidebar-link w-100 text-start text-danger bg-transparent border-0 d-flex align-items-center px-3 py-2 "
     >
       <LogOut size={18} className="me-2" />
       Logout

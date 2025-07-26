@@ -28,7 +28,6 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["manager"]}>
                 {" "}
-                {/* Note: Your original code had "manager" here for admin dashboard */}
                 <DashboardLayout>
                   <AdminDashboard />
                 </DashboardLayout>
@@ -42,7 +41,6 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["accountant"]}>
                 {" "}
-                {/* Your original code had "accountant" here for manager dashboard */}
                 <DashboardLayout>
                   <ManagerDashboard />
                 </DashboardLayout>

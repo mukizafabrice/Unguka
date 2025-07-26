@@ -1,7 +1,9 @@
-// src/pages/Admin/AdminDashboard.js
-import React from "react";
-import { Package, Users, Layers, XCircle, Info } from "lucide-react"; // Icons
+import React, { useState, useEffect } from "react";
+import { Package, Users, Layers, XCircle, Info } from "lucide-react";
 import StatCard from "../../components/StatCard";
+import { fetchSales } from "../../services/salesService";
+import { fetchProductions } from "../../services/productionService";
+
 function AdminDashboard() {
   // These would typically come from API calls or a state management system
   const totalProducts = 11;
@@ -9,46 +11,34 @@ function AdminDashboard() {
   const outOfStock = 2;
   const suppliers = 5;
 
-  const recentSales = [
-    {
-      id: "S001",
-      product: "Product A",
-      qty: 5,
-      amount: "120.00",
-      date: "2024-07-20",
-    },
-    {
-      id: "S002",
-      product: "Product B",
-      qty: 2,
-      amount: "45.50",
-      date: "2024-07-19",
-    },
-    {
-      id: "S003",
-      product: "Product C",
-      qty: 10,
-      amount: "200.00",
-      date: "2024-07-18",
-    },
-  ];
+  const [recentSales, setRecentSales] = useState([]);
+  useEffect(() => {
+    const loadSales = async () => {
+      try {
+        const salesData = await fetchSales();
+        setRecentSales(salesData.data);
+      } catch (error) {
+        console.error("Failed to fetch sales:", error);
+      }
+    };
 
-  const recentProductions = [
-    {
-      id: "P001",
-      item: "Crop X",
-      qty: 100,
-      status: "Completed",
-      date: "2024-07-21",
-    },
-    {
-      id: "P002",
-      item: "Crop Y",
-      qty: 50,
-      status: "In Progress",
-      date: "2024-07-15",
-    },
-  ];
+    loadSales();
+  }, []);
+
+  const [recentProductions, setRecentProductions] = useState([]);
+  useEffect(() => {
+    const loadProductions = async () => {
+      try {
+        const productionsData = await fetchProductions();
+        setRecentProductions(productionsData);
+        console.log("Fetched productions data:", productionsData);
+      } catch (error) {
+        console.error("Failed to fetch sales:", error);
+      }
+    };
+
+    loadProductions();
+  }, []);
 
   return (
     <div className="p-4 text-white">
@@ -107,26 +97,45 @@ function AdminDashboard() {
               <h5 className="text-white mb-3">Recent Sales</h5>
               <div className="table-responsive">
                 <table className="table table-dark table-striped table-hover mb-0">
-                  {" "}
                   <thead>
                     <tr>
                       <th>ID</th>
                       <th>Product</th>
                       <th>Qty</th>
                       <th>Amount</th>
+                      <th>Buyer</th>
                       <th>Date</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentSales.map((sale) => (
-                      <tr key={sale.id}>
-                        <td>{sale.id}</td>
-                        <td>{sale.product}</td>
-                        <td>{sale.qty}</td>
-                        <td>${sale.amount}</td>
-                        <td>{sale.date}</td>
+                    {recentSales.length > 0 ? (
+                      recentSales.slice(0, 3).map((sale, index) => (
+                        <tr key={sale.id}>
+                          <td>{index + 1}</td>
+                          <td>{sale.stockId.productId.productName}</td>
+                          <td>
+                            {sale.quantity}
+                            <span className="fw-bold">kg</span>
+                          </td>
+                          <td>
+                            {sale.totalPrice}
+                            <span className="fw-bold">rwf</span>
+                          </td>
+                          <dt>{sale.buyer}</dt>
+                          <td>
+                            {sale.createdAt
+                              ? new Date(sale.createdAt).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center">
+                          No sales found.
+                        </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -142,19 +151,24 @@ function AdminDashboard() {
                   <thead>
                     <tr>
                       <th>ID</th>
-                      <th>Item</th>
-                      <th>Qty</th>
-                      <th>Status</th>
+                      <th>Member</th>
+                      <th>Product</th>
+                      <th>Quantity</th>
                       <th>Date</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentProductions.map((prod) => (
-                      <tr key={prod.id}>
-                        <td>{prod.id}</td>
-                        <td>{prod.item}</td>
-                        <td>{prod.qty}</td>
-                        <td>
+                    {recentProductions.length > 0 ? (
+                      recentProductions.slice(0, 3).map((prod, index) => (
+                        <tr key={prod.id}>
+                          <td>{index + 1}</td>
+                          <td>{prod.userId.names}</td>
+                          <td>{prod.productId.productName}</td>
+                          <td>
+                            {prod.quantity}
+                            <span className="fw-bold">kg</span>
+                          </td>
+                          {/* <td>
                           <span
                             className={`badge ${
                               prod.status === "Completed"
@@ -164,10 +178,21 @@ function AdminDashboard() {
                           >
                             {prod.status}
                           </span>
+                        </td> */}
+                          <td>
+                            {prod.createdAt
+                              ? new Date(prod.createdAt).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center">
+                          No productions found.
                         </td>
-                        <td>{prod.date}</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
