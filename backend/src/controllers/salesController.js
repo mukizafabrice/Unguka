@@ -168,7 +168,7 @@ export const getSalesByPhoneNumber = async (req, res) => {
   }
 };
 
-// ✏️ UPDATE SALE
+//  UPDATE SALE
 export const updateSale = async (req, res) => {
   try {
     const { id } = req.params;

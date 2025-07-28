@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 
-const DeleteButton = ({
+const UpdateButton = ({
   onConfirm,
-  children = "Delete",
+  children = "Update",
   className = "",
-  confirmMessage = "Are you sure you want to permanently delete this item? This action cannot be undone.",
-  confirmTitle = "Confirm Deletion",
+  confirmMessage = "Are you sure you want to update this item?",
+  confirmTitle = "Confirm Update",
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -26,8 +26,8 @@ const DeleteButton = ({
       }
       setShowModal(false);
     } catch (err) {
-      setError("Failed to delete. Please try again.");
-      console.error("Delete error:", err);
+      console.error("Update error:", err);
+      setError("Failed to update. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -42,29 +42,16 @@ const DeleteButton = ({
     <>
       <button
         type="button"
-        className={`btn btn-danger ${className}`}
+        className={`btn btn-warning ${className}`}
         onClick={handleClick}
         disabled={isLoading}
         {...props}
       >
-        {isLoading ? (
-          <>
-            <span
-              className="spinner-border spinner-border-sm"
-              role="status"
-              aria-hidden="true"
-            ></span>
-            <span className="ms-2">Deleting...</span>
-          </>
-        ) : (
-          <>
-            <i className="bi bi-trash me-2"></i>
-            {children}
-          </>
-        )}
+        <i className="bi bi-pencil-square me-2"></i>
+        {children}
       </button>
 
-      {/* React controlled Modal */}
+      {/* React-controlled Modal (No Bootstrap JS) */}
       {showModal && (
         <>
           <div className="modal fade show d-block" tabIndex="-1">
@@ -80,15 +67,10 @@ const DeleteButton = ({
                 </div>
                 <div className="modal-body text-start">
                   <p>{confirmMessage}</p>
-                  {error && (
-                    <div className="alert alert-danger" role="alert">
-                      {error}
-                    </div>
-                  )}
+                  {error && <div className="alert alert-danger">{error}</div>}
                 </div>
                 <div className="modal-footer">
                   <button
-                    type="button"
                     className="btn btn-secondary"
                     onClick={handleCancel}
                     disabled={isLoading}
@@ -96,8 +78,7 @@ const DeleteButton = ({
                     Cancel
                   </button>
                   <button
-                    type="button"
-                    className="btn btn-danger"
+                    className="btn btn-warning"
                     onClick={handleConfirm}
                     disabled={isLoading}
                   >
@@ -108,10 +89,12 @@ const DeleteButton = ({
                           role="status"
                           aria-hidden="true"
                         ></span>
-                        <span className="ms-2">Deleting...</span>
+                        <span className="ms-2 visually-hidden">
+                          Updating...
+                        </span>
                       </>
                     ) : (
-                      "Delete"
+                      "Update"
                     )}
                   </button>
                 </div>
@@ -125,4 +108,4 @@ const DeleteButton = ({
   );
 };
 
-export default DeleteButton;
+export default UpdateButton;

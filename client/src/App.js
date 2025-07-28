@@ -1,18 +1,18 @@
 // src/App.js
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext"; // Assuming this path is correct
-import LoginPage from "./pages/Auth/LoginPage"; // Assuming this path is correct
-import AdminDashboard from "./pages/Admin/AdminDashboard"; // Assuming this path is correct
-import ManagerDashboard from "./pages/Manager/ManagerDashboard"; // Assuming this path is correct
-import MemberDashboard from "./pages/Member/MemberDashboard"; // Assuming this path is correct
-import ProtectedRoute from "./components/ProtectedRoute"; // Assuming this path is correct
+import { AuthProvider } from "./contexts/AuthContext";
+import LoginPage from "./pages/Auth/LoginPage";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
+import Season from "./pages/Admin/Season";
+import Sales from "./pages/Admin/Sales";
+import Stock from "./pages/Admin/Stock";
+import Plot from "./pages/Admin/Plot";
+import ManagerDashboard from "./pages/Manager/ManagerDashboard";
+import MemberDashboard from "./pages/Member/MemberDashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-// Import the new DashboardLayout
-import DashboardLayout from "./layouts/DashboardLayout"; // Adjust path if you put it elsewhere
-
-
-// Import your main dashboard CSS
+import DashboardLayout from "./layouts/DashboardLayout";
 import "./assets/styles/dashboard.css";
 
 function App() {
@@ -29,7 +29,11 @@ function App() {
               <ProtectedRoute allowedRoles={["manager"]}>
                 {" "}
                 <DashboardLayout>
-                  <AdminDashboard />
+                  {/* <AdminDashboard /> */}
+                  {/* <Sales /> */}
+                  {/* <Season /> */}
+                  {/* <Stock /> */}
+                  <Plot />
                 </DashboardLayout>
               </ProtectedRoute>
             }
