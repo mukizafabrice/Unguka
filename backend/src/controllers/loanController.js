@@ -10,7 +10,7 @@ export const getAllLoans = async (req, res) => {
       .populate({
         path: "purchaseInputId",
         populate: [
-          { path: "productId", select: "name unitPrice" },
+          { path: "productId", select: "productName unitPrice" },
           { path: "userId", select: "names phoneNumber" },
           { path: "seasonId", select: "name" },
         ],

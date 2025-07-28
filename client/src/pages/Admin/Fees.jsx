@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from "react";
 
-import { fetchPlot } from "../../services/plotService";
+import { fetchFees } from "../../services/feesService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
-import { PlusCircle } from "lucide-react";
-function Plot() {
-  // Fetch plots
-  const [plots, setPlots] = useState([]);
+import AddButton from "../../components/buttons/AddButton";
+function Stock() {
+  // Fetch fees
+  const [fees, setFees] = useState([]);
   useEffect(() => {
-    const loadStock = async () => {
+    const loadFees = async () => {
       try {
-        const productionsData = await fetchPlot();
-        setPlots(productionsData);
+        const feesData = await fetchFees();
+        setFees(feesData);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
       }
     };
 
-    loadStock();
+    loadFees();
   }, []);
 
   const handleUpdateReason = () => {
@@ -31,15 +31,11 @@ function Plot() {
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
         <div className="dashboard-content-area d-flex justify-content-between align-items-center">
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Plots Dashboard
+            Fees Dashboard
           </h4>
-          {/* New: Add Sale Button */}
-          <button
-            className="btn btn-success d-flex align-items-center"
-            // onClick={() => setShowAddModal(true)}
-          >
-            <PlusCircle size={20} className="me-2" /> Add Plot
-          </button>
+          {/* onClick={() => setShowAddModal(true)}  this  will be added into button in future*/}
+
+          <AddButton label="Add Fees" />
         </div>
       </div>
 
@@ -49,37 +45,52 @@ function Plot() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>ProductName</th>
-                <th>Quantity</th>
+                <th>Member</th>
+                <th>Season</th>
                 <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
                 <th colSpan={2}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {plots.length > 0 ? (
-                plots.slice(0, 3).map((plot, index) => (
-                  <tr key={plot.id}>
+              {fees.length > 0 ? (
+                fees.map((fee, index) => (
+                  <tr key={fee.id}>
                     <td>{index + 1}</td>
-                    <td>{plot.userId.names}</td>
-                    <td>{plot.productId.productName}</td>
+                    <td>{fee.userId?.names}</td>
+                    <td>{fee.seasonId?.name}</td>
+                    <td>{fee.amount}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          fee.status === "paid" ? "bg-success" : "bg-warning"
+                        }`}
+                      >
+                        {fee.status}
+                      </span>
+                    </td>
+                    <td>
+                      {fee.createdAt
+                        ? new Date(fee.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </td>
 
-                    <td>{plot.area}</td>
-                    <td>{plot.upi}</td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleUpdateReason(plot)}
-                          confirmMessage={`Are you sure you want to update stock for "${
-                            plot.plotId?.productId?.productName || "N/A"
+                          onConfirm={() => handleUpdateReason(fee)}
+                          confirmMessage={`Are you sure you want to update fees for "${
+                            fee.userId?.names || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
                         <DeleteButton
-                          onConfirm={() => handleDeleteSale(plot._id)}
-                          confirmMessage={`Are you sure you want to delete stock "${
-                            plot.plotId?.productId?.productName || "N/A"
+                          onConfirm={() => handleDeleteSale(fee._id)}
+                          confirmMessage={`Are you sure you want to delete fees "${
+                            fee.userId?.names || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
@@ -93,7 +104,7 @@ function Plot() {
                 <tr>
                   <td colSpan="9" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No plots found.
+                      No fee found.
                     </div>
                   </td>
                 </tr>
@@ -106,4 +117,4 @@ function Plot() {
   );
 }
 
-export default Plot;
+export default Stock;

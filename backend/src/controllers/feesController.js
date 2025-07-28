@@ -4,9 +4,9 @@ import User from "../models/User.js";
 // CREATE FEE
 export const createFee = async (req, res) => {
   try {
-    const { userId, seasonId, amount, status } = req.body;
+    const { userId, seasonId, amount } = req.body;
 
-    const newFee = new Fees({ userId, seasonId, amount, status });
+    const newFee = new Fees({ userId, seasonId, amount });
     await newFee.save();
 
     res.status(201).json({ message: "Fee created successfully", data: newFee });
@@ -21,8 +21,8 @@ export const createFee = async (req, res) => {
 export const getAllFees = async (req, res) => {
   try {
     const fees = await Fees.find()
-      .populate("userId", "fullName phoneNumber")
-      .populate("seasonId", "seasonName");
+      .populate("userId", "names phoneNumber")
+      .populate("seasonId", "name");
 
     res.status(200).json(fees);
   } catch (error) {
@@ -36,8 +36,8 @@ export const getAllFees = async (req, res) => {
 export const getFeeById = async (req, res) => {
   try {
     const fee = await Fees.findById(req.params.id)
-      .populate("userId", "fullName phoneNumber")
-      .populate("seasonId", "seasonName");
+      .populate("userId", "names phoneNumber")
+      .populate("seasonId", "name");
 
     if (!fee) return res.status(404).json({ message: "Fee not found" });
 
@@ -57,8 +57,8 @@ export const getFeesByPhoneNumber = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const fees = await Fees.find({ userId: user._id })
-      .populate("userId", "fullName phoneNumber")
-      .populate("seasonId", "seasonName");
+      .populate("userId", "names phoneNumber")
+      .populate("seasonId", "name");
 
     res.status(200).json(fees);
   } catch (error) {

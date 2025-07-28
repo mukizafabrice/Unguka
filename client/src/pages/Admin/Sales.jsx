@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from "react";
 import {
-  Package,
-  Users,
-  Layers,
-  XCircle,
-  Info,
-  Wallet,
-  ShoppingCart,
-  PlusCircle, // Added for the Add Sale button icon
+  PlusCircle, 
 } from "lucide-react";
 import {
   fetchSales,
   deleteSales,
   updateSales,
-  createSales, // Added createSales
+  createSales,
 } from "../../services/salesService";
-import { fetchUsers } from "../../services/userService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
 import UpdateSaleModal from "../../features/UpdateSaleModal";
-import AddSaleModal from "../../features/AddSaleModal"; // New: Import AddSaleModal
+import AddSaleModal from "../../features/AddSaleModal"; 
 
 function Sales() {
   const [selectedSale, setSelectedSale] = useState(null);

@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from "react";
 
-import { fetchPlot } from "../../services/plotService";
+import { fetchLoans } from "../../services/loanService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
-import { PlusCircle } from "lucide-react";
-function Plot() {
-  // Fetch plots
-  const [plots, setPlots] = useState([]);
+function Loan() {
+  // Fetch season
+  const [loans, setLoans] = useState([]);
   useEffect(() => {
-    const loadStock = async () => {
+    const loadLoan = async () => {
       try {
-        const productionsData = await fetchPlot();
-        setPlots(productionsData);
+        const loansData = await fetchLoans();
+        setLoans(loansData.loans);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
       }
     };
 
-    loadStock();
+    loadLoan();
   }, []);
 
   const handleUpdateReason = () => {
@@ -31,15 +30,8 @@ function Plot() {
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
         <div className="dashboard-content-area d-flex justify-content-between align-items-center">
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Plots Dashboard
+            Loan Dashboard
           </h4>
-          {/* New: Add Sale Button */}
-          <button
-            className="btn btn-success d-flex align-items-center"
-            // onClick={() => setShowAddModal(true)}
-          >
-            <PlusCircle size={20} className="me-2" /> Add Plot
-          </button>
         </div>
       </div>
 
@@ -49,37 +41,51 @@ function Plot() {
             <thead>
               <tr>
                 <th>ID</th>
+                <th>Member</th>
                 <th>ProductName</th>
+                <th>Season</th>
                 <th>Quantity</th>
                 <th>Amount</th>
+                <th>Status</th>
                 <th colSpan={2}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {plots.length > 0 ? (
-                plots.slice(0, 3).map((plot, index) => (
-                  <tr key={plot.id}>
+              {loans.length > 0 ? (
+                loans.map((loan, index) => (
+                  <tr key={loan._id}>
                     <td>{index + 1}</td>
-                    <td>{plot.userId.names}</td>
-                    <td>{plot.productId.productName}</td>
-
-                    <td>{plot.area}</td>
-                    <td>{plot.upi}</td>
+                    <td>{loan.purchaseInputId?.userId?.names}</td>
+                    <td>{loan.purchaseInputId?.productId?.productName}</td>
+                    <td>{loan.purchaseInputId?.seasonId?.name}</td>
+                    <td>{loan.quantity}</td>
+                    <td>{loan.totalPrice}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          loan.status === "repaid" ? "bg-success" : "bg-warning"
+                        }`}
+                      >
+                        {loan.status}
+                      </span>
+                    </td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleUpdateReason(plot)}
+                          onConfirm={() => handleUpdateReason(loan)}
                           confirmMessage={`Are you sure you want to update stock for "${
-                            plot.plotId?.productId?.productName || "N/A"
+                            loan.purchaseInputId?.productId?.productName ||
+                            "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
                         <DeleteButton
-                          onConfirm={() => handleDeleteSale(plot._id)}
+                          onConfirm={() => handleDeleteSale(loan._id)}
                           confirmMessage={`Are you sure you want to delete stock "${
-                            plot.plotId?.productId?.productName || "N/A"
+                            loan.purchaseInputId?.productId?.productName ||
+                            "N/A"
                           }"?`}
                           className="btn-sm"
                         >
@@ -93,7 +99,7 @@ function Plot() {
                 <tr>
                   <td colSpan="9" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No plots found.
+                      No stock found.
                     </div>
                   </td>
                 </tr>
@@ -106,4 +112,4 @@ function Plot() {
   );
 }
 
-export default Plot;
+export default Loan;

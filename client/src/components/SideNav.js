@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronRight,
   Megaphone,
+  Wallet,
 } from "lucide-react";
 
 import "../assets/styles/dashboard.css";
@@ -40,6 +41,7 @@ function SideNav({ isHide }) {
         <li>
           <NavLink
             to="/admin/dashboard"
+            end
             className={({ isActive }) =>
               `sidebar-link ${isActive ? "active" : ""}`
             }
@@ -62,7 +64,7 @@ function SideNav({ isHide }) {
             <ul className="sidebar-submenu">
               <li>
                 <NavLink
-                  to="/admin/products"
+                  to="/admin/dashboard/product"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -72,7 +74,7 @@ function SideNav({ isHide }) {
               </li>
               <li>
                 <NavLink
-                  to="/admin/stocks"
+                  to="/admin/dashboard/stock"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -98,7 +100,7 @@ function SideNav({ isHide }) {
             <ul className="sidebar-submenu">
               <li>
                 <NavLink
-                  to="/admin/productions"
+                  to="/admin/dashboard/production"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -108,7 +110,7 @@ function SideNav({ isHide }) {
               </li>
               <li>
                 <NavLink
-                  to="/admin/plots"
+                  to="/admin/dashboard/plot"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -134,7 +136,7 @@ function SideNav({ isHide }) {
             <ul className="sidebar-submenu">
               <li>
                 <NavLink
-                  to="/admin/sales"
+                  to="/admin/dashboard/sales"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -144,7 +146,17 @@ function SideNav({ isHide }) {
               </li>
               <li>
                 <NavLink
-                  to="/admin/loans"
+                  to="/admin/dashboard/fees"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <Wallet size={16} className="me-2" /> Fees
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/dashboard/loan"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -154,7 +166,7 @@ function SideNav({ isHide }) {
               </li>
               <li>
                 <NavLink
-                  to="/admin/payments"
+                  to="/admin/dashboard/payment"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -164,7 +176,7 @@ function SideNav({ isHide }) {
               </li>
               <li>
                 <NavLink
-                  to="/admin/purchase-inputs"
+                  to="/admin/dashboard/purchase-inputs"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -190,7 +202,7 @@ function SideNav({ isHide }) {
             <ul className="sidebar-submenu">
               <li>
                 <NavLink
-                  to="/admin/users"
+                  to="/admin/dashboard/user"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -200,7 +212,7 @@ function SideNav({ isHide }) {
               </li>
               <li>
                 <NavLink
-                  to="/admin/seasons"
+                  to="/admin/dashboard/season"
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
@@ -213,7 +225,7 @@ function SideNav({ isHide }) {
         </li>
         <li>
           <NavLink
-            to="/admin/announcements"
+            to="/admin/dashboard/announcement"
             className={({ isActive }) =>
               `sidebar-link ${isActive ? "active" : ""}`
             }

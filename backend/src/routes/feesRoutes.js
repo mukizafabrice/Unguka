@@ -4,7 +4,7 @@ import {
   getAllFees,
   getFeesByPhoneNumber,
   getFeeById,
-  updateFeeStatusToPaid,
+  markFeeAsPaid,
   deleteFee,
 } from "../controllers/feesController.js";
 
@@ -14,7 +14,7 @@ router.post("/", createFee);
 router.get("/", getAllFees);
 router.get("/:id", getFeeById);
 router.get("/user/phone/:phoneNumber", getFeesByPhoneNumber);
-router.put("/:id/pay", updateFeeStatusToPaid);
+router.put("/:id/pay", markFeeAsPaid);
 router.delete("/:id", deleteFee);
 
 export default router;

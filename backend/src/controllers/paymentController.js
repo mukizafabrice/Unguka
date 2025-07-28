@@ -5,24 +5,21 @@ import Stock from "../models/Stock.js";
 //create payment
 export const createPayment = async (req, res) => {
   try {
-    const { productionId, amount } = req.body;
+    const { productionId } = req.body;
 
-    // Validate required fields
-    if (!productionId || amount == null) {
-      return res
-        .status(400)
-        .json({ message: "productionId and amount are required" });
+    // Validate productionId
+    if (!productionId) {
+      return res.status(400).json({ message: "productionId is required" });
     }
 
-    // Get the production to find associated stock
     const production = await Production.findById(productionId);
     if (!production) {
       return res.status(404).json({ message: "Production not found" });
     }
 
-    // Get stock using seasonId and productId from production
+    const amount = production.totalPrice;
+
     const stock = await Stock.findOne({
-      seasonId: production.seasonId,
       productId: production.productId,
     });
 
@@ -30,21 +27,20 @@ export const createPayment = async (req, res) => {
       return res.status(404).json({ message: "Related stock not found" });
     }
 
-    // Check if stock has enough cash
     if (stock.cash < amount) {
       return res.status(400).json({ message: "Insufficient cash in stock" });
     }
 
-    // Create payment
+    // Create the payment
     const newPayment = new Payment({ productionId, amount });
     await newPayment.save();
 
-    // Subtract amount from stock cash
+    // Deduct the payment amount from the stock cash
     stock.cash -= amount;
     await stock.save();
 
     res.status(201).json({
-      message: "Payment added and stock updated successfully",
+      message: "Payment created and stock updated successfully",
       data: newPayment,
     });
   } catch (error) {
@@ -58,7 +54,7 @@ export const getAllPayments = async (req, res) => {
     const payments = await Payment.find().populate({
       path: "productionId",
       populate: [
-        { path: "seasonId", select: "seasonName" },
+        { path: "seasonId", select: "name" },
         { path: "productId", select: "productName" },
         { path: "userId", select: "names phoneNumber" },
       ],

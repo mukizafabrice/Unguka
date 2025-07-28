@@ -21,6 +21,7 @@ const feesSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["paid", "unpaid"],
+    defualt: "unpaid",
     required: true,
   },
 

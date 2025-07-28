@@ -58,7 +58,7 @@ const DeleteButton = ({
           </>
         ) : (
           <>
-            <i className="bi bi-trash me-2"></i>
+            <i className="bi bi-trash me-1"></i>
             {children}
           </>
         )}

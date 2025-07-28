@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { fetchStock } from "../../services/stockService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
-
+import { PlusCircle } from "lucide-react";
 function Stock() {
   // Fetch season
   const [stocks, setStocks] = useState([]);
@@ -29,14 +29,21 @@ function Stock() {
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
-        <div className="dashboard-content-area">
-          <h4 className="fs-4 fw-medium mb-3" style={{ color: "black" }}>
-            Season Dashboard
+        <div className="dashboard-content-area d-flex justify-content-between align-items-center">
+          <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
+            Stocks Dashboard
           </h4>
+          {/* New: Add Sale Button */}
+          <button
+            className="btn btn-success d-flex align-items-center"
+            // onClick={() => setShowAddModal(true)}
+          >
+            <PlusCircle size={20} className="me-2" /> Add Stock
+          </button>
         </div>
       </div>
 
-      <div className="row">
+      <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
         <div className="table-responsive">
           <table className="table table-dark table-striped table-hover mb-0">
             <thead>
@@ -83,8 +90,10 @@ function Stock() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="text-center">
-                    No productions found.
+                  <td colSpan="9" className="text-center py-4">
+                    <div className="alert alert-info" role="alert">
+                      No stock found.
+                    </div>
                   </td>
                 </tr>
               )}

@@ -47,7 +47,7 @@ const UpdateButton = ({
         disabled={isLoading}
         {...props}
       >
-        <i className="bi bi-pencil-square me-2"></i>
+        <i className="bi bi-pencil-square me-1"></i>
         {children}
       </button>
 
@@ -78,7 +78,7 @@ const UpdateButton = ({
                     Cancel
                   </button>
                   <button
-                    className="btn btn-warning"
+                    className="btn btn-warning  w-100 w-sm-auto"
                     onClick={handleConfirm}
                     disabled={isLoading}
                   >

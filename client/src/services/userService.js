@@ -14,13 +14,13 @@ export const fetchUserById = async (id) => {
 
 // Create new user
 export const createUser = async (userData) => {
-  const response = await axiosInstance.post("/users", userData);
+  const response = await axiosInstance.post("/users/register", userData);
   return response.data;
 };
 
 // Update user
 export const updateUser = async (id, userData) => {
-  const response = await axiosInstance.put(`/users/${id}`, userData);
+  const response = await axiosInstance.put(`/users/update/${id}`, userData);
   return response.data;
 };
 

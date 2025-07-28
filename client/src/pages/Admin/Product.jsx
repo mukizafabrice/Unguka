@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 
-import { fetchPlot } from "../../services/plotService";
+import { fetchProduct } from "../../services/productService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
 import { PlusCircle } from "lucide-react";
-function Plot() {
-  // Fetch plots
-  const [plots, setPlots] = useState([]);
+function Product() {
+  // Fetch season
+  const [products, setProducts] = useState([]);
   useEffect(() => {
     const loadStock = async () => {
       try {
-        const productionsData = await fetchPlot();
-        setPlots(productionsData);
+        const productsData = await fetchProduct();
+        setProducts(productsData);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
       }
@@ -31,14 +31,13 @@ function Plot() {
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
         <div className="dashboard-content-area d-flex justify-content-between align-items-center">
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Plots Dashboard
+            Products Dashboard
           </h4>
-          {/* New: Add Sale Button */}
           <button
             className="btn btn-success d-flex align-items-center"
             // onClick={() => setShowAddModal(true)}
           >
-            <PlusCircle size={20} className="me-2" /> Add Plot
+            <PlusCircle size={20} className="me-2" /> Add Product
           </button>
         </div>
       </div>
@@ -50,36 +49,33 @@ function Plot() {
               <tr>
                 <th>ID</th>
                 <th>ProductName</th>
-                <th>Quantity</th>
-                <th>Amount</th>
+                <th>Price</th>
                 <th colSpan={2}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {plots.length > 0 ? (
-                plots.slice(0, 3).map((plot, index) => (
-                  <tr key={plot.id}>
+              {products.length > 0 ? (
+                products.slice(0, 3).map((product, index) => (
+                  <tr key={product.id}>
                     <td>{index + 1}</td>
-                    <td>{plot.userId.names}</td>
-                    <td>{plot.productId.productName}</td>
+                    <td>{product.productName}</td>
 
-                    <td>{plot.area}</td>
-                    <td>{plot.upi}</td>
+                    <td>{product.unitPrice}</td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleUpdateReason(plot)}
+                          onConfirm={() => handleUpdateReason(product)}
                           confirmMessage={`Are you sure you want to update stock for "${
-                            plot.plotId?.productId?.productName || "N/A"
+                            product.productName || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
                         <DeleteButton
-                          onConfirm={() => handleDeleteSale(plot._id)}
+                          onConfirm={() => handleDeleteSale(product._id)}
                           confirmMessage={`Are you sure you want to delete stock "${
-                            plot.plotId?.productId?.productName || "N/A"
+                            product.productName || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
@@ -93,7 +89,7 @@ function Plot() {
                 <tr>
                   <td colSpan="9" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No plots found.
+                      No product found.
                     </div>
                   </td>
                 </tr>
@@ -106,4 +102,4 @@ function Plot() {
   );
 }
 
-export default Plot;
+export default Product;

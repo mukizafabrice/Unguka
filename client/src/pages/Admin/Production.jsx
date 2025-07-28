@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 
-import { fetchPlot } from "../../services/plotService";
+import { fetchProductions } from "../../services/productionService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
 import { PlusCircle } from "lucide-react";
-function Plot() {
-  // Fetch plots
-  const [plots, setPlots] = useState([]);
+function Stock() {
+  // Fetch season
+  const [productions, setProductions] = useState([]);
   useEffect(() => {
     const loadStock = async () => {
       try {
-        const productionsData = await fetchPlot();
-        setPlots(productionsData);
+        const productionsData = await fetchProductions();
+        setProductions(productionsData);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
       }
@@ -31,14 +31,14 @@ function Plot() {
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
         <div className="dashboard-content-area d-flex justify-content-between align-items-center">
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Plots Dashboard
+            Productions Dashboard
           </h4>
           {/* New: Add Sale Button */}
           <button
             className="btn btn-success d-flex align-items-center"
-            // onClick={() => setShowAddModal(true)}
+            //   onClick={() => setShowAddModal(true)}
           >
-            <PlusCircle size={20} className="me-2" /> Add Plot
+            <PlusCircle size={20} className="me-2" /> Add Production
           </button>
         </div>
       </div>
@@ -49,37 +49,39 @@ function Plot() {
             <thead>
               <tr>
                 <th>ID</th>
+                <th>Member</th>
                 <th>ProductName</th>
+                <th>Season</th>
                 <th>Quantity</th>
                 <th>Amount</th>
                 <th colSpan={2}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {plots.length > 0 ? (
-                plots.slice(0, 3).map((plot, index) => (
-                  <tr key={plot.id}>
+              {productions.length > 0 ? (
+                productions.slice(0, 3).map((production, index) => (
+                  <tr key={production.id}>
                     <td>{index + 1}</td>
-                    <td>{plot.userId.names}</td>
-                    <td>{plot.productId.productName}</td>
-
-                    <td>{plot.area}</td>
-                    <td>{plot.upi}</td>
+                    <td>{production.userId.names}</td>
+                    <td>{production.productId.productName}</td>
+                    <td>{production.seasonId.name}</td>
+                    <td>{production.quantity}</td>
+                    <td>{production.totalPrice}</td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleUpdateReason(plot)}
+                          onConfirm={() => handleUpdateReason(production)}
                           confirmMessage={`Are you sure you want to update stock for "${
-                            plot.plotId?.productId?.productName || "N/A"
+                            production.productId?.productName || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
                         <DeleteButton
-                          onConfirm={() => handleDeleteSale(plot._id)}
-                          confirmMessage={`Are you sure you want to delete stock "${
-                            plot.plotId?.productId?.productName || "N/A"
+                          onConfirm={() => handleDeleteSale(production._id)}
+                          confirmMessage={`Are you sure you want to delete production "${
+                            production.productId?.productName || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
@@ -93,7 +95,7 @@ function Plot() {
                 <tr>
                   <td colSpan="9" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No plots found.
+                      No stock found.
                     </div>
                   </td>
                 </tr>
@@ -106,4 +108,4 @@ function Plot() {
   );
 }
 
-export default Plot;
+export default Stock;
