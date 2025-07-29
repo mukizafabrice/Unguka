@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { fetchStock } from "../services/stockService";
-import { fetchSeasons } from "../services/seasonService";
+import { fetchStock } from "../../services/stockService"; // Assuming this service exists
+import { fetchSeasons } from "../../services/seasonService"; // Assuming this service exists
 
 const AddSaleModal = ({ show, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -10,76 +10,93 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
     buyer: "",
     phoneNumber: "",
     paymentType: "cash",
-    status: "unpaid",
+    status: "unpaid", // This seems to be a default for AddSale, ensure your backend handles it or remove if not needed.
   });
 
   const [stocks, setStocks] = useState([]);
   const [seasons, setSeasons] = useState([]);
 
   // Loading states for data fetching
-  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [loadingStocks, setLoadingStocks] = useState(false); // Renamed from loadingProducts for clarity
   const [loadingSeasons, setLoadingSeasons] = useState(false);
 
   // Error states for data fetching
-  const [productsError, setProductsError] = useState(null);
+  const [stocksError, setStocksError] = useState(null); // Renamed from productsError for clarity
   const [seasonsError, setSeasonsError] = useState(null);
 
+  // Effect to manage body class for scroll prevention
   useEffect(() => {
     if (show) {
-      const getProducts = async () => {
-        setLoadingProducts(true);
-        setProductsError(null);
+      document.body.classList.add("modal-open");
+    } else {
+      document.body.classList.remove("modal-open");
+    }
+    // Cleanup function for when component unmounts or show changes
+    return () => {
+      document.body.classList.remove("modal-open");
+    };
+  }, [show]);
+
+  // Fetch stocks for dropdown
+  useEffect(() => {
+    if (show) {
+      // Only fetch when modal is shown
+      const getStocks = async () => {
+        setLoadingStocks(true);
+        setStocksError(null);
         try {
           const response = await fetchStock();
-          console.log("Full product fetch response:", response); // This is good for debugging
-          // console.log("Fetched products data:", response.data); // This was logging undefined
-
-          // CORRECTED LINE: Use 'response' directly if your service returns the array
-          if (Array.isArray(response)) {
-            setStocks(response);
-            console.log("Products set in state (length):", response.length);
+          // IMPORTANT: Check if response.data is the array, or if response itself is the array.
+          // Adjust this line based on what your fetchStock service actually returns.
+          if (response && Array.isArray(response.data || response)) {
+            setStocks(response.data || response);
           } else {
-            console.warn("Product data is not an array:", response);
+            console.warn(
+              "Stock data is not an array or missing 'data' property:",
+              response
+            );
             setStocks([]);
-            setProductsError("Product data format incorrect or empty.");
+            setStocksError("Stock data format incorrect or empty.");
           }
         } catch (error) {
-          console.error("Failed to fetch products:", error);
-          setProductsError(
-            "Failed to load products. Please check your connection or try again."
+          console.error("Failed to fetch stocks for modal:", error);
+          setStocksError(
+            "Failed to load products from stock. Please check your connection."
           );
           setStocks([]);
         } finally {
-          setLoadingProducts(false);
+          setLoadingStocks(false);
         }
       };
-      getProducts();
+      getStocks();
     }
   }, [show]);
 
+  // Fetch seasons for dropdown
   useEffect(() => {
     if (show) {
+      // Only fetch when modal is shown
       const getSeasons = async () => {
         setLoadingSeasons(true);
         setSeasonsError(null);
         try {
           const response = await fetchSeasons();
-          console.log("Full season fetch response:", response); // This is good for debugging
-          // console.log("Fetched seasons data:", response.data); // This was logging undefined
-
-          // CORRECTED LINE: Use 'response' directly if your service returns the array
-          if (Array.isArray(response)) {
-            setSeasons(response);
-            console.log("Seasons set in state (length):", response.length);
+          // IMPORTANT: Check if response.data is the array, or if response itself is the array.
+          // Adjust this line based on what your fetchSeasons service actually returns.
+          if (response && Array.isArray(response.data || response)) {
+            setSeasons(response.data || response);
           } else {
-            console.warn("Season data is not an array:", response);
+            console.warn(
+              "Season data is not an array or missing 'data' property:",
+              response
+            );
             setSeasons([]);
             setSeasonsError("Season data format incorrect or empty.");
           }
         } catch (error) {
-          console.error("Failed to fetch seasons:", error);
+          console.error("Failed to fetch seasons for modal:", error);
           setSeasonsError(
-            "Failed to load seasons. Please check your connection or try again."
+            "Failed to load seasons. Please check your connection."
           );
           setSeasons([]); // Ensure state is an empty array on error
         } finally {
@@ -100,14 +117,13 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
         buyer: "",
         phoneNumber: "",
         paymentType: "cash",
+        status: "unpaid",
       });
       // Also reset fetch errors on modal open for a fresh start
-      setProductsError(null);
+      setStocksError(null); // Renamed from productsError
       setSeasonsError(null);
     }
   }, [show]);
-
-  // --- Component Logic ---
 
   // If the modal isn't supposed to be shown, return null immediately
   if (!show) return null;
@@ -128,19 +144,24 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
       quantity: Number(formData.quantity),
     };
     onSubmit(dataToSubmit);
-    // Optionally close modal or reset form after successful submission (handled by parent component)
+    // The parent component (Sales.jsx) is responsible for closing the modal
+    // and showing toast messages after the submission is complete.
   };
 
   // --- Rendered JSX ---
   return (
     <>
-      {/* Modal overlay */}
+      {/* 1. MODAL BACKDROP: This MUST be rendered FIRST to be behind the modal content */}
+      <div className="modal-backdrop fade show"></div>
+
+      {/* 2. MODAL CONTENT: This is the actual modal that should appear on top */}
       <div
-        className="modal fade show d-block"
+        className="modal fade show d-block" // 'd-block' makes it visible, 'show' applies fade animation
         tabIndex="-1"
         role="dialog"
         aria-labelledby="addSaleModalLabel"
-        aria-hidden="true"
+        aria-hidden="false" // When 'show' is true, the modal is visible, so aria-hidden should be false
+        style={{ display: "block", paddingRight: "17px" }} // Explicitly ensure it's displayed and accounts for scrollbar
       >
         <div
           className="modal-dialog modal-lg modal-dialog-centered"
@@ -149,7 +170,7 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
           <div className="modal-content">
             <form onSubmit={handleSubmit}>
               <div className="modal-header">
-                <h5 className="modal-title" id="addSaleModalLabel">
+                <h5 className="modal-title text-dark" id="addSaleModalLabel">
                   Add New Sale
                 </h5>
                 <button
@@ -162,10 +183,10 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
 
               <div className="modal-body row">
                 {/* Display general fetch errors if any */}
-                {(productsError || seasonsError) && (
+                {(stocksError || seasonsError) && (
                   <div className="col-12 mb-3">
                     <div className="alert alert-danger" role="alert">
-                      {productsError && <p className="mb-1">{productsError}</p>}
+                      {stocksError && <p className="mb-1">{stocksError}</p>}
                       {seasonsError && <p className="mb-0">{seasonsError}</p>}
                     </div>
                   </div>
@@ -173,10 +194,10 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
 
                 {/* Product Dropdown */}
                 <div className="col-md-6 mb-3">
-                  <label htmlFor="stockId" className="form-label">
+                  <label htmlFor="stockId" className="form-label text-dark">
                     Product
                   </label>
-                  {loadingProducts ? (
+                  {loadingStocks ? (
                     <div className="text-center">
                       <div
                         className="spinner-border spinner-border-sm text-primary"
@@ -200,18 +221,21 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
                         onChange={handleChange}
                         required
                         // Disable if there's an error or no products available after loading
-                        disabled={productsError || stocks.length === 0}
+                        disabled={stocksError || stocks.length === 0}
                       >
                         <option value="">Select a product</option>
                         {stocks.map((stock) => (
+                          // Ensure stock.productId and stock.productId.productName exist
                           <option key={stock._id} value={stock._id}>
-                            {stock.productId.productName}
+                            {stock.productId?.productName ||
+                              `Stock ID: ${stock._id}`}
                           </option>
                         ))}
                       </select>
-                      {stocks.length === 0 && !productsError && (
+                      {stocks.length === 0 && !stocksError && (
                         <small className="text-muted mt-1 d-block">
-                          No products available. Please add products first.
+                          No products available in stock. Please add products to
+                          stock first.
                         </small>
                       )}
                     </>
@@ -220,7 +244,7 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
 
                 {/* Season Dropdown */}
                 <div className="col-md-6 mb-3">
-                  <label htmlFor="seasonId" className="form-label">
+                  <label htmlFor="seasonId" className="form-label text-dark">
                     Season
                   </label>
                   {loadingSeasons ? (
@@ -267,7 +291,7 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
 
                 {/* Quantity */}
                 <div className="col-md-6 mb-3">
-                  <label htmlFor="quantity" className="form-label">
+                  <label htmlFor="quantity" className="form-label text-dark">
                     Quantity (kg)
                   </label>
                   <input
@@ -284,7 +308,7 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
 
                 {/* Buyer */}
                 <div className="col-md-6 mb-3">
-                  <label htmlFor="buyer" className="form-label">
+                  <label htmlFor="buyer" className="form-label text-dark">
                     Buyer Name
                   </label>
                   <input
@@ -300,7 +324,7 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
 
                 {/* Phone Number */}
                 <div className="col-md-6 mb-3">
-                  <label htmlFor="phoneNumber" className="form-label">
+                  <label htmlFor="phoneNumber" className="form-label text-dark">
                     Phone Number
                   </label>
                   <input
@@ -317,7 +341,7 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
 
                 {/* Payment Type */}
                 <div className="col-md-6 mb-3">
-                  <label htmlFor="paymentType" className="form-label">
+                  <label htmlFor="paymentType" className="form-label text-dark">
                     Payment Type
                   </label>
                   <select
@@ -350,8 +374,6 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
           </div>
         </div>
       </div>
-      {/* Modal backdrop */}
-      <div className="modal-backdrop fade show"></div>
     </>
   );
 };

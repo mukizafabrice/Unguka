@@ -70,17 +70,20 @@ export const updateProduct = async (req, res) => {
   const { id } = req.params;
   const { productName, unitPrice } = req.body;
 
-  if (!id || !productName || !unitPrice) {
-    return res
-      .status(400)
-      .json({ message: "Product ID and name are required" });
+  if (!id || !productName || unitPrice === undefined) {
+    return res.status(400).json({
+      message: "Product ID, name, and unit price are required",
+    });
   }
 
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
-      { productName: productName.toLowerCase() },
-      { new: true }
+      {
+        productName: productName.toLowerCase(),
+        unitPrice: unitPrice,
+      },
+      { new: true } // Return the updated document
     );
 
     if (!updatedProduct) {
@@ -90,13 +93,13 @@ export const updateProduct = async (req, res) => {
     res.status(200).json({
       message: "Product updated successfully",
       product: updatedProduct,
-      unitPrice: unitPrice,
     });
   } catch (error) {
     console.error("Error updating product:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 // Delete a product by ID
 export const deleteProduct = async (req, res) => {
   const { id } = req.params;

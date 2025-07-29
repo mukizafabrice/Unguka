@@ -22,6 +22,7 @@ import User from "./pages/Admin/User";
 import ManagerDashboard from "./pages/Manager/ManagerDashboard";
 import MemberDashboard from "./pages/Member/MemberDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Profile from "./pages/Profile";
 
 import DashboardLayout from "./layouts/DashboardLayout";
 import "./assets/styles/dashboard.css";
@@ -32,6 +33,18 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute
+                allowedRoles={["manager", "accountant", "member"]}
+              >
+                <DashboardLayout>
+                  <Profile />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
           {/* Admin Dashboard Route wrapped in DashboardLayout */}
           <Route
             path="/admin/dashboard"
@@ -57,7 +70,6 @@ function App() {
             <Route path="announcement" element={<Announcement />} />
             <Route path="user" element={<User />} />
           </Route>
-
           {/* Manager Dashboard Route wrapped in DashboardLayout */}
           <Route
             path="/manager/dashboard"

@@ -146,36 +146,82 @@ export const getProductionById = async (req, res) => {
   }
 };
 
-// Update production
 export const updateProduction = async (req, res) => {
   try {
+    const { quantity, productId } = req.body;
+
+    const existing = await Production.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ message: "Production not found" });
+    }
+
+    const oldQuantity = existing.quantity;
+    const oldTotal = existing.totalPrice;
+
+    // If productId is changed, you'll need to handle more carefully
+    if (productId.toString() !== existing.productId.toString()) {
+      return res.status(400).json({
+        message: "Changing the product of a production is not supported.",
+      });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const newTotal = quantity * product.unitPrice;
+
+    // Update the production
     const updated = await Production.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      {
+        ...req.body,
+        totalPrice: newTotal,
+      },
       { new: true }
     );
 
-    if (!updated) {
-      return res.status(404).json({ message: "Production not found" });
+    // Adjust stock
+    const stock = await Stock.findOne({ productId });
+    if (stock) {
+      stock.quantity = stock.quantity - oldQuantity + quantity;
+      stock.totalPrice = stock.totalPrice - oldTotal + newTotal;
+      await stock.save();
     }
 
     res.status(200).json({ message: "Production updated", data: updated });
   } catch (error) {
+    console.error("Error updating production:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// Delete production
 export const deleteProduction = async (req, res) => {
   try {
-    const deleted = await Production.findByIdAndDelete(req.params.id);
-
-    if (!deleted) {
+    const production = await Production.findById(req.params.id);
+    if (!production) {
       return res.status(404).json({ message: "Production not found" });
     }
 
+    // Adjust stock
+    const stock = await Stock.findOne({ productId: production.productId });
+    if (stock) {
+      stock.quantity -= production.quantity;
+      stock.totalPrice -= production.totalPrice;
+      if (stock.quantity <= 0) {
+        await stock.deleteOne(); // Optionally remove stock record if empty
+      } else {
+        await stock.save();
+      }
+    }
+
+    // Delete production
+    await Production.findByIdAndDelete(req.params.id);
+
     res.status(200).json({ message: "Production deleted successfully" });
   } catch (error) {
+    console.error("Error deleting production:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

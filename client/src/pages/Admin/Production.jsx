@@ -1,31 +1,107 @@
 import React, { useState, useEffect } from "react";
+import { ToastContainer, toast } from "react-toastify"; // Import ToastContainer and toast
+import "react-toastify/dist/ReactToastify.css"; // Import the CSS for react-toastify
 
-import { fetchProductions } from "../../services/productionService";
+import {
+  fetchProductions,
+  createProduction,
+  updateProduction,
+  deleteProduction,
+} from "../../services/productionService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
-import { PlusCircle } from "lucide-react";
-function Stock() {
-  // Fetch season
-  const [productions, setProductions] = useState([]);
-  useEffect(() => {
-    const loadStock = async () => {
-      try {
-        const productionsData = await fetchProductions();
-        setProductions(productionsData);
-      } catch (error) {
-        console.error("Failed to fetch sales:", error);
-      }
-    };
+import AddButton from "../../components/buttons/AddButton";
+import AddProductionModal from "../../features/modals/AddProductionModal";
+import UpdateProductionModal from "../../features/modals/UpdateProductionModal";
 
-    loadStock();
+function Production() {
+  const [productions, setProductions] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedProduction, setSelectedProduction] = useState(null);
+
+  const loadProductions = async () => {
+    try {
+      const productionsData = await fetchProductions();
+      setProductions(productionsData);
+    } catch (error) {
+      console.error("Failed to fetch productions:", error);
+      toast.error("Failed to load productions."); // Error toast for fetching
+    }
+  };
+
+  useEffect(() => {
+    loadProductions();
   }, []);
 
-  const handleUpdateReason = () => {
-    alert("click to update");
+  const handleAddProduction = async (newData) => {
+    console.log("New production to be added:", newData);
+    try {
+      await createProduction(newData);
+      console.log("Production added successfully!");
+      await loadProductions();
+      setShowAddModal(false);
+      toast.success("Production added successfully!"); // Success toast
+    } catch (error) {
+      console.error("Failed to add production:", error);
+      toast.error("Failed to add production."); // Error toast
+    }
   };
-  const handleDeleteSale = () => {
-    alert("hello world");
+
+  const handleUpdateProduction = async (updatedData) => {
+    console.log("Production to be updated:", updatedData);
+    try {
+      const { _id, ...dataToUpdate } = updatedData;
+      await updateProduction(_id, dataToUpdate);
+      console.log("Production updated successfully!");
+      await loadProductions();
+      setShowUpdateModal(false);
+      setSelectedProduction(null);
+      toast.success("Production updated successfully!"); // Success toast
+    } catch (error) {
+      console.error("Failed to update production:", error);
+      if (error.response) {
+        console.error("Backend Error Response:", error.response.data);
+        console.error("Backend Error Status:", error.response.status);
+        toast.error(
+          `Failed to update production: ${
+            error.response.data.message || error.response.statusText
+          }`
+        ); // More specific error toast
+      } else {
+        toast.error("Failed to update production."); // Generic error toast
+      }
+    }
   };
+
+  const handleOpenUpdateModal = (production) => {
+    setSelectedProduction(production);
+    setShowUpdateModal(true);
+  };
+
+  const handleDeleteProduction = async (id) => {
+    console.log("Deleting production with ID:", id);
+    try {
+      await deleteProduction(id);
+      console.log("Production deleted successfully!");
+      await loadProductions();
+      toast.success("Production deleted successfully!"); // Success toast
+    } catch (error) {
+      console.error("Failed to delete production:", error);
+      if (error.response) {
+        console.error("Backend Error Response:", error.response.data);
+        console.error("Backend Error Status:", error.response.status);
+        toast.error(
+          `Failed to delete production: ${
+            error.response.data.message || error.response.statusText
+          }`
+        ); // More specific error toast
+      } else {
+        toast.error("Failed to delete production."); // Generic error toast
+      }
+    }
+  };
+
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -33,13 +109,10 @@ function Stock() {
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
             Productions Dashboard
           </h4>
-          {/* New: Add Sale Button */}
-          <button
-            className="btn btn-success d-flex align-items-center"
-            //   onClick={() => setShowAddModal(true)}
-          >
-            <PlusCircle size={20} className="me-2" /> Add Production
-          </button>
+          <AddButton
+            label="Add Production"
+            onClick={() => setShowAddModal(true)}
+          />
         </div>
       </div>
 
@@ -50,7 +123,7 @@ function Stock() {
               <tr>
                 <th>ID</th>
                 <th>Member</th>
-                <th>ProductName</th>
+                <th>Product Name</th>
                 <th>Season</th>
                 <th>Quantity</th>
                 <th>Amount</th>
@@ -59,19 +132,19 @@ function Stock() {
             </thead>
             <tbody>
               {productions.length > 0 ? (
-                productions.slice(0, 3).map((production, index) => (
-                  <tr key={production.id}>
+                productions.map((production, index) => (
+                  <tr key={production._id}>
                     <td>{index + 1}</td>
-                    <td>{production.userId.names}</td>
-                    <td>{production.productId.productName}</td>
-                    <td>{production.seasonId.name}</td>
+                    <td>{production.userId?.names || "N/A"}</td>
+                    <td>{production.productId?.productName || "N/A"}</td>
+                    <td>{production.seasonId?.name || "N/A"}</td>
                     <td>{production.quantity}</td>
                     <td>{production.totalPrice}</td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleUpdateReason(production)}
-                          confirmMessage={`Are you sure you want to update stock for "${
+                          onConfirm={() => handleOpenUpdateModal(production)}
+                          confirmMessage={`Are you sure you want to update production for "${
                             production.productId?.productName || "N/A"
                           }"?`}
                           className="btn-sm"
@@ -79,7 +152,9 @@ function Stock() {
                           Update
                         </UpdateButton>
                         <DeleteButton
-                          onConfirm={() => handleDeleteSale(production._id)}
+                          onConfirm={() =>
+                            handleDeleteProduction(production._id)
+                          }
                           confirmMessage={`Are you sure you want to delete production "${
                             production.productId?.productName || "N/A"
                           }"?`}
@@ -95,7 +170,7 @@ function Stock() {
                 <tr>
                   <td colSpan="9" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No stock found.
+                      No production found.
                     </div>
                   </td>
                 </tr>
@@ -104,8 +179,33 @@ function Stock() {
           </table>
         </div>
       </div>
+
+      <AddProductionModal
+        show={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleAddProduction}
+      />
+
+      <UpdateProductionModal
+        show={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        onUpdate={handleUpdateProduction}
+        initialData={selectedProduction}
+      />
+
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }
 
-export default Stock;
+export default Production;

@@ -13,15 +13,18 @@ function NotificationBell() {
         const res = await axiosInstance.get("/announcements");
         const storedRead =
           JSON.parse(localStorage.getItem("readAnnouncements")) || [];
+
         const updated = res.data.map((a) => ({
           ...a,
-          isRead: storedRead.includes(a.id),
+          isRead: storedRead.includes(a._id),
         }));
+
         setAnnouncements(updated);
       } catch (err) {
         console.error("Error fetching announcements:", err);
       }
     };
+
     fetchAnnouncements();
   }, []);
 
@@ -29,7 +32,8 @@ function NotificationBell() {
 
   const handleOpenDropdown = () => {
     setShowDropdown(!showDropdown);
-    const readIds = announcements.map((a) => a.id);
+
+    const readIds = announcements.map((a) => a._id);
     localStorage.setItem("readAnnouncements", JSON.stringify(readIds));
 
     setAnnouncements((prev) => prev.map((a) => ({ ...a, isRead: true })));
@@ -43,21 +47,6 @@ function NotificationBell() {
           <span className="notification-badge">{unreadCount}</span>
         )}
       </div>
-
-      {showDropdown && (
-        <div className="notification-dropdown">
-          {announcements.length === 0 ? (
-            <p className="no-announcements">No announcements</p>
-          ) : (
-            announcements.map((a) => (
-              <div key={a.id} className="announcement-item">
-                <strong>{a.title}</strong>
-                <p>{a.message}</p>
-              </div>
-            ))
-          )}
-        </div>
-      )}
     </div>
   );
 }

@@ -1,97 +1,110 @@
 import React, { useState, useEffect } from "react";
-import {
-  PlusCircle, 
-} from "lucide-react";
+import { ToastContainer, toast } from "react-toastify"; // Import ToastContainer and toast
+import "react-toastify/dist/ReactToastify.css"; // Import the CSS for react-toastify
+
 import {
   fetchSales,
   deleteSales,
   updateSales,
   createSales,
-} from "../../services/salesService";
+} from "../../services/salesService"; // Ensure these are correctly implemented in salesService.js
+
+import AddButton from "../../components/buttons/AddButton";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
-import UpdateSaleModal from "../../features/UpdateSaleModal";
-import AddSaleModal from "../../features/AddSaleModal"; 
-
+import UpdateSaleModal from "../../features/modals/UpdateSaleModal";
+import AddSaleModal from "../../features/modals/AddSaleModal";
 function Sales() {
+  const [sales, setSales] = useState([]);
   const [selectedSale, setSelectedSale] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false); // New: State for Add Sale modal
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const [members, setMembers] = useState(0);
-  const [recentSales, setRecentSales] = useState([]);
+  const loadSales = async () => {
+    try {
+      const salesData = await fetchSales();
+
+      setSales(salesData.data || salesData);
+    } catch (error) {
+      console.error("Failed to fetch sales:", error);
+      toast.error("Failed to load sales.");
+      setSales([]);
+    }
+  };
 
   useEffect(() => {
-    const loadSales = async () => {
-      try {
-        const salesData = await fetchSales();
-        setRecentSales(salesData.data);
-      } catch (error) {
-        console.error("Failed to fetch sales:", error);
-        setRecentSales([]);
-      }
-    };
     loadSales();
   }, []);
 
   const indexOfLastSale = currentPage * itemsPerPage;
   const indexOfFirstSale = indexOfLastSale - itemsPerPage;
-  const currentSales = recentSales.slice(indexOfFirstSale, indexOfLastSale);
-
-  const totalPages = Math.ceil(recentSales.length / itemsPerPage);
+  const currentSales = sales.slice(indexOfFirstSale, indexOfLastSale);
+  const totalPages = Math.ceil(sales.length / itemsPerPage);
 
   const paginate = (pageNumber) => {
     setCurrentPage(pageNumber);
   };
 
-  const handleUpdateSale = (sale) => {
+  const handleOpenAddModal = () => {
+    setShowAddModal(true);
+  };
+
+  const handleAddSale = async (newSaleData) => {
+    try {
+      await createSales(newSaleData);
+      toast.success("Sale added successfully!");
+      await loadSales();
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Failed to add new sale:", error);
+      toast.error(
+        `Failed to add sale: ${error.response?.data?.message || error.message}`
+      );
+    }
+  };
+
+  const handleOpenUpdateModal = (sale) => {
     setSelectedSale(sale);
     setShowUpdateModal(true);
   };
-
-  const handleSaveChanges = async (saleId, updatedSaleData) => {
+  const handleUpdateSale = async (saleId, updatedSaleData) => {
     try {
-      const updatedSale = await updateSales(saleId, updatedSaleData);
-      setRecentSales((prevSales) =>
-        prevSales.map((sale) => (sale._id === saleId ? updatedSale : sale))
-      );
+      await updateSales(saleId, updatedSaleData);
+      toast.success("Sale updated successfully!");
+      await loadSales();
       setShowUpdateModal(false);
-      // Refresh the page after successful update
-      // window.location.reload(); // Removed for smoother UX, state update handles it
+      setSelectedSale(null);
     } catch (error) {
-      console.error("Failed to save updates:", error);
-    }
-  };
-
-  // New: Handle adding a new sale
-  const handleAddSale = async (newSaleData) => {
-    try {
-      const createdSale = await createSales(newSaleData);
-      setRecentSales((prevSales) => [...prevSales, createdSale]);
-      setShowAddModal(false); // Close modal on success
-      // If adding a new item, you might want to go to the last page or first page
-      // setCurrentPage(totalPages); // Go to the last page where new item might appear
-    } catch (error) {
-      console.error("Failed to add new sale:", error);
-    }
-  };
-
-  const handleDeleteSale = async (id) => {
-    console.log(`Attempting to delete sale with ID: ${id}`);
-    try {
-      await deleteSales(id);
-      setRecentSales((prevSales) =>
-        prevSales.filter((sale) => sale._id !== id)
+      console.error("Failed to update sale:", error);
+      toast.error(
+        `Failed to update sale: ${
+          error.response?.data?.message || error.message
+        }`
       );
-      console.log(`Sale ${id} deleted from UI.`);
+    }
+  };
+
+  // Handle deleting a sale
+  const handleDeleteSale = async (id) => {
+    try {
+      await deleteSales(id); // API call to delete sale
+      toast.success("Sale deleted successfully!"); // Success toast
+      await loadSales(); // Re-fetch all sales to update the table
+
       if (currentSales.length === 1 && currentPage > 1) {
         setCurrentPage((prevPage) => prevPage - 1);
       }
     } catch (error) {
       console.error("Failed to delete sale:", error);
+      // More specific error message from backend if available
+      toast.error(
+        `Failed to delete sale: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   };
 
@@ -102,13 +115,8 @@ function Sales() {
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
             Sales Dashboard
           </h4>
-          {/* New: Add Sale Button */}
-          <button
-            className="btn btn-success d-flex align-items-center"
-            onClick={() => setShowAddModal(true)}
-          >
-            <PlusCircle size={20} className="me-2" /> Add Sale
-          </button>
+          {/* Add Sale Button */}
+          <AddButton label="Add Sale" onClick={handleOpenAddModal} />
         </div>
       </div>
 
@@ -133,6 +141,7 @@ function Sales() {
                 currentSales.map((sale, index) => (
                   <tr key={sale._id}>
                     <td>{indexOfFirstSale + index + 1}</td>
+                    {/* Use optional chaining for nested properties */}
                     <td>{sale.stockId?.productId?.productName || "N/A"}</td>
                     <td>{sale.seasonId?.name || "N/A"}</td>
                     <td>
@@ -147,7 +156,9 @@ function Sales() {
                     <td>
                       <span
                         className={`badge ${
-                          sale.status === "paid" ? "bg-success" : "bg-warning"
+                          sale.status === "paid"
+                            ? "bg-success"
+                            : "bg-warning text-dark" // Added text-dark for unpaid badge
                         }`}
                       >
                         {sale.status}
@@ -161,7 +172,7 @@ function Sales() {
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleUpdateSale(sale)}
+                          onConfirm={() => handleOpenUpdateModal(sale)}
                           confirmMessage={`Are you sure you want to update sale for "${
                             sale.stockId?.productId?.productName || "N/A"
                           }"?`}
@@ -195,6 +206,7 @@ function Sales() {
           </table>
         </div>
 
+        {/* Pagination Controls */}
         {totalPages > 1 && (
           <nav aria-label="Sales page navigation" className="mt-4">
             <ul className="pagination justify-content-center">
@@ -246,18 +258,32 @@ function Sales() {
         )}
       </div>
 
+      {/* Update Sale Modal */}
       <UpdateSaleModal
         show={showUpdateModal}
-        sale={selectedSale}
+        sale={selectedSale} // Pass the selected sale object to the modal
         onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleSaveChanges}
+        onSubmit={handleUpdateSale} // Correctly points to handleUpdateSale
       />
 
-      {/* New: Add Sale Modal */}
+      {/* Add Sale Modal */}
       <AddSaleModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddSale}
+      />
+
+      {/* ToastContainer for displaying notifications */}
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
       />
     </div>
   );

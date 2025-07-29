@@ -40,7 +40,7 @@ app.use("/api/sales", salesRoutes);
 app.use("/api/purchaseInputs", purchaseInputRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/fees", feesRoutes);
-app.use("/api/plot", plotRoutes);
+app.use("/api/plots", plotRoutes);
 app.use("/api/announcements", announcementRoutes);
 
 // handle file uploads

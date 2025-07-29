@@ -102,11 +102,9 @@ export const updatePlot = async (req, res) => {
     }
     if (upi !== undefined) {
       if (typeof upi !== "string" || upi.length < 5 || upi.length > 20) {
-        return res
-          .status(400)
-          .json({
-            message: "UPI must be a string between 5 and 20 characters",
-          });
+        return res.status(400).json({
+          message: "UPI must be a string between 5 and 20 characters",
+        });
       }
       updateData.upi = upi.trim();
     }

@@ -1,31 +1,118 @@
 import React, { useState, useEffect } from "react";
+import { ToastContainer, toast } from "react-toastify"; // Import ToastContainer and toast
+import "react-toastify/dist/ReactToastify.css";
 
-import { fetchPlot } from "../../services/plotService";
+import {
+  fetchPlot,
+  createPlot,
+  updatePlot,
+  deletePlot,
+} from "../../services/plotService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
-import { PlusCircle } from "lucide-react";
-function Plot() {
-  // Fetch plots
-  const [plots, setPlots] = useState([]);
-  useEffect(() => {
-    const loadStock = async () => {
-      try {
-        const productionsData = await fetchPlot();
-        setPlots(productionsData);
-      } catch (error) {
-        console.error("Failed to fetch sales:", error);
-      }
-    };
+import AddButton from "../../components/buttons/AddButton";
+import AddPlotModal from "../../features/modals/AddPlotModal";
+import UpdatePlotModal from "../../features/modals/UpdatePlotModal";
 
-    loadStock();
+function Plot() {
+  const [plots, setPlots] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedPlot, setSelectedPlot] = useState(null);
+
+  // Function to load plots (can be called after add/update/delete)
+  const loadPlots = async () => {
+    try {
+      const plotsData = await fetchPlot();
+      setPlots(plotsData.data);
+      console.log("Plots loaded successfully:", plotsData);
+    } catch (error) {
+      console.error("Failed to fetch plots:", error);
+      toast.error("Failed to load plots.");
+    }
+  };
+
+  // Fetch plots on component mount
+  useEffect(() => {
+    loadPlots();
   }, []);
 
-  const handleUpdateReason = () => {
-    alert("click to update");
+  // Handle adding a new plot
+  const handleAddPlot = async (newData) => {
+    console.log("New plot to be added:", newData);
+    try {
+      await createPlot(newData);
+      console.log("Plot added successfully!");
+      await loadPlots();
+      setShowAddModal(false);
+      toast.success("Plot added successfully!");
+    } catch (error) {
+      console.error("Failed to add plot:", error);
+      if (error.response) {
+        toast.error(
+          `Failed to add plot: ${
+            error.response.data.message || error.response.statusText
+          }`
+        );
+      } else {
+        toast.error("Failed to add plot.");
+      }
+    }
   };
-  const handleDeleteSale = () => {
-    alert("hello world");
+
+  // Handle opening the update modal
+  const handleOpenUpdateModal = (plot) => {
+    setSelectedPlot(plot);
+    setShowUpdateModal(true);
   };
+
+  // Handle plot update
+  const handleUpdatePlot = async (updatedData) => {
+    console.log("Plot to be updated:", updatedData);
+    try {
+      const { _id, ...dataToUpdate } = updatedData; // Extract _id and rest of data
+      await updatePlot(_id, dataToUpdate); // Pass ID and data to update
+      console.log("Plot updated successfully!");
+      await loadPlots(); // Reload data to show changes
+      setShowUpdateModal(false); // Close the modal
+      setSelectedPlot(null); // Clear selected plot
+      toast.success("Plot updated successfully!");
+    } catch (error) {
+      console.error("Failed to update plot:", error);
+      if (error.response) {
+        toast.error(
+          `Failed to update plot: ${
+            error.response.data.message || error.response.statusText
+          }`
+        );
+      } else {
+        toast.error("Failed to update plot.");
+      }
+    }
+  };
+
+  // Handle plot deletion
+  const handleDeletePlot = async (id) => {
+    console.log("Deleting plot with ID:", id);
+    try {
+      await deletePlot(id);
+      console.log("Plot deleted successfully!");
+      await loadPlots(); // Reload data to show changes
+      toast.success("Plot deleted successfully!");
+    } catch (error) {
+      console.error("Failed to delete plot:", error);
+      if (error.response) {
+        toast.error(
+          `Failed to delete plot: ${
+            error.response.data.message || error.response.statusText
+          }`
+        );
+      } else {
+        toast.error("Failed to delete plot.");
+      }
+    }
+  };
+
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -33,13 +120,8 @@ function Plot() {
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
             Plots Dashboard
           </h4>
-          {/* New: Add Sale Button */}
-          <button
-            className="btn btn-success d-flex align-items-center"
-            // onClick={() => setShowAddModal(true)}
-          >
-            <PlusCircle size={20} className="me-2" /> Add Plot
-          </button>
+
+          <AddButton label="Add Plot" onClick={() => setShowAddModal(true)} />
         </div>
       </div>
 
@@ -49,37 +131,37 @@ function Plot() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>ProductName</th>
-                <th>Quantity</th>
-                <th>Amount</th>
+                <th>Member</th>
+                <th>Product Name</th>
+                <th>Area</th>
+                <th>UPI</th>
                 <th colSpan={2}>Action</th>
               </tr>
             </thead>
             <tbody>
               {plots.length > 0 ? (
-                plots.slice(0, 3).map((plot, index) => (
-                  <tr key={plot.id}>
+                plots.map((plot, index) => (
+                  <tr key={plot._id}>
                     <td>{index + 1}</td>
-                    <td>{plot.userId.names}</td>
-                    <td>{plot.productId.productName}</td>
-
+                    <td>{plot.userId?.names || "N/A"}</td>
+                    <td>{plot.productId?.productName || "N/A"}</td>{" "}
                     <td>{plot.area}</td>
                     <td>{plot.upi}</td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleUpdateReason(plot)}
-                          confirmMessage={`Are you sure you want to update stock for "${
-                            plot.plotId?.productId?.productName || "N/A"
+                          onConfirm={() => handleOpenUpdateModal(plot)}
+                          confirmMessage={`Are you sure you want to update plot for "${
+                            plot.upi || "N/A" // Use UPI for confirmation
                           }"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
                         <DeleteButton
-                          onConfirm={() => handleDeleteSale(plot._id)}
-                          confirmMessage={`Are you sure you want to delete stock "${
-                            plot.plotId?.productId?.productName || "N/A"
+                          onConfirm={() => handleDeletePlot(plot._id)}
+                          confirmMessage={`Are you sure you want to delete plot "${
+                            plot.upi || "N/A" // Use UPI for confirmation
                           }"?`}
                           className="btn-sm"
                         >
@@ -91,7 +173,9 @@ function Plot() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="text-center py-4">
+                  <td colSpan="6" className="text-center py-4">
+                    {" "}
+                    {/* colSpan should be 6 now */}
                     <div className="alert alert-info" role="alert">
                       No plots found.
                     </div>
@@ -102,6 +186,33 @@ function Plot() {
           </table>
         </div>
       </div>
+
+      {/* Add Plot Modal */}
+      <AddPlotModal
+        show={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleAddPlot}
+      />
+
+      {/* Update Plot Modal */}
+      <UpdatePlotModal
+        show={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        onUpdate={handleUpdatePlot}
+        initialData={selectedPlot}
+      />
+
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }

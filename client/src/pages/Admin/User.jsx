@@ -86,7 +86,7 @@ function User() {
             </p>
           </div>
 
-          {/* New: Add User Button */}
+         
           <AddButton label="Add User" onClick={() => setShowAddModal(true)} />
         </div>
       </div>

@@ -2,6 +2,8 @@ import React from "react";
 import { Menu, Bell } from "lucide-react";
 import "../assets/styles/dashboard.css";
 import NotificationBell from "../features/NotificationBell";
+import { Link } from "react-router-dom";
+
 function TopNav({ onMenuClick }) {
   const user = JSON.parse(localStorage.getItem("user"));
   const profilePic =
@@ -21,9 +23,9 @@ function TopNav({ onMenuClick }) {
       <div className="topnav-right">
         <NotificationBell />
 
-        <div className="user-avatar-container ms-4">
+        <Link to="/profile" className="user-avatar-container ms-4">
           <img src={profilePic} alt="User Avatar" className="user-avatar" />
-        </div>
+        </Link>
       </div>
     </nav>
   );

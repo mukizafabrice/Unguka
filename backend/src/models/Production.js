@@ -16,7 +16,6 @@ const productionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Season",
     required: true,
-    unique: true,
   },
 
   quantity: {

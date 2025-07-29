@@ -74,7 +74,12 @@ const Announcement = () => {
             placeholder="Enter description"
           ></textarea>
         </div>
-        <button type="submit" className="btn btn-primary" disabled={loading}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          style={{ background: "#1a1e27" }}
+          disabled={loading}
+        >
           {loading ? "Sending..." : "Send Announcement"}
         </button>
       </form>
