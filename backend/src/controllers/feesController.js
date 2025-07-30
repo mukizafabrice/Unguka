@@ -1,5 +1,6 @@
 import Fees from "../models/Fees.js";
 import User from "../models/User.js";
+import Cash from "../models/Cash.js";
 
 // CREATE FEE
 export const createFee = async (req, res) => {
@@ -8,6 +9,16 @@ export const createFee = async (req, res) => {
 
     const newFee = new Fees({ userId, seasonId, amount });
     await newFee.save();
+
+    // Update cash: add fee amount to cash document
+    const cash = await Cash.findOne();
+    if (cash) {
+      cash.amount += amount;
+      await cash.save();
+    } else {
+      // If no cash document exists, create one
+      await Cash.create({ amount });
+    }
 
     res.status(201).json({ message: "Fee created successfully", data: newFee });
   } catch (error) {
@@ -107,16 +118,17 @@ export const markFeeAsPaid = async (req, res) => {
     fee.status = "paid";
     await fee.save();
 
-    // Update stock
-    const stock = await Stock.findOne(); // assuming one stock document
-    if (stock) {
-      stock.cash += fee.amount;
-      await stock.save();
+    // Update cash (assuming only one cash document)
+    let cash = await Cash.findOne();
+    if (!cash) {
+      cash = new Cash({ amount: 0 });
     }
+    cash.amount += fee.amount;
+    await cash.save();
 
     res
       .status(200)
-      .json({ message: "Fee marked as paid and stock updated", data: fee });
+      .json({ message: "Fee marked as paid and cash updated", data: fee });
   } catch (error) {
     res
       .status(500)
@@ -136,11 +148,10 @@ export const deleteFee = async (req, res) => {
 
     // If it's paid, subtract from stock
     if (fee.status === "paid") {
-      const stock = await Stock.findOne();
-      if (stock) {
-        stock.cash -= fee.amount;
-        await stock.save();
-      }
+      const cash = await Cash.findOne();
+
+      cash.amout -= fee.amount;
+      await cash.save();
     }
 
     // Delete the fee

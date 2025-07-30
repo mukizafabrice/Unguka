@@ -1,31 +1,108 @@
-import React, { useState, useEffect } from "react";
+// src/pages/PurchaseInputs.jsx
 
-import { fetchPurchaseInputs } from "../../services/purchaseInputsService";
+import React, { useState, useEffect } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { PlusCircle } from "lucide-react"; // For the Add button icon
+
+import {
+  fetchPurchaseInputs,
+  createPurchaseInputs,
+  updatePurchaseInputs,
+  deletePurchaseInputs,
+} from "../../services/purchaseInputsService"; // Import all purchase input service functions
+
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
-import AddButton from "../../components/buttons/AddButton";
+import AddButton from "../../components/buttons/AddButton"; // Assuming this is a reusable component
+
+import AddPurchaseInputModal from "../../features/modals/AddPurchaseInputModal"; // Import the new AddPurchaseInputModal
+import UpdatePurchaseInputModal from "../../features/modals/UpdatePurchaseInputModal"; // Import the new UpdatePurchaseInputModal
+
 function PurchaseInputs() {
-  // Fetch fees
   const [purchaseInputs, setPurchaseInputs] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedPurchaseInput, setSelectedPurchaseInput] = useState(null); // To store the purchase input being updated
+
+  // Function to load purchase inputs data from the backend
+  const loadPurchaseInputs = async () => {
+    try {
+      const data = await fetchPurchaseInputs();
+      // The fetchPurchaseInputs service now handles parsing response.data or response directly
+      setPurchaseInputs(data);
+    } catch (error) {
+      console.error("Failed to fetch purchase inputs:", error);
+      toast.error("Failed to load purchases."); // User-friendly error notification
+      setPurchaseInputs([]); // Ensure state is an empty array on error
+    }
+  };
+
+  // Effect hook to load purchase inputs when the component mounts
   useEffect(() => {
-    const loadFees = async () => {
-      try {
-        const purchaseData = await fetchPurchaseInputs();
-        setPurchaseInputs(purchaseData);
-      } catch (error) {
-        console.error("Failed to fetch purchase:", error);
-      }
-    };
+    loadPurchaseInputs();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
-    loadFees();
-  }, []);
+  // Handler for adding a new purchase input
+  const handleAddPurchaseInput = async (newPurchaseInputData) => {
+    try {
+      await createPurchaseInputs(newPurchaseInputData); // API call to create the purchase input
+      toast.success("Purchase added successfully!"); // Success notification
+      await loadPurchaseInputs(); // Re-fetch all purchase inputs to update the table
+      setShowAddModal(false); // Close the Add modal
+    } catch (error) {
+      console.error("Failed to add purchase:", error);
+      // Display a more specific error message from the backend if available
+      toast.error(
+        `Failed to add purchase: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
+  };
 
-  const handleUpdateReason = () => {
-    alert("click to update");
+  // Handler for opening the Update Purchase Input modal
+  const handleOpenUpdateModal = (purchaseInput) => {
+    setSelectedPurchaseInput(purchaseInput); // Set the purchase input object to be edited
+    setShowUpdateModal(true); // Open the Update modal
   };
-  const handleDeleteSale = () => {
-    alert("hello world");
+
+  // Handler for saving changes from the Update Purchase Input modal
+  const handleUpdatePurchaseInput = async (id, updatedPurchaseInputData) => {
+    try {
+      await updatePurchaseInputs(id, updatedPurchaseInputData); // API call to update the purchase input
+      toast.success("Purchase updated successfully!"); // Success notification
+      await loadPurchaseInputs(); // Re-fetch all purchase inputs to update the table
+      setShowUpdateModal(false); // Close the Update modal
+      setSelectedPurchaseInput(null); // Clear the selected purchase input state
+    } catch (error) {
+      console.error("Failed to update purchase:", error);
+      // Display a more specific error message from the backend if available
+      toast.error(
+        `Failed to update purchase: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
   };
+
+  // Handler for deleting a purchase input
+  const handleDeletePurchaseInput = async (id) => {
+    try {
+      await deletePurchaseInputs(id); // API call to delete the purchase input
+      toast.success("Purchase deleted successfully!"); // Success notification
+      await loadPurchaseInputs(); // Re-fetch all purchase inputs to update the table
+    } catch (error) {
+      console.error("Failed to delete purchase:", error);
+      // Display a more specific error message from the backend if available
+      toast.error(
+        `Failed to delete purchase: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
+  };
+
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -33,9 +110,11 @@ function PurchaseInputs() {
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
             Purchases Dashboard
           </h4>
-          {/* onClick={() => setShowAddModal(true)}  this  will be added into button in future*/}
-
-          <AddButton label="Add Fees" />
+          {/* Add Purchase Button */}
+          <AddButton
+            label="Add Purchase"
+            onClick={() => setShowAddModal(true)}
+          />
         </div>
       </div>
 
@@ -46,55 +125,68 @@ function PurchaseInputs() {
               <tr>
                 <th>ID</th>
                 <th>Member</th>
-                <th>ProductName</th>
+                <th>Product Name</th>
                 <th>Season</th>
-                <th>quantity</th>
+                <th>Quantity</th>
                 <th>Amount</th>
                 <th>Payment Type</th>
                 <th>Date</th>
-                <th colSpan={2}>Action</th>
+                <th colSpan={2}>Action</th>{" "}
+                {/* Colspan for Update and Delete buttons */}
               </tr>
             </thead>
             <tbody>
               {purchaseInputs.length > 0 ? (
                 purchaseInputs.map((purchaseInput, index) => (
-                  <tr key={purchaseInput.id}>
+                  <tr key={purchaseInput._id}>
+                    {" "}
+                    {/* Use purchaseInput._id as the unique key */}
                     <td>{index + 1}</td>
-                    <td>{purchaseInput.userId?.names}</td>
-                    <td>{purchaseInput.productId?.productNames}</td>
-                    <td>{purchaseInput.seasonId?.name}</td>
-                    <td>{purchaseInput.totalPrice}</td>
+                    {/* Use optional chaining (?.) for nested properties */}
+                    <td>{purchaseInput.userId?.names || "N/A"}</td>
+                    <td>
+                      {purchaseInput.productId?.productName || "N/A"}
+                    </td>{" "}
+                    {/* Corrected from productNames */}
+                    <td>{purchaseInput.seasonId?.name || "N/A"}</td>
+                    <td>{purchaseInput.quantity || "N/A"}</td>{" "}
+                    {/* Display quantity */}
+                    <td>{purchaseInput.totalPrice || "N/A"}RwF</td>
                     <td>
                       <span
                         className={`badge ${
-                          purchaseInput.status === "cash"
+                          purchaseInput.paymentType === "cash"
                             ? "bg-success"
-                            : "bg-warning"
+                            : "bg-warning text-dark" // Added text-dark for contrast
                         }`}
                       >
-                        {purchaseInput.status}
+                        {purchaseInput.paymentType}
                       </span>
                     </td>
                     <td>
+                      {/* Format the date for display */}
                       {purchaseInput.createdAt
                         ? new Date(purchaseInput.createdAt).toLocaleDateString()
                         : "N/A"}
                     </td>
-
                     <td>
                       <div className="d-flex gap-2">
+                        {/* Update Button */}
                         <UpdateButton
-                          onConfirm={() => handleUpdateReason(purchaseInput)}
-                          confirmMessage={`Are you sure you want to update fees for "${
+                          onConfirm={() => handleOpenUpdateModal(purchaseInput)}
+                          confirmMessage={`Are you sure you want to update purchase for "${
                             purchaseInput.userId?.names || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
+                        {/* Delete Button */}
                         <DeleteButton
-                          onConfirm={() => handleDeleteSale(purchaseInput._id)}
-                          confirmMessage={`Are you sure you want to delete fees "${
+                          onConfirm={() =>
+                            handleDeletePurchaseInput(purchaseInput._id)
+                          }
+                          confirmMessage={`Are you sure you want to delete purchase "${
                             purchaseInput.userId?.names || "N/A"
                           }"?`}
                           className="btn-sm"
@@ -107,6 +199,7 @@ function PurchaseInputs() {
                 ))
               ) : (
                 <tr>
+                  {/* Message when no purchases are found, colSpan matches total columns */}
                   <td colSpan="9" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
                       No Purchases found.
@@ -118,6 +211,34 @@ function PurchaseInputs() {
           </table>
         </div>
       </div>
+
+      {/* Add Purchase Input Modal Component */}
+      <AddPurchaseInputModal
+        show={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={handleAddPurchaseInput}
+      />
+
+      {/* Update Purchase Input Modal Component */}
+      <UpdatePurchaseInputModal
+        show={showUpdateModal}
+        purchaseInput={selectedPurchaseInput}
+        onClose={() => setShowUpdateModal(false)}
+        onSubmit={handleUpdatePurchaseInput}
+      />
+
+      {/* ToastContainer for displaying success/error notifications */}
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }

@@ -90,9 +90,9 @@ function Sales() {
   // Handle deleting a sale
   const handleDeleteSale = async (id) => {
     try {
-      await deleteSales(id); // API call to delete sale
-      toast.success("Sale deleted successfully!"); // Success toast
-      await loadSales(); // Re-fetch all sales to update the table
+      await deleteSales(id); 
+      toast.success("Sale deleted successfully!"); 
+      await loadSales(); 
 
       if (currentSales.length === 1 && currentPage > 1) {
         setCurrentPage((prevPage) => prevPage - 1);

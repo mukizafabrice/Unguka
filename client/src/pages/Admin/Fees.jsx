@@ -93,18 +93,19 @@ function Fees() {
   };
 
   // Handle paying a fee
+  const [payingFeeId, setPayingFeeId] = useState(null);
+
   const handlePayFee = async (id) => {
+    setPayingFeeId(id); // Show loading for this fee
     try {
-      await payFees(id, { status: "paid" }); // API call to mark fee as paid
-      toast.success("Fee marked as paid successfully!"); // Success toast
-      await loadFees(); // Re-fetch all fees to update the table
+      await payFees(id);
+      toast.success("Fee marked as paid successfully!");
+      await loadFees(); // Refresh table
     } catch (error) {
       console.error("Failed to pay fee:", error);
-      toast.error(
-        `Failed to mark fee as paid: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      toast.error(`Error: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setPayingFeeId(null); // Clear loading state
     }
   };
 
@@ -184,9 +185,10 @@ function Fees() {
                         {fee.status === "unpaid" && (
                           <button
                             className="btn btn-success btn-sm"
-                            onClick={() => handlePayFee(fee._id)} // Pass the fee ID
+                            onClick={() => handlePayFee(fee._id)}
+                            disabled={payingFeeId === fee._id}
                           >
-                            Pay
+                            {payingFeeId === fee._id ? "Paying..." : "Pay"}
                           </button>
                         )}
                       </div>

@@ -34,8 +34,6 @@ export const getAllLoans = async (req, res) => {
 export const markLoanAsRepaid = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Validate loan ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid loan ID" });
     }

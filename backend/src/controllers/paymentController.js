@@ -1,13 +1,12 @@
 import Payment from "../models/Payment.js";
 import Production from "../models/Production.js";
-import Stock from "../models/Stock.js";
+import Cash from "../models/Cash.js";
 
-//create payment
+// Create payment
 export const createPayment = async (req, res) => {
   try {
     const { productionId } = req.body;
 
-    // Validate productionId
     if (!productionId) {
       return res.status(400).json({ message: "productionId is required" });
     }
@@ -19,28 +18,26 @@ export const createPayment = async (req, res) => {
 
     const amount = production.totalPrice;
 
-    const stock = await Stock.findOne({
-      productId: production.productId,
-    });
-
-    if (!stock) {
-      return res.status(404).json({ message: "Related stock not found" });
+    // Get the single cash row
+    const cash = await Cash.findOne();
+    if (!cash) {
+      return res.status(404).json({ message: "Cash record not found" });
     }
 
-    if (stock.cash < amount) {
-      return res.status(400).json({ message: "Insufficient cash in stock" });
+    if (cash.amount < amount) {
+      return res.status(400).json({ message: "Insufficient cash available" });
     }
 
     // Create the payment
     const newPayment = new Payment({ productionId, amount });
     await newPayment.save();
 
-    // Deduct the payment amount from the stock cash
-    stock.cash -= amount;
-    await stock.save();
+    // Update cash
+    cash.amount -= amount;
+    await cash.save();
 
     res.status(201).json({
-      message: "Payment created and stock updated successfully",
+      message: "Payment created and cash updated successfully",
       data: newPayment,
     });
   } catch (error) {
@@ -198,23 +195,22 @@ export const deletePayment = async (req, res) => {
       return res.status(404).json({ message: "Production not found" });
     }
 
-    const stock = await Stock.findOne({
-      seasonId: production.seasonId,
-      productId: production.productId,
-    });
-
-    if (!stock) {
-      return res.status(404).json({ message: "Stock not found" });
+    // Get the single cash record
+    const cash = await Cash.findOne();
+    if (!cash) {
+      return res.status(404).json({ message: "Cash record not found" });
     }
 
-    stock.cash += payment.amount;
-    await stock.save();
+    // Refund the payment amount
+    cash.amount += payment.amount;
+    await cash.save();
 
+    // Delete the payment
     await Payment.findByIdAndDelete(id);
 
-    res
-      .status(200)
-      .json({ message: "Payment deleted and stock refunded successfully" });
+    res.status(200).json({
+      message: "Payment deleted and cash refunded successfully",
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

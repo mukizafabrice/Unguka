@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-
 const loanSchema = new mongoose.Schema({
   purchaseInputId: {
     type: mongoose.Schema.Types.ObjectId,

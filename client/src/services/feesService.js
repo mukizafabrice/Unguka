@@ -15,8 +15,17 @@ export const updateFees = async (id, data) => {
   return response.data;
 };
 export const payFees = async (id, data) => {
-  const response = await axiosInstance.patch(`/fees/pay/${id}`, data);
-  return response.data;
+  try {
+    const response = await axiosInstance.put(`/fees/pay/${id}`, data);
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      `Error paying fees with ID ${id}:`,
+      error.response?.data || error.message
+    );
+    throw error; // Re-throw the error to be handled by the calling function
+  }
 };
 
 export const deleteFees = async (id) => {

@@ -23,13 +23,6 @@ const stockSchema = new mongoose.Schema({
     min: [0, "Total price must be a positive number"],
   },
 
-  cash: {
-    type: Number,
-    required: true,
-    min: [0, "Cash must be a non-negative number"],
-    default: 0,
-  },
-
   createdAt: {
     type: Date,
     default: Date.now,
