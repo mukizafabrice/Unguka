@@ -104,7 +104,7 @@ export const loginUser = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find();
     res.status(200).json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -191,46 +191,40 @@ export const updateUser = async (req, res) => {
   }
 };
 
-// change profile
-export const changeProfile = async (req, res) => {
+export const changeProfileImage = async (req, res) => {
   const { id } = req.params;
-  const { names, phoneNumber, nationalId } = req.body;
-  // profilePicture will come from req.file if uploaded
 
-  if (!id || !names || !phoneNumber || !nationalId) {
-    return res.status(400).json({ message: "Please fill all required fields" });
+  if (!id) {
+    return res.status(400).json({ message: "User ID is required." });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ message: "No image file uploaded." });
   }
 
   try {
     const user = await User.findById(id);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found." });
     }
 
-    user.names = names;
-    user.phoneNumber = phoneNumber;
-    user.nationalId = nationalId;
-
-    if (req.file) {
-      user.profilePicture = req.file.path; // Save the file path or URL
-    }
+    user.profilePicture = `/uploads/${req.file.filename}`;
 
     await user.save();
 
     res.status(200).json({
-      message: "Profile updated successfully",
+      message: "Profile image updated successfully!",
       user: {
         id: user._id,
         names: user.names,
-        phoneNumber: user.phoneNumber,
-        nationalId: user.nationalId,
+        email: user.email,
         role: user.role,
         profilePicture: user.profilePicture,
       },
     });
   } catch (error) {
-    console.error("Error updating profile:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error updating profile image:", error);
+    res.status(500).json({ message: "Internal server error." });
   }
 };

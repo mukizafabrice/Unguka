@@ -55,26 +55,12 @@ import Product from "../models/Product.js";
 
 export const createProduction = async (req, res) => {
   try {
-    const { userId, productId, seasonId, quantity } = req.body;
-
-    // 1. Check if this production already exists
-    const existing = await Production.findOne({ userId, productId, seasonId });
-    if (existing) {
-      return res.status(400).json({
-        message:
-          "This farmer already registered this product in the same season.",
-      });
-    }
+    const { userId, productId, seasonId, quantity, unitPrice } = req.body;
 
     // 2. Get unitPrice from Product model
     const product = await Product.findById(productId);
-    if (!product || !product.unitPrice) {
-      return res
-        .status(404)
-        .json({ message: "Product or unit price not found." });
-    }
 
-    const totalPrice = quantity * product.unitPrice;
+    const totalPrice = quantity * unitPrice;
 
     // 3. Save new production
     const newProduction = new Production({
@@ -82,6 +68,7 @@ export const createProduction = async (req, res) => {
       productId,
       seasonId,
       quantity,
+      unitPrice,
       totalPrice,
     });
 
@@ -99,7 +86,6 @@ export const createProduction = async (req, res) => {
         productId,
         quantity,
         totalPrice,
-        cash: 0, // or you can leave cash untouched for now
       });
       await newStock.save();
     }
@@ -148,7 +134,7 @@ export const getProductionById = async (req, res) => {
 
 export const updateProduction = async (req, res) => {
   try {
-    const { quantity, productId } = req.body;
+    const { productId, quantity, unitPrice } = req.body;
 
     const existing = await Production.findById(req.params.id);
     if (!existing) {
@@ -170,7 +156,7 @@ export const updateProduction = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const newTotal = quantity * product.unitPrice;
+    const newTotal = quantity * unitPrice;
 
     // Update the production
     const updated = await Production.findByIdAndUpdate(

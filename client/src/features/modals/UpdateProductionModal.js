@@ -14,7 +14,7 @@ const UpdateProductionModal = ({ show, onClose, onUpdate, initialData }) => {
     productId: "",
     seasonId: "",
     quantity: "",
-    totalPrice: "",
+    unitPrice: "",
   });
 
   useEffect(() => {
@@ -42,6 +42,7 @@ const UpdateProductionModal = ({ show, onClose, onUpdate, initialData }) => {
           productId: initialData.productId?._id || "",
           seasonId: initialData.seasonId?._id || "",
           quantity: initialData.quantity || "",
+          unitPrice: initialData.unitPrice || "",
         });
       }
 
@@ -60,22 +61,18 @@ const UpdateProductionModal = ({ show, onClose, onUpdate, initialData }) => {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault(); // Prevent default form submission
-    onUpdate(formData); // Pass the updated form data to the parent
-    onClose(); // Close the modal
+    e.preventDefault();
+    onUpdate(formData);
+    onClose();
   };
 
-  // If the modal is not shown, render nothing
   if (!show) {
     return null;
   }
 
   return (
     <>
-      {/* The Modal Backdrop */}
       <div className="modal-backdrop fade show"></div>
-
-      {/* The Modal itself */}
       <div
         className="modal fade show"
         tabIndex="-1"
@@ -179,8 +176,20 @@ const UpdateProductionModal = ({ show, onClose, onUpdate, initialData }) => {
                     required
                   />
                 </div>
-
-                {/* RE-ADDED THIS INPUT FIELD FOR totalPrice */}
+                <div className="mb-3">
+                  <label htmlFor="unitPrice" className="form-label text-dark">
+                    Unit Price
+                  </label>
+                  <input
+                    type="number"
+                    id="unitPrice"
+                    className="form-control"
+                    name="unitPrice"
+                    value={formData.unitPrice}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
               </form>
             </div>
             <div className="modal-footer">

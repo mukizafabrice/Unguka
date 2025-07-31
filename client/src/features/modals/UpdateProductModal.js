@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 
 function UpdateProductModal({ show, onClose, onSubmit, productData }) {
-  const [form, setForm] = useState({ productName: "", unitPrice: "" });
+  const [form, setForm] = useState({ productName: "" });
 
   useEffect(() => {
     if (productData) {
       setForm({
         productName: productData.productName || "",
-        unitPrice: productData.unitPrice || "",
         _id: productData._id,
       });
     }
@@ -49,17 +48,6 @@ function UpdateProductModal({ show, onClose, onSubmit, productData }) {
                   type="text"
                   name="productName"
                   value={form.productName}
-                  onChange={handleChange}
-                  className="form-control"
-                  required
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Unit Price</label>
-                <input
-                  type="number"
-                  name="unitPrice"
-                  value={form.unitPrice}
                   onChange={handleChange}
                   className="form-control"
                   required

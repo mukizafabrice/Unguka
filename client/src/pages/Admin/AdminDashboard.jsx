@@ -11,7 +11,7 @@ import {
 import StatCard from "../../components/StatCard";
 import { fetchSales } from "../../services/salesService";
 import { fetchProductions } from "../../services/productionService";
-import { fetchCash } from "../../services/stockService";
+import { fetchCash } from "../../services/cashService";
 import { fetchProduct } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 

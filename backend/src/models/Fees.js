@@ -11,25 +11,37 @@ const feesSchema = new mongoose.Schema({
     ref: "Season",
     required: true,
   },
-
-  amount: {
+  feeTypeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "FeeType",
+    required: true,
+  },
+  amountOwed: {
     type: Number,
     required: true,
-    min: [0, "Amount must be a positive number"],
+    min: 0,
   },
-
+  amountPaid: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   status: {
     type: String,
-    enum: ["paid", "unpaid"],
+    enum: ["paid", "partial", "unpaid"],
     default: "unpaid",
-    required: true,
   },
-
+  paidAt: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
+
+// Ensure one fee per user per season per feeType
+feesSchema.index({ userId: 1, seasonId: 1, feeTypeId: 1 }, { unique: true });
 
 const Fees = mongoose.model("Fees", feesSchema);
 export default Fees;

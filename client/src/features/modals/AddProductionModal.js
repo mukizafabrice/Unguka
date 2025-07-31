@@ -13,6 +13,7 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
     productId: "",
     seasonId: "",
     quantity: "",
+    unitPrice: "",
   });
 
   useEffect(() => {
@@ -39,6 +40,7 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
         productId: "",
         seasonId: "",
         quantity: "",
+        unitPrice: "",
       });
       // Add 'modal-open' class to body to prevent scrolling when modal is open
       document.body.classList.add("modal-open");
@@ -172,6 +174,20 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
                     className="form-control"
                     name="quantity"
                     value={formData.quantity}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="unitPrice" className="form-label text-dark">
+                    UnitPrice
+                  </label>
+                  <input
+                    type="number"
+                    id="unitPrice"
+                    className="form-control"
+                    name="unitPrice"
+                    value={formData.unitPrice}
                     onChange={handleChange}
                     required
                   />

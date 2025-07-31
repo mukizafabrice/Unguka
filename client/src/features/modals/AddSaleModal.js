@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { fetchStock } from "../../services/stockService"; // Assuming this service exists
-import { fetchSeasons } from "../../services/seasonService"; // Assuming this service exists
+import { fetchStock } from "../../services/stockService";
+import { fetchSeasons } from "../../services/seasonService";
 
 const AddSaleModal = ({ show, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     stockId: "",
     seasonId: "",
     quantity: "",
+    unitPrice: "",
     buyer: "",
     phoneNumber: "",
     paymentType: "cash",
-    status: "unpaid", // This seems to be a default for AddSale, ensure your backend handles it or remove if not needed.
+    status: "unpaid",
   });
 
   const [stocks, setStocks] = useState([]);
   const [seasons, setSeasons] = useState([]);
 
-  // Loading states for data fetching
   const [loadingStocks, setLoadingStocks] = useState(false); // Renamed from loadingProducts for clarity
   const [loadingSeasons, setLoadingSeasons] = useState(false);
 
@@ -46,8 +46,6 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
         setStocksError(null);
         try {
           const response = await fetchStock();
-          // IMPORTANT: Check if response.data is the array, or if response itself is the array.
-          // Adjust this line based on what your fetchStock service actually returns.
           if (response && Array.isArray(response.data || response)) {
             setStocks(response.data || response);
           } else {
@@ -72,17 +70,13 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
     }
   }, [show]);
 
-  // Fetch seasons for dropdown
   useEffect(() => {
     if (show) {
-      // Only fetch when modal is shown
       const getSeasons = async () => {
         setLoadingSeasons(true);
         setSeasonsError(null);
         try {
           const response = await fetchSeasons();
-          // IMPORTANT: Check if response.data is the array, or if response itself is the array.
-          // Adjust this line based on what your fetchSeasons service actually returns.
           if (response && Array.isArray(response.data || response)) {
             setSeasons(response.data || response);
           } else {
@@ -98,7 +92,7 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
           setSeasonsError(
             "Failed to load seasons. Please check your connection."
           );
-          setSeasons([]); // Ensure state is an empty array on error
+          setSeasons([]);
         } finally {
           setLoadingSeasons(false);
         }
@@ -107,25 +101,23 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
     }
   }, [show]);
 
-  // Effect to reset form data and errors when the modal opens
   useEffect(() => {
     if (show) {
       setFormData({
         stockId: "",
         seasonId: "",
         quantity: "",
+        unitPrice: "",
         buyer: "",
         phoneNumber: "",
         paymentType: "cash",
         status: "unpaid",
       });
-      // Also reset fetch errors on modal open for a fresh start
-      setStocksError(null); // Renamed from productsError
+      setStocksError(null);
       setSeasonsError(null);
     }
   }, [show]);
 
-  // If the modal isn't supposed to be shown, return null immediately
   if (!show) return null;
 
   const handleChange = (e) => {
@@ -138,30 +130,24 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Convert quantity to a number before submitting
+
     const dataToSubmit = {
       ...formData,
       quantity: Number(formData.quantity),
     };
     onSubmit(dataToSubmit);
-    // The parent component (Sales.jsx) is responsible for closing the modal
-    // and showing toast messages after the submission is complete.
   };
 
-  // --- Rendered JSX ---
   return (
     <>
-      {/* 1. MODAL BACKDROP: This MUST be rendered FIRST to be behind the modal content */}
       <div className="modal-backdrop fade show"></div>
-
-      {/* 2. MODAL CONTENT: This is the actual modal that should appear on top */}
       <div
-        className="modal fade show d-block" // 'd-block' makes it visible, 'show' applies fade animation
+        className="modal fade show d-block"
         tabIndex="-1"
         role="dialog"
         aria-labelledby="addSaleModalLabel"
-        aria-hidden="false" // When 'show' is true, the modal is visible, so aria-hidden should be false
-        style={{ display: "block", paddingRight: "17px" }} // Explicitly ensure it's displayed and accounts for scrollbar
+        aria-hidden="false"
+        style={{ display: "block", paddingRight: "17px" }}
       >
         <div
           className="modal-dialog modal-lg modal-dialog-centered"
@@ -182,7 +168,6 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
               </div>
 
               <div className="modal-body row">
-                {/* Display general fetch errors if any */}
                 {(stocksError || seasonsError) && (
                   <div className="col-12 mb-3">
                     <div className="alert alert-danger" role="alert">
@@ -220,12 +205,10 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
                         value={formData.stockId}
                         onChange={handleChange}
                         required
-                        // Disable if there's an error or no products available after loading
                         disabled={stocksError || stocks.length === 0}
                       >
                         <option value="">Select a product</option>
                         {stocks.map((stock) => (
-                          // Ensure stock.productId and stock.productId.productName exist
                           <option key={stock._id} value={stock._id}>
                             {stock.productId?.productName ||
                               `Stock ID: ${stock._id}`}
@@ -242,7 +225,6 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
                   )}
                 </div>
 
-                {/* Season Dropdown */}
                 <div className="col-md-6 mb-3">
                   <label htmlFor="seasonId" className="form-label text-dark">
                     Season
@@ -270,13 +252,12 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
                         value={formData.seasonId}
                         onChange={handleChange}
                         required
-                        // Disable if there's an error or no seasons available after loading
                         disabled={seasonsError || seasons.length === 0}
                       >
                         <option value="">Select a season</option>
                         {seasons.map((season) => (
                           <option key={season._id} value={season._id}>
-                            {season.name}
+                            {season.name + "" + season.year}
                           </option>
                         ))}
                       </select>
@@ -300,6 +281,21 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
                     id="quantity"
                     className="form-control"
                     value={formData.quantity}
+                    onChange={handleChange}
+                    min="1"
+                    required
+                  />
+                </div>
+                <div className="col-md-6 mb-3">
+                  <label htmlFor="unitPrice" className="form-label text-dark">
+                    Unit Price (rwf)
+                  </label>
+                  <input
+                    type="number"
+                    name="unitPrice"
+                    id="unitPrice"
+                    className="form-control"
+                    value={formData.unitPrice}
                     onChange={handleChange}
                     min="1"
                     required

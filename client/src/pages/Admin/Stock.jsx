@@ -9,11 +9,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 function Stock() {
   const [stocks, setStocks] = useState([]);
-  // No longer need showUpdateModal or selectedStock
-  // const [showUpdateModal, setShowUpdateModal] = useState(false);
-  // const [selectedStock, setSelectedStock] = useState(null);
 
-  // Fetch stocks on component mount
   useEffect(() => {
     loadStocks();
   }, []);

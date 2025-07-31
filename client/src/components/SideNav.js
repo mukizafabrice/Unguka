@@ -18,6 +18,8 @@ import {
   ChevronRight,
   Megaphone,
   Wallet,
+  PackagePlus,
+  PackageMinus,
 } from "lucide-react";
 
 import "../assets/styles/dashboard.css";
@@ -181,7 +183,17 @@ function SideNav({ isHide }) {
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
                 >
-                  <ScrollText size={16} className="me-2" /> Purchases
+                  <PackagePlus size={16} className="me-2" /> PurchaseIn
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/dashboard/purchase-outputs"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <PackageMinus size={16} className="me-2" /> PurchaseOut
                 </NavLink>
               </li>
             </ul>

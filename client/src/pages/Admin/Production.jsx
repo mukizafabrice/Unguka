@@ -126,7 +126,9 @@ function Production() {
                 <th>Product Name</th>
                 <th>Season</th>
                 <th>Quantity</th>
+                <th>UnitPrice</th>
                 <th>Amount</th>
+                <th>Date</th>
                 <th colSpan={2}>Action</th>
               </tr>
             </thead>
@@ -139,7 +141,13 @@ function Production() {
                     <td>{production.productId?.productName || "N/A"}</td>
                     <td>{production.seasonId?.name || "N/A"}</td>
                     <td>{production.quantity}</td>
+                    <td>{production.unitPrice}</td>
                     <td>{production.totalPrice}</td>
+                    <td>
+                      {production.createdAt
+                        ? new Date(production.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton

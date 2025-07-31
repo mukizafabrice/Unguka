@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { ToastContainer, toast } from "react-toastify"; // Import ToastContainer and toast
-import "react-toastify/dist/ReactToastify.css"; // Import the CSS for react-toastify
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import {
   fetchSales,
   deleteSales,
   updateSales,
   createSales,
-} from "../../services/salesService"; // Ensure these are correctly implemented in salesService.js
+} from "../../services/salesService";
 
 import AddButton from "../../components/buttons/AddButton";
 import DeleteButton from "../../components/buttons/DeleteButton";
@@ -90,9 +90,9 @@ function Sales() {
   // Handle deleting a sale
   const handleDeleteSale = async (id) => {
     try {
-      await deleteSales(id); 
-      toast.success("Sale deleted successfully!"); 
-      await loadSales(); 
+      await deleteSales(id);
+      toast.success("Sale deleted successfully!");
+      await loadSales();
 
       if (currentSales.length === 1 && currentPage > 1) {
         setCurrentPage((prevPage) => prevPage - 1);
@@ -122,15 +122,17 @@ function Sales() {
 
       <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
         <div className="table-responsive">
-          <table className="table table-dark table-striped table-hover mb-0 align-middle">
+          <table className="table table-dark table-striped table-hover mb-0 align-middle table-sm small">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Product</th>
                 <th>Season</th>
                 <th>Quantity</th>
+                <th>Unit Price</th>
                 <th>Amount</th>
                 <th>Buyer</th>
+                <th>Tel</th>
                 <th>Status</th>
                 <th>Date</th>
                 <th>Action</th>
@@ -141,18 +143,22 @@ function Sales() {
                 currentSales.map((sale, index) => (
                   <tr key={sale._id}>
                     <td>{indexOfFirstSale + index + 1}</td>
-                    {/* Use optional chaining for nested properties */}
-                    <td>{sale.stockId?.productId?.productName || "N/A"}</td>
-                    <td>{sale.seasonId?.name || "N/A"}</td>
+                    <td>{sale.stockId?.productId?.productName}</td>
+                    <td>{sale.seasonId?.name + "" + sale.seasonId?.year}</td>
                     <td>
                       {sale.quantity}
                       <span className="fw-bold">kg</span>
+                    </td>
+                    <td>
+                      {sale.unitPrice}
+                      <span className="fw-bold">rwf</span>
                     </td>
                     <td>
                       {sale.totalPrice}
                       <span className="fw-bold">rwf</span>
                     </td>
                     <td>{sale.buyer}</td>
+                    <td>{sale.phoneNumber}</td>
                     <td>
                       <span
                         className={`badge ${

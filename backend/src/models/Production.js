@@ -27,6 +27,11 @@ const productionSchema = new mongoose.Schema({
       message: "Quantity must be an integer",
     },
   },
+  unitPrice: {
+    type: Number,
+    required: true,
+    min: [0, "Unit price must be a positive number"],
+  },
 
   totalPrice: {
     type: Number,

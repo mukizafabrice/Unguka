@@ -29,3 +29,40 @@ export const deleteUser = async (id) => {
   const response = await axiosInstance.delete(`/users/${id}`);
   return response.data;
 };
+
+export const changePassword = async (id, passwordData) => {
+  try {
+    const response = await axiosInstance.put(
+      `/users/change-password/${id}`,
+      passwordData
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      `Error changing password for user with ID ${id}:`,
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+// Change profile image
+export const changeProfileImage = async (id, formData) => {
+  try {
+    const response = await axiosInstance.put(
+      `/users/user/${id}/profile`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      `Error changing profile image for user with ID ${id}:`,
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};

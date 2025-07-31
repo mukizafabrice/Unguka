@@ -1,28 +1,39 @@
+// routes/userRoutes.js
+
 import express from "express";
 import multer from "multer";
 import {
   registerUser,
   loginUser,
-  getUserById,
   getAllUsers,
+  getUserById,
   updateUser,
   deleteUser,
-  changeProfile,
+  changeProfileImage,
 } from "../controllers/userController.js";
 
-const upload = multer({ dest: "uploads/" });
 const router = express.Router();
 
+// Multer setup for profile image upload
+const upload = multer({ dest: "uploads/" });
+
+// Authentication routes
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+
+// User retrieval
 router.get("/", getAllUsers);
+router.get("/user/:id", getUserById);
+
+// User modification
 router.put("/update/:id", updateUser);
 router.delete("/:id", deleteUser);
-router.get("/user/:id", getUserById);
+
+// Profile picture update
 router.put(
-  "/users/:id/profile",
+  "/user/:id/profile",
   upload.single("profilePicture"),
-  changeProfile
+  changeProfileImage
 );
 
 export default router;

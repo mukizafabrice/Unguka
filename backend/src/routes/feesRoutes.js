@@ -1,20 +1,27 @@
 import express from "express";
 import {
-  createFee,
+  recordPayment,
+  getFeesByUserAndSeason,
   getAllFees,
-  getFeesByPhoneNumber,
-  getFeeById,
-  markFeeAsPaid,
+  updateFee,
   deleteFee,
 } from "../controllers/feesController.js";
 
 const router = express.Router();
 
-router.post("/", createFee);
+// Record or update payment
+router.post("/payment", recordPayment);
+
+// Get fees for a user in a season
+router.get("/user/:userId/season/:seasonId", getFeesByUserAndSeason);
+
+// Get all fees (admin)
 router.get("/", getAllFees);
-router.get("/:id", getFeeById);
-router.get("/user/phone/:phoneNumber", getFeesByPhoneNumber);
-router.put("/pay/:id", markFeeAsPaid);
+
+// Update a fee by ID
+router.put("/:id", updateFee);
+
+// Delete a fee by ID
 router.delete("/:id", deleteFee);
 
 export default router;

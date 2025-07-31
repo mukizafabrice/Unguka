@@ -45,19 +45,6 @@ function AddProductModal({ show, onClose, onSubmit }) {
                   required
                 />
               </div>
-              <div className="mb-3">
-                <label htmlFor="unitPrice" className="form-label">
-                  Unit Price
-                </label>
-                <input
-                  type="number"
-                  className="form-control"
-                  id="unitPrice"
-                  value={unitPrice}
-                  onChange={(e) => setUnitPrice(e.target.value)}
-                  required
-                />
-              </div>
             </div>
             <div className="modal-footer">
               <button

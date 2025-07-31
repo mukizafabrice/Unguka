@@ -6,7 +6,7 @@ const UpdateUserModal = ({ show, onClose, onSubmit, userData }) => {
     names: "",
     phoneNumber: "",
     nationalId: "",
-    role: "former", // default to "former" (Member)
+    role: "",
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -17,7 +17,7 @@ const UpdateUserModal = ({ show, onClose, onSubmit, userData }) => {
         names: userData.names || "",
         phoneNumber: userData.phoneNumber || "",
         nationalId: userData.nationalId || "",
-        role: userData.role || "former",
+        role: userData.role || "",
       });
       setErrorMsg("");
       setSuccessMsg("");
@@ -143,7 +143,7 @@ const UpdateUserModal = ({ show, onClose, onSubmit, userData }) => {
                     onChange={handleChange}
                     required
                   >
-                    <option value="former">Member</option>
+                    <option value="memeber">Member</option>
                     <option value="manager">Admin</option>
                     <option value="Accountant">Manager</option>
                     {/* Add more hardcoded roles here if needed */}

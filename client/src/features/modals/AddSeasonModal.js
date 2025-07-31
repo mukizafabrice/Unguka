@@ -3,18 +3,14 @@ import React, { useState, useEffect } from "react";
 const AddSeasonModal = ({ show, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     name: "",
-    startDate: "",
-    endDate: "",
+    year: "",
   });
-
-  // Effect to manage body class for scroll prevention
   useEffect(() => {
     if (show) {
       document.body.classList.add("modal-open");
     } else {
       document.body.classList.remove("modal-open");
     }
-    // Cleanup function for when component unmounts or show changes
     return () => {
       document.body.classList.remove("modal-open");
     };
@@ -25,8 +21,7 @@ const AddSeasonModal = ({ show, onClose, onSubmit }) => {
     if (show) {
       setFormData({
         name: "",
-        startDate: "",
-        endDate: "",
+        year: "",
       });
     }
   }, [show]);
@@ -43,15 +38,13 @@ const AddSeasonModal = ({ show, onClose, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData); // Pass form data to parent's onSubmit handler
+    onSubmit(formData);
   };
 
   return (
     <>
-      {/* Modal Backdrop: Render first for correct z-index stacking */}
       <div className="modal-backdrop fade show"></div>
 
-      {/* Main Modal Content */}
       <div
         className="modal fade show d-block"
         tabIndex="-1"
@@ -60,7 +53,10 @@ const AddSeasonModal = ({ show, onClose, onSubmit }) => {
         aria-hidden="false"
         style={{ display: "block", paddingRight: "17px" }}
       >
-        <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div
+          className="modal-dialog modal-lg modal-dialog-centered"
+          role="document"
+        >
           <div className="modal-content">
             <form onSubmit={handleSubmit}>
               <div className="modal-header">
@@ -78,49 +74,35 @@ const AddSeasonModal = ({ show, onClose, onSubmit }) => {
               <div className="modal-body row">
                 {/* Season Name */}
                 <div className="col-md-12 mb-3">
-                  <label htmlFor="name" className="form-label text-dark">
-                    Season Name
-                  </label>
-                  <input
-                    type="text"
+                  <select
                     name="name"
                     id="name"
-                    className="form-control"
+                    className="form-select"
                     value={formData.name}
                     onChange={handleChange}
                     required
-                  />
+                  >
+                    <option value="">Select a production</option>
+
+                    <option value="Season-A">Season-A</option>
+                    <option value="Season-B">Season-B</option>
+                  </select>
                 </div>
 
                 {/* Start Date */}
                 <div className="col-md-6 mb-3">
-                  <label htmlFor="startDate" className="form-label text-dark">
-                    Start Date
+                  <label htmlFor="year" className="form-label text-dark">
+                    Year
                   </label>
                   <input
-                    type="date"
-                    name="startDate"
-                    id="startDate"
+                    type="text"
+                    pattern="\d{4}"
+                    placeholder="YYYY"
+                    name="year"
+                    id="year"
                     className="form-control"
-                    value={formData.startDate}
+                    value={formData.year}
                     onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                {/* End Date */}
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="endDate" className="form-label text-dark">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    name="endDate"
-                    id="endDate"
-                    className="form-control"
-                    value={formData.endDate}
-                    onChange={handleChange}
-                    required
                   />
                 </div>
               </div>

@@ -6,8 +6,15 @@ import Cash from "../models/Cash.js";
 //  CREATE SALE
 export const createSales = async (req, res) => {
   try {
-    const { stockId, seasonId, quantity, buyer, phoneNumber, paymentType } =
-      req.body;
+    const {
+      stockId,
+      seasonId,
+      quantity,
+      unitPrice,
+      buyer,
+      phoneNumber,
+      paymentType,
+    } = req.body;
 
     // Validate quantity
     if (!Number.isInteger(quantity) || quantity < 1) {
@@ -23,13 +30,11 @@ export const createSales = async (req, res) => {
     }
 
     const product = stock.productId;
-    if (!product || !product.unitPrice) {
-      return res
-        .status(404)
-        .json({ message: "Product or unit price not found in stock" });
+    if (!product) {
+      return res.status(404).json({ message: "Product not found in stock" });
     }
 
-    const totalPrice = quantity * product.unitPrice;
+    const totalPrice = quantity * unitPrice;
 
     // Check stock quantity
     if (stock.quantity < quantity) {
@@ -56,6 +61,7 @@ export const createSales = async (req, res) => {
       stockId,
       seasonId,
       quantity,
+      unitPrice,
       totalPrice,
       buyer,
       phoneNumber,
@@ -92,7 +98,7 @@ export const getAllSales = async (req, res) => {
       })
       .populate({
         path: "seasonId",
-        select: "name", // Only get season name
+        select: "name year", // Only get season name
       })
       .sort({ createdAt: -1 });
 

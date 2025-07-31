@@ -22,6 +22,7 @@ const plotSchema = new mongoose.Schema({
   upi: {
     type: String,
     required: true,
+    unique: true,
     trim: true,
     minlength: [5, "UPI must be at least 5 characters"],
     maxlength: [20, "UPI must not exceed 20 characters"],

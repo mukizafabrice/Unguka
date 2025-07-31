@@ -1,21 +1,25 @@
 import Season from "../models/Season.js";
 
 // Create a new season
-export const createSeason = async (req, res) => {
-  const { name, startDate, endDate } = req.body;
 
-  if (!name || !startDate || !endDate) {
+export const createSeason = async (req, res) => {
+  const { name, year } = req.body;
+
+  if (!name || !year) {
     return res.status(400).json({ message: "All fields are required" });
   }
-
   try {
-    const season = new Season({
-      name: name.trim(),
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
-    });
+    // Check for existing season with same name and year
+    const existingSeason = await Season.findOne({ name, year });
+    if (existingSeason) {
+      return res
+        .status(409)
+        .json({ message: `Season '${name}' for year ${year} already exists` });
+    }
 
+    const season = new Season({ name, year });
     await season.save();
+
     res.status(201).json({ message: "Season created successfully", season });
   } catch (error) {
     console.error("Error creating season:", error);
@@ -49,17 +53,21 @@ export const getSeasonById = async (req, res) => {
 };
 
 // Update a season
+import mongoose from "mongoose";
+
 export const updateSeason = async (req, res) => {
-  const { name, startDate, endDate } = req.body;
+  const { name, year } = req.body;
+  const { id } = req.params;
+
+  // Validate ID format
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid season ID" });
+  }
 
   try {
     const season = await Season.findByIdAndUpdate(
-      req.params.id,
-      {
-        name: name?.trim(),
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-      },
+      id,
+      { name, year },
       { new: true }
     );
 

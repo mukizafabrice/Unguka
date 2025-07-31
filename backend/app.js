@@ -15,6 +15,8 @@ import paymentRoutes from "./src/routes/paymentRoutes.js";
 import plotRoutes from "./src/routes/plotRoutes.js";
 import feesRoutes from "./src/routes/feesRoutes.js";
 import announcementRoutes from "./src/routes/announcementRoutes.js";
+import cashRoutes from "./src/routes/cashRoutes.js";
+import purchaseOutRoutes from "./src/routes/purchaseOutRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -42,6 +44,8 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/fees", feesRoutes);
 app.use("/api/plots", plotRoutes);
 app.use("/api/announcements", announcementRoutes);
+app.use("/api/cash", cashRoutes);
+app.use("/api/purchaseOuts", purchaseOutRoutes);
 
 // handle file uploads
 const uploadDir = path.join(process.cwd(), "uploads");

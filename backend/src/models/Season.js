@@ -4,28 +4,15 @@ const seasonSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    trim: true,
-    unique: true,
-    minlength: [3, "Season name must be at least 3 characters"],
+    enum: ["Season-A", "Season-B"],
   },
-  startDate: {
-    type: Date,
+  year: {
+    type: Number,
     required: true,
+    min: [2000, "Year must be >= 2000"],
+    max: [2100, "Year must be <= 2100"],
   },
-  endDate: {
-    type: Date,
-    required: true,
-    validate: {
-      validator: function (value) {
-        return value > this.startDate;
-      },
-      message: "End date must be after start date",
-    },
-  },
-  description: {
-    type: String,
-    trim: true,
-  },
+
   createdAt: {
     type: Date,
     default: Date.now,

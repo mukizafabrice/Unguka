@@ -3,8 +3,8 @@ import Product from "../models/Product.js";
 // Register a new product
 
 export const registerProduct = async (req, res) => {
-  const { productName, unitPrice } = req.body;
-  if (!productName || !unitPrice) {
+  const { productName } = req.body;
+  if (!productName) {
     return res.status(400).json({ message: "Please fill the field" });
   }
   const productToLower = productName.toLowerCase();
@@ -20,7 +20,6 @@ export const registerProduct = async (req, res) => {
 
     const newProduct = new Product({
       productName: productToLower,
-      unitPrice: unitPrice,
     });
     await newProduct.save();
     res.status(200).json({
@@ -68,9 +67,9 @@ export const getProductById = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { productName, unitPrice } = req.body;
+  const { productName } = req.body;
 
-  if (!id || !productName || unitPrice === undefined) {
+  if (!id || !productName) {
     return res.status(400).json({
       message: "Product ID, name, and unit price are required",
     });
@@ -81,9 +80,8 @@ export const updateProduct = async (req, res) => {
       id,
       {
         productName: productName.toLowerCase(),
-        unitPrice: unitPrice,
       },
-      { new: true } // Return the updated document
+      { new: true }
     );
 
     if (!updatedProduct) {
