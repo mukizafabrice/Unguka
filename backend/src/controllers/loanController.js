@@ -4,17 +4,13 @@ import PurchaseInput from "../models/PurchaseInput.js";
 import User from "../models/User.js";
 import mongoose from "mongoose";
 
-/**
- * @desc Get all loans and populate purchase details
- * @route GET /api/loans
- */
 export const getAllLoans = async (req, res) => {
   try {
     const loans = await Loan.find()
       .populate({
         path: "purchaseInputId",
         populate: [
-          { path: "productId", select: "name unitPrice" }, // Changed 'productName' to 'name' to align with common schema naming
+          { path: "productId", select: "name unitPrice" },
           { path: "userId", select: "names phoneNumber" },
           { path: "seasonId", select: "name" },
         ],
@@ -95,14 +91,12 @@ export const getLoansByPhoneNumber = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Find all purchases for this user
     const purchases = await PurchaseInput.find({ userId: user._id }).select(
       "_id"
     );
 
     const purchaseIds = purchases.map((p) => p._id);
 
-    // Find all loans for these purchases and populate product details
     const loans = await Loan.find({
       purchaseInputId: { $in: purchaseIds },
     }).populate({
@@ -117,31 +111,23 @@ export const getLoansByPhoneNumber = async (req, res) => {
   }
 };
 
-/**
- * @desc Update a loan by ID
- * @route PUT /api/loans/:id
- */
 export const updateLoan = async (req, res) => {
   try {
     const { id } = req.params;
-    const { amountPaid } = req.body; // Expecting amountPaid instead of a generic update
+    const { amountPaid } = req.body;
 
     const loan = await Loan.findById(id);
     if (!loan) {
       return res.status(404).json({ message: "Loan not found" });
     }
 
-    // You can't repay more than what's owed
     if (amountPaid > loan.amountOwed) {
       return res
         .status(400)
         .json({ message: "Amount paid exceeds amount owed" });
     }
 
-    // Decrease the amount owed
     loan.amountOwed -= amountPaid;
-
-    // If the full amount is paid, mark the loan as repaid
     if (loan.amountOwed === 0) {
       loan.status = "repaid";
     }
@@ -164,10 +150,6 @@ export const updateLoan = async (req, res) => {
   }
 };
 
-/**
- * @desc Delete a loan by ID
- * @route DELETE /api/loans/:id
- */
 export const deleteLoan = async (req, res) => {
   try {
     const { id } = req.params;

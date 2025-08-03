@@ -7,9 +7,9 @@ import mongoose from "mongoose";
 
 export const createPurchaseInput = async (req, res) => {
   try {
-    const { userId, productId, seasonId, quantity, paymentType, amountPaid } = req.body;
+    const { userId, productId, seasonId, quantity, unitPrice, amountPaid } =
+      req.body;
 
-    // Validate IDs
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(productId) ||
@@ -20,39 +20,34 @@ export const createPurchaseInput = async (req, res) => {
         .json({ message: "Invalid userId, productId, or seasonId" });
     }
 
-    // Get product info
-    const product = await Product.findById(productId);
-    if (!product) {
+    const productExists = await Product.findById(productId);
+    if (!productExists) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const totalPrice = product.unitPrice * quantity;
-    
-    // Ensure amountPaid is provided and doesn't exceed totalPrice
+    const totalPrice = unitPrice * quantity;
+
     if (amountPaid === undefined || amountPaid < 0) {
       return res.status(400).json({ message: "Invalid amountPaid" });
     }
-
     if (amountPaid > totalPrice) {
-        return res.status(400).json({ message: "Amount paid cannot exceed total price" });
+      return res
+        .status(400)
+        .json({ message: "Amount paid cannot exceed total price" });
     }
 
     const amountRemaining = totalPrice - amountPaid;
 
-    // Update stock quantity
     const stock = await Stock.findOne({ productId });
     if (!stock) {
       return res.status(404).json({ message: "Stock for product not found" });
     }
-
     if (stock.quantity < quantity) {
       return res.status(400).json({ message: "Not enough stock available" });
     }
-
     stock.quantity -= quantity;
     await stock.save();
 
-    // Update cash with the amount paid
     if (amountPaid > 0) {
       let cash = await Cash.findOne();
       if (!cash) {
@@ -62,29 +57,28 @@ export const createPurchaseInput = async (req, res) => {
       await cash.save();
     }
 
-    // Record purchase with amountPaid and amountRemaining
+    const status = amountRemaining > 0 ? "loan" : "paid";
+
     const newPurchase = await PurchaseInput.create({
       userId,
       productId,
       seasonId,
       quantity,
+      unitPrice,
       totalPrice,
-      paymentType,
+      status,
       amountPaid,
       amountRemaining,
     });
 
-    // Create loan record if there's a remaining balance
     if (amountRemaining > 0) {
       await Loan.create({
         purchaseInputId: newPurchase._id,
-        quantity: quantity,
-        totalPrice: amountRemaining, // This should be the remaining amount, not the full totalPrice
+        amountOwed: amountRemaining,
         status: "pending",
       });
     }
-    
-    // Respond with success message and new purchase record
+
     res.status(201).json({
       message: "Purchase recorded successfully",
       purchase: newPurchase,
@@ -95,12 +89,11 @@ export const createPurchaseInput = async (req, res) => {
   }
 };
 
-// READ ALL
 export const getAllPurchaseInputs = async (req, res) => {
   try {
     const purchases = await PurchaseInput.find()
-      .populate("userId", "name phoneNumber")
-      .populate("productId", "name unitPrice")
+      .populate("userId", "names phoneNumber")
+      .populate("productId", "productName")
       .populate("seasonId", "name year");
 
     res.status(200).json(purchases);
@@ -109,13 +102,12 @@ export const getAllPurchaseInputs = async (req, res) => {
   }
 };
 
-// READ ONE
 export const getPurchaseInputById = async (req, res) => {
   try {
     const purchase = await PurchaseInput.findById(req.params.id)
       .populate("userId", "name phoneNumber")
-      .populate("productId", "name unitPrice")
-      .populate("seasonId", "name");
+      .populate("productId", "productName")
+      .populate("seasonId", "name year");
 
     if (!purchase) {
       return res.status(404).json({ message: "Purchase input not found" });
@@ -127,10 +119,10 @@ export const getPurchaseInputById = async (req, res) => {
   }
 };
 
-// UPDATE
 export const updatePurchaseInput = async (req, res) => {
   try {
-    const { quantity, amountPaid } = req.body;
+    const { quantity, unitPrice, amountPaid, userId, productId, seasonId } =
+      req.body;
     const { id } = req.params;
 
     const oldPurchase = await PurchaseInput.findById(id);
@@ -138,86 +130,98 @@ export const updatePurchaseInput = async (req, res) => {
       return res.status(404).json({ message: "Purchase input not found" });
     }
 
-    const newQuantity = quantity !== undefined ? quantity : oldPurchase.quantity;
-    const newAmountPaid = amountPaid !== undefined ? amountPaid : oldPurchase.amountPaid;
+    // Use values from req.body or fallback to oldPurchase data
+    const newQuantity =
+      quantity !== undefined ? quantity : oldPurchase.quantity;
+    const newUnitPrice =
+      unitPrice !== undefined ? unitPrice : oldPurchase.unitPrice;
+    const newAmountPaid =
+      amountPaid !== undefined ? amountPaid : oldPurchase.amountPaid;
 
-    const product = await Product.findById(oldPurchase.productId);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    const newTotalPrice = product.unitPrice * newQuantity;
+    const newTotalPrice = newUnitPrice * newQuantity;
     const newAmountRemaining = newTotalPrice - newAmountPaid;
 
-    // Validate the new amount paid
     if (newAmountPaid > newTotalPrice) {
-      return res.status(400).json({ message: "Amount paid cannot exceed new total price" });
+      return res
+        .status(400)
+        .json({ message: "Amount paid cannot exceed new total price" });
     }
 
-    // Update stock quantity if quantity has changed
-    const stock = await Stock.findOne({ productId: oldPurchase.productId });
-    if (stock) {
-      const quantityDifference = newQuantity - oldPurchase.quantity;
-      stock.quantity -= quantityDifference;
-      await stock.save();
+    // --- Stock Update Logic ---
+    const quantityDifference = newQuantity - oldPurchase.quantity;
+    if (quantityDifference !== 0) {
+      const stock = await Stock.findOne({ productId: oldPurchase.productId });
+      if (stock) {
+        stock.quantity -= quantityDifference;
+        await stock.save();
+      } else {
+        console.error(`Stock for product ${oldPurchase.productId} not found.`);
+      }
     }
 
-    // Update cash if amount paid has changed
+    // --- Cash Update Logic ---
     const amountPaidDifference = newAmountPaid - oldPurchase.amountPaid;
     if (amountPaidDifference !== 0) {
       let cash = await Cash.findOne();
       if (cash) {
         cash.amount += amountPaidDifference;
         await cash.save();
+      } else {
+        console.error("Cash document not found.");
       }
     }
 
-    // Update the purchase record
+    const newStatus = newAmountRemaining > 0 ? "loan" : "paid";
+
     const updatedPurchase = await PurchaseInput.findByIdAndUpdate(
       id,
       {
+        userId: userId !== undefined ? userId : oldPurchase.userId,
+        productId: productId !== undefined ? productId : oldPurchase.productId,
+        seasonId: seasonId !== undefined ? seasonId : oldPurchase.seasonId,
         quantity: newQuantity,
+        unitPrice: newUnitPrice,
         totalPrice: newTotalPrice,
         amountPaid: newAmountPaid,
         amountRemaining: newAmountRemaining,
-        // The other fields can also be updated if needed
+        status: newStatus,
       },
       { new: true }
     )
-      .populate("userId", "name phoneNumber")
-      .populate("productId", "name unitPrice")
-      .populate("seasonId", "name");
+      .populate("userId", "names phoneNumber")
+      .populate("productId", "name")
+      .populate("seasonId", "year name");
 
-    // Update the corresponding loan record or create/delete it
+    // --- Loan Update Logic ---
     let loan = await Loan.findOne({ purchaseInputId: oldPurchase._id });
 
     if (newAmountRemaining > 0) {
       if (loan) {
-        // Update existing loan
-        loan.totalPrice = newAmountRemaining;
+        // Fix: Use 'amountOwed' instead of 'totalPrice' to match the Loan model
+        loan.amountOwed = newAmountRemaining;
         await loan.save();
       } else {
-        // Create new loan
+        // Fix: Use 'amountOwed' instead of 'totalPrice' to match the Loan model
         await Loan.create({
           purchaseInputId: updatedPurchase._id,
+          userId: updatedPurchase.userId,
           quantity: newQuantity,
-          totalPrice: newAmountRemaining,
+          amountOwed: newAmountRemaining,
           status: "pending",
         });
       }
     } else if (loan) {
-      // Amount remaining is 0, delete the loan
       await Loan.findByIdAndDelete(loan._id);
     }
 
-    res.status(200).json({ message: "Purchase updated", purchase: updatedPurchase });
+    res
+      .status(200)
+      .json({ message: "Purchase updated", purchase: updatedPurchase });
   } catch (error) {
     console.error("Error updating purchase input:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// DELETE
 export const deletePurchaseInput = async (req, res) => {
   try {
     const purchase = await PurchaseInput.findById(req.params.id);
@@ -225,14 +229,12 @@ export const deletePurchaseInput = async (req, res) => {
       return res.status(404).json({ message: "Purchase input not found" });
     }
 
-    // Restore stock quantity
     const stock = await Stock.findOne({ productId: purchase.productId });
     if (stock) {
       stock.quantity += purchase.quantity;
       await stock.save();
     }
 
-    // Adjust cash by the amount paid for this purchase
     if (purchase.amountPaid > 0) {
       let cash = await Cash.findOne();
       if (cash) {
@@ -241,10 +243,8 @@ export const deletePurchaseInput = async (req, res) => {
       }
     }
 
-    // Delete related loan if one exists
     await Loan.findOneAndDelete({ purchaseInputId: purchase._id });
 
-    // Delete the purchase record
     await PurchaseInput.findByIdAndDelete(req.params.id);
 
     res.status(200).json({ message: "Purchase deleted and stock adjusted" });

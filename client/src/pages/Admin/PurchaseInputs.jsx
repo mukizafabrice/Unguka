@@ -22,7 +22,6 @@ function PurchaseInputs() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedPurchaseInput, setSelectedPurchaseInput] = useState(null);
 
-  // Helper function to format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
@@ -47,7 +46,6 @@ function PurchaseInputs() {
 
   const handleAddPurchaseInput = async (newPurchaseInputData) => {
     try {
-      // The backend now expects quantity, paymentType, and amountPaid
       await createPurchaseInputs(newPurchaseInputData);
       toast.success("Purchase added successfully!");
       await loadPurchaseInputs();
@@ -67,10 +65,12 @@ function PurchaseInputs() {
     setShowUpdateModal(true);
   };
 
-  const handleUpdatePurchaseInput = async (id, updatedPurchaseInputData) => {
+  const handleUpdatePurchaseInput = async (updatedPurchaseInputData) => {
     try {
-      // The backend now expects quantity and amountPaid for updates
-      await updatePurchaseInputs(id, updatedPurchaseInputData);
+      await updatePurchaseInputs(
+        selectedPurchaseInput._id,
+        updatedPurchaseInputData
+      );
       toast.success("Purchase updated successfully!");
       await loadPurchaseInputs();
       setShowUpdateModal(false);
@@ -116,7 +116,7 @@ function PurchaseInputs() {
 
       <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
         <div className="table-responsive">
-          <table className="table table-dark table-striped table-hover mb-0">
+          <table className="table table-dark table-striped table-hover table-sm mb-0 small">
             <thead>
               <tr>
                 <th>ID</th>
@@ -124,10 +124,11 @@ function PurchaseInputs() {
                 <th>Product Name</th>
                 <th>Season</th>
                 <th>Quantity</th>
+                <th>Unit Price</th>
                 <th>Total Price</th>
                 <th>Amount Paid</th>
                 <th>Amount Remaining</th>
-                <th>Payment Type</th>
+                <th>Status</th>
                 <th>Date</th>
                 <th colSpan={2}>Action</th>
               </tr>
@@ -138,21 +139,33 @@ function PurchaseInputs() {
                   <tr key={purchaseInput._id}>
                     <td>{index + 1}</td>
                     <td>{purchaseInput.userId?.names || "N/A"}</td>
-                    <td>{purchaseInput.productId?.name || "N/A"}</td>
+                    <td>{purchaseInput.productId?.productName || "N/A"}</td>
                     <td>{purchaseInput.seasonId?.name || "N/A"}</td>
                     <td>{purchaseInput.quantity || "N/A"}</td>
+                    <td>{formatCurrency(purchaseInput.unitPrice)}</td>
                     <td>{formatCurrency(purchaseInput.totalPrice)}</td>
                     <td>{formatCurrency(purchaseInput.amountPaid)}</td>
-                    <td>{formatCurrency(purchaseInput.amountRemaining)}</td>
+                    <td
+                      style={{
+                        color:
+                          purchaseInput.remainingAmount >
+                          purchaseInput.amountPaid
+                            ? "#dc3545"
+                            : "#28a745",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {formatCurrency(purchaseInput.amountRemaining)}
+                    </td>
                     <td>
                       <span
                         className={`badge ${
-                          purchaseInput.paymentType === "cash"
+                          purchaseInput.status === "paid"
                             ? "bg-success"
                             : "bg-warning text-dark"
                         }`}
                       >
-                        {purchaseInput.paymentType}
+                        {purchaseInput.status}
                       </span>
                     </td>
                     <td>
@@ -188,7 +201,7 @@ function PurchaseInputs() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="11" className="text-center py-4">
+                  <td colSpan="12" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
                       No Purchases found.
                     </div>
@@ -208,9 +221,12 @@ function PurchaseInputs() {
 
       <UpdatePurchaseInputModal
         show={showUpdateModal}
-        purchaseInput={selectedPurchaseInput}
-        onClose={() => setShowUpdateModal(false)}
+        onClose={() => {
+          setShowUpdateModal(false);
+          setSelectedPurchaseInput(null);
+        }}
         onSubmit={handleUpdatePurchaseInput}
+        initialData={selectedPurchaseInput}
       />
 
       <ToastContainer

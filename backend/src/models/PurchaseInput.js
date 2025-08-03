@@ -28,15 +28,34 @@ const purchaseInputSchema = new mongoose.Schema({
     },
   },
 
+  unitPrice: {
+    type: Number,
+    required: true,
+    min: [0, "Unit price must be a positive number"],
+  },
+
   totalPrice: {
     type: Number,
     required: true,
     min: [0, "Total price must be a positive number"],
   },
 
-  paymentType: {
+  amountPaid: {
+    type: Number,
+    required: true,
+    min: [0, "Amount paid must be a positive number"],
+  },
+
+  amountRemaining: {
+    type: Number,
+    required: true,
+    min: [0, "Amount remaining must be a positive number"],
+  },
+
+  // Changed from paymentType to status
+  status: {
     type: String,
-    enum: ["cash", "loan"],
+    enum: ["paid", "loan"],
     required: true,
   },
 
