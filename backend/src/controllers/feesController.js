@@ -2,13 +2,18 @@ import Fees from "../models/Fees.js";
 import FeeType from "../models/FeeType.js";
 import Cash from "../models/Cash.js";
 
-// Record or update a payment and update cash amount
 export const recordPayment = async (req, res) => {
   try {
     const { userId, seasonId, feeTypeId, paymentAmount } = req.body;
 
     if (!userId || !seasonId || !feeTypeId || paymentAmount == null) {
       return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if (paymentAmount <= 0) {
+      return res
+        .status(400)
+        .json({ message: "Payment amount must be greater than zero." });
     }
 
     const feeType = await FeeType.findById(feeTypeId);
@@ -33,7 +38,7 @@ export const recordPayment = async (req, res) => {
     if (feeRecord.amountPaid >= feeRecord.amountOwed) {
       feeRecord.amountPaid = feeRecord.amountOwed;
       feeRecord.status = "paid";
-      feeRecord.paidAt = new Date();
+      feeRecord.paidAt = feeRecord.paidAt || new Date();
     } else if (feeRecord.amountPaid > 0) {
       feeRecord.status = "partial";
       feeRecord.paidAt = null;
@@ -62,36 +67,34 @@ export const recordPayment = async (req, res) => {
   }
 };
 
-// Get fees for a user in a season with balance info
 export const getFeesByUserAndSeason = async (req, res) => {
   try {
     const { userId, seasonId } = req.params;
 
-    const fees = await Fees.find({ userId, seasonId })
-      .populate("feeTypeId", "name amount description")
-      .lean();
+    const fees = await Fees.find({ userId, seasonId }).populate(
+      "feeTypeId",
+      "name amount description"
+    );
 
-    const result = fees.map((fee) => ({
-      feeTypeName: fee.feeTypeId.name,
-      amountOwed: fee.amountOwed,
-      amountPaid: fee.amountPaid,
-      amountRemaining: fee.amountOwed - fee.amountPaid,
-      status: fee.status,
-      paidAt: fee.paidAt,
-    }));
+    if (!fees || fees.length === 0) {
+      return res
+        .status(404)
+        .json({
+          message: "No fees found for this user in the specified season.",
+        });
+    }
 
-    res.status(200).json(result);
+    res.status(200).json(fees);
   } catch (error) {
     console.error("Error fetching fees:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// Get all fees for admin view
 export const getAllFees = async (req, res) => {
   try {
     const fees = await Fees.find()
-      .populate("userId", "name email")
+      .populate("userId", "names")
       .populate("seasonId", "name year")
       .populate("feeTypeId", "name amount")
       .exec();
@@ -103,13 +106,11 @@ export const getAllFees = async (req, res) => {
   }
 };
 
-// Update fee info (e.g. adjust amountOwed or reset payment)
 export const updateFee = async (req, res) => {
   try {
     const feeId = req.params.id;
     const updates = req.body;
 
-    // Optional: prevent updating userId, seasonId, feeTypeId
     delete updates.userId;
     delete updates.seasonId;
     delete updates.feeTypeId;
@@ -119,20 +120,23 @@ export const updateFee = async (req, res) => {
       return res.status(404).json({ message: "Fee not found" });
     }
 
-    // Apply updates
     Object.assign(fee, updates);
 
-    // Validate amountPaid and status if amounts changed
-    if (updates.amountOwed !== undefined) {
+    if (updates.amountOwed !== undefined || updates.amountPaid !== undefined) {
       if (fee.amountPaid > fee.amountOwed) {
         fee.amountPaid = fee.amountOwed;
       }
-      fee.status =
-        fee.amountPaid >= fee.amountOwed
-          ? "paid"
-          : fee.amountPaid > 0
-          ? "partial"
-          : "unpaid";
+
+      if (fee.amountPaid >= fee.amountOwed) {
+        fee.status = "paid";
+        fee.paidAt = fee.paidAt || new Date();
+      } else if (fee.amountPaid > 0) {
+        fee.status = "partial";
+        fee.paidAt = null;
+      } else {
+        fee.status = "unpaid";
+        fee.paidAt = null;
+      }
     }
 
     await fee.save();
@@ -144,7 +148,6 @@ export const updateFee = async (req, res) => {
   }
 };
 
-// Delete a fee record
 export const deleteFee = async (req, res) => {
   try {
     const feeId = req.params.id;

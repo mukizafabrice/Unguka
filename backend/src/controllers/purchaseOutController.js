@@ -11,7 +11,8 @@ export const createPurchaseOut = async (req, res) => {
     // 1. Create new purchase out record
     const newPurchaseOut = new PurchaseOut({
       productId,
-      seasonId: quantity,
+      seasonId,
+      quantity,
       unitPrice,
       totalPrice,
     });
@@ -34,9 +35,12 @@ export const createPurchaseOut = async (req, res) => {
 
     // 3. Update cash
     const existingCash = await Cash.findOne();
-    if (existingCash) {
+    if (existingCash.amount > totalPrice) {
       existingCash.amount -= totalPrice;
       await existingCash.save();
+    } else {
+      res.status(400).json({ message: "Insufficient cash balance" });
+      return;
     }
 
     res.status(201).json({
@@ -50,10 +54,9 @@ export const createPurchaseOut = async (req, res) => {
 // getAllPurchaseOut
 export const getAllPurchaseOut = async (req, res) => {
   try {
-    const purchases = await PurchaseOut.find().populate(
-      "productId",
-      "productName"
-    );
+    const purchases = await PurchaseOut.find()
+      .populate("productId", "productName")
+      .populate("seasonId", "year name");
     res.status(200).json(purchases);
   } catch (error) {
     res.status(500).json({ message: error.message });

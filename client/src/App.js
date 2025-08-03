@@ -3,8 +3,8 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import LoginPage from "./pages/Auth/LoginPage";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+// import { ToastContainer } from "react-toastify";
+// import "react-toastify/dist/ReactToastify.css";
 // ... (other admin/manager/member imports) ...
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
@@ -20,6 +20,7 @@ import Production from "./pages/Admin/Production";
 import Loan from "./pages/Admin/Loan";
 import Payment from "./pages/Admin/Payment";
 import Fees from "./pages/Admin/Fees";
+import FeeTypes from "./pages/Admin/FeeType";
 import PurchaseInput from "./pages/Admin/PurchaseInputs";
 import PurchaseOut from "./pages/Admin/PurchaseOut";
 import Announcement from "./pages/Admin/Announcement";
@@ -56,7 +57,7 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["manager"]}>
                 <DashboardLayout />
-                <ToastContainer />
+                {/* <ToastContainer /> */}
               </ProtectedRoute>
             }
           >
@@ -71,6 +72,7 @@ function App() {
             <Route path="loan" element={<Loan />} />
             <Route path="payment" element={<Payment />} />
             <Route path="fees" element={<Fees />} />
+            <Route path="feeTypes" element={<FeeTypes />} />
             <Route path="purchase-inputs" element={<PurchaseInput />} />
             <Route path="purchase-outputs" element={<PurchaseOut />} />
             <Route path="announcement" element={<Announcement />} />

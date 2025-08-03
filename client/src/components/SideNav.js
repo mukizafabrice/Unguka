@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronRight,
   Megaphone,
+  DollarSign,
   Wallet,
   PackagePlus,
   PackageMinus,
@@ -154,6 +155,16 @@ function SideNav({ isHide }) {
                   }
                 >
                   <Wallet size={16} className="me-2" /> Fees
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/admin/dashboard/feeTypes"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <DollarSign size={16} className="me-2" /> FeeTypes
                 </NavLink>
               </li>
               <li>

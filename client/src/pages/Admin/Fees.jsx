@@ -3,12 +3,14 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import {
-  fetchFees,
-  createFees,
-  updateFees,
-  deleteFees,
-  payFees,
+  fetchAllFees,
+  recordPayment,
+  updateFee,
+  deleteFee,
 } from "../../services/feesService";
+import { fetchUsers } from "../../services/userService";
+import { fetchSeasons } from "../../services/seasonService";
+import { fetchFeeTypes } from "../../services/feeTypeService";
 
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
@@ -18,94 +20,101 @@ import UpdateFeeModal from "../../features/modals/UpdateFeeModal";
 
 function Fees() {
   const [fees, setFees] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [seasons, setSeasons] = useState([]);
+  const [feeTypes, setFeeTypes] = useState([]);
+  const [usersMap, setUsersMap] = useState({}); // Re-introducing the map for a robust solution
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedFee, setSelectedFee] = useState(null);
+  const [feeToEdit, setFeeToEdit] = useState(null);
 
-  const loadFees = async () => {
+  // Function to fetch all necessary data
+  const loadFeesData = async () => {
     try {
-      const feesData = await fetchFees();
+      const [feesData, usersData, seasonsData, feeTypesData] =
+        await Promise.all([
+          fetchAllFees(),
+          fetchUsers(),
+          fetchSeasons(),
+          fetchFeeTypes(),
+        ]);
+      console.log("Fetched fees data:", feesData);
 
-      setFees(feesData.data || feesData);
+      setFees(feesData);
+      setUsers(usersData);
+      setSeasons(seasonsData);
+      setFeeTypes(feeTypesData);
+
+      // Build the users map for quick lookup
+      const map = {};
+      usersData.forEach((user) => {
+        map[user._id] = user.names;
+      });
+      setUsersMap(map);
     } catch (error) {
-      console.error("Failed to fetch fees:", error);
-      toast.error("Failed to load fees.");
-      setFees([]);
+      console.error("Failed to fetch all data:", error);
+      toast.error("Failed to load fees dashboard data.");
     }
   };
 
   useEffect(() => {
-    loadFees();
+    loadFeesData();
   }, []);
 
-  const handleAddFee = async (newFeeData) => {
+  // Handler for recording a new payment
+  const handleAddFee = async (feeData) => {
     try {
-      await createFees(newFeeData);
-      toast.success("Fee added successfully!");
-      await loadFees();
+      await recordPayment(feeData);
       setShowAddModal(false);
+      toast.success("Fee record added successfully!");
+      await loadFeesData(); // Re-fetch all data to refresh the list
     } catch (error) {
-      console.error("Failed to add fee:", error);
+      console.error("Error recording fee:", error);
       toast.error(
-        `Failed to add fee: ${error.response?.data?.message || error.message}`
+        `Failed to record fee: ${
+          error.response?.data?.message || error.message
+        }`
       );
     }
   };
 
-  // Handle opening the Update Fee modal
-  const handleOpenUpdateModal = (fee) => {
-    setSelectedFee(fee); // Set the fee to be updated
+  // Handler for deleting a fee record
+  const handleDeleteFee = async (id) => {
+    try {
+      await deleteFee(id);
+      toast.success("Fee record deleted successfully!");
+      await loadFeesData(); // Re-fetch all data to refresh the list
+    } catch (error) {
+      console.error("Error deleting fee:", error);
+      toast.error(
+        `Failed to delete fee record: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
+  };
+
+  // Handler to open the update modal with the selected fee's data
+  const handleUpdateFee = (fee) => {
+    setFeeToEdit(fee);
     setShowUpdateModal(true);
   };
 
-  // Handle saving changes from Update Fee modal
-  const handleUpdateFee = async (feeId, updatedFeeData) => {
+  // Handler for submitting the updated fee
+  const handleFeeUpdated = async (id, updatedFeeData) => {
     try {
-      await updateFees(feeId, updatedFeeData); // API call to update fee
-      toast.success("Fee updated successfully!"); // Success toast
-      await loadFees(); // Re-fetch all fees to update the table
-      setShowUpdateModal(false); // Close modal
-      setSelectedFee(null); // Clear selected fee state
+      await updateFee(id, updatedFeeData);
+      toast.success("Fee record updated successfully!");
+      setShowUpdateModal(false);
+      await loadFeesData(); // Re-fetch all data to refresh the list
     } catch (error) {
-      console.error("Failed to update fee:", error);
+      console.error("Error updating fee:", error);
       toast.error(
-        `Failed to update fee: ${
+        `Failed to update fee record: ${
           error.response?.data?.message || error.message
         }`
       );
-    }
-  };
-
-  // Handle deleting a fee
-  const handleDeleteFee = async (id) => {
-    try {
-      await deleteFees(id); // API call to delete fee
-      toast.success("Fee deleted successfully!"); // Success toast
-      await loadFees(); // Re-fetch all fees to update the table
-    } catch (error) {
-      console.error("Failed to delete fee:", error);
-      toast.error(
-        `Failed to delete fee: ${
-          error.response?.data?.message || error.message
-        }`
-      );
-    }
-  };
-
-  // Handle paying a fee
-  const [payingFeeId, setPayingFeeId] = useState(null);
-
-  const handlePayFee = async (id) => {
-    setPayingFeeId(id); // Show loading for this fee
-    try {
-      await payFees(id);
-      toast.success("Fee marked as paid successfully!");
-      await loadFees(); // Refresh table
-    } catch (error) {
-      console.error("Failed to pay fee:", error);
-      toast.error(`Error: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setPayingFeeId(null); // Clear loading state
     }
   };
 
@@ -116,92 +125,96 @@ function Fees() {
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
             Fees Dashboard
           </h4>
-          {/* Add Fee Button */}
-          <AddButton label="Add Fees" onClick={() => setShowAddModal(true)} />
+          <AddButton label="Record Fee" onClick={() => setShowAddModal(true)} />
         </div>
       </div>
 
       <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
         <div className="table-responsive">
-          <table className="table table-dark table-striped table-hover mb-0">
+          <table className="table table-dark table-striped table-hover mb-0 table-sm">
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Member</th>
+                <th>User</th>
                 <th>Season</th>
-                <th>Amount</th>
+                <th>Fee Type</th>
+                <th>Amount Owed</th>
+                <th>Amount Paid</th>
+                <th>Remaining Amount</th> 
                 <th>Status</th>
-                <th>Date</th>
                 <th colSpan={2}>Action</th>
               </tr>
             </thead>
             <tbody>
               {fees.length > 0 ? (
                 fees.map((fee, index) => (
-                  <tr key={fee._id}>
-                    {" "}
-                    {/* Use fee._id for the key */}
+                  <tr key={fee._id || index}>
                     <td>{index + 1}</td>
-                    {/* Use optional chaining for nested properties */}
-                    <td>{fee.userId?.names || "N/A"}</td>
-                    <td>{fee.seasonId?.name || "N/A"}</td>
-                    <td>{fee.amount}</td>
+                   
                     <td>
-                      <span
-                        className={`badge ${
-                          fee.status === "paid"
-                            ? "bg-success"
-                            : "bg-warning text-dark" // Added text-dark for unpaid badge
-                        }`}
-                      >
-                        {fee.status}
-                      </span>
+                      {fee.userId?.names || usersMap[fee.userId] || "N/A"}
                     </td>
                     <td>
-                      {fee.createdAt
-                        ? new Date(fee.createdAt).toLocaleDateString()
-                        : "N/A"}
+                      {fee.seasonId?.name || "N/A"} ({fee.seasonId?.year})
                     </td>
+                    <td>{fee.feeTypeId?.name || "N/A"}</td>
+
+                    <td>
+                      {new Intl.NumberFormat("en-RW", {
+                        style: "currency",
+                        currency: "RWF",
+                      }).format(fee.amountOwed)}
+                    </td>
+                    <td>
+                      {" "}
+                      {new Intl.NumberFormat("en-RW", {
+                        style: "currency",
+                        currency: "RWF",
+                      }).format(fee.amountPaid)}
+                    </td>
+                    <td
+                      style={{
+                        color: fee.remainingAmount > 0 ? "#dc3545" : "#28a745",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {new Intl.NumberFormat("en-RW", {
+                        style: "currency",
+                        currency: "RWF",
+                      }).format(fee.remainingAmount)}
+                    </td>
+                    <td>{fee.status}</td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleOpenUpdateModal(fee)} // Pass the fee object
-                          confirmMessage={`Are you sure you want to update fees for "${
-                            fee.userId?.names || "N/A"
+                          onConfirm={() => handleUpdateFee(fee)}
+                          confirmMessage={`Are you sure you want to update the fee for "${
+                            fee.userId?.names || usersMap[fee.userId] || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
                         <DeleteButton
-                          onConfirm={() => handleDeleteFee(fee._id)} // Pass the fee ID
-                          confirmMessage={`Are you sure you want to delete fees for "${
-                            fee.userId?.names || "N/A"
+                          onConfirm={() => handleDeleteFee(fee._id)}
+                          confirmMessage={`Are you sure you want to delete the fee for "${
+                            fee.userId?.names || usersMap[fee.userId] || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Delete
                         </DeleteButton>
-                        {fee.status === "unpaid" && (
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => handlePayFee(fee._id)}
-                            disabled={payingFeeId === fee._id}
-                          >
-                            {payingFeeId === fee._id ? "Paying..." : "Pay"}
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="text-center py-4">
+                  <td colSpan="9" className="text-center py-4">
                     {" "}
-                    {/* Adjusted colspan to 8 */}
+                    {/* colSpan changed from 8 to 9 */}
                     <div className="alert alert-info" role="alert">
-                      No fees found.
+                      No fee records found.
                     </div>
                   </td>
                 </tr>
@@ -211,22 +224,22 @@ function Fees() {
         </div>
       </div>
 
-      {/* Add Fee Modal */}
       <AddFeeModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddFee}
+        users={users}
+        seasons={seasons}
+        feeTypes={feeTypes}
       />
-
-      {/* Update Fee Modal */}
       <UpdateFeeModal
         show={showUpdateModal}
-        fee={selectedFee} // Pass the selected fee object to the modal
         onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdateFee}
+        onSubmit={handleFeeUpdated}
+        feeToEdit={feeToEdit}
+        usersMap={usersMap} // Pass the map to the UpdateModal
       />
 
-      {/* ToastContainer for displaying notifications */}
       <ToastContainer
         position="bottom-right"
         autoClose={3000}

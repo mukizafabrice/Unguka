@@ -3,93 +3,91 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import {
-  fetchProduct,
-  createProduct,
-  deleteProduct,
-  updateProduct,
-} from "../../services/productService";
+  fetchFeeTypes,
+  createFeeType,
+  updateFeeType,
+  deleteFeeType,
+} from "../../services/feeTypeService";
 
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
 import AddButton from "../../components/buttons/AddButton";
-import AddProductModal from "../../features/modals/AddProductModal";
-import UpdateProductModal from "../../features/modals/UpdateProductModal";
+import AddFeeTypeModal from "../../features/modals/AddFeeTypeModal";
+import UpdateFeeTypeModal from "../../features/modals/UpdateFeeTypeModal";
 
-function Product() {
-  const [products, setProducts] = useState([]);
+function FeeType() {
+  const [feeTypes, setFeeTypes] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [productToEdit, setProductToEdit] = useState(null);
+  const [feeTypeToEdit, setFeeTypeToEdit] = useState(null);
 
-  // Function to fetch products from the backend
-  const loadProducts = async () => {
+  // Function to fetch fee types from the backend
+  const loadFeeTypes = async () => {
     try {
-      const productsData = await fetchProduct();
-      // Log the fetched data to help diagnose the issue
-      console.log("Fetched product data:", productsData);
-      setProducts(productsData);
+      const feeTypesData = await fetchFeeTypes();
+      setFeeTypes(feeTypesData);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
-      toast.error("Failed to load products.");
+      console.error("Failed to fetch fee types:", error);
+      toast.error("Failed to load fee types.");
     }
   };
 
   // Initial data load on component mount
   useEffect(() => {
-    loadProducts();
+    loadFeeTypes();
   }, []);
 
-  // Handler for adding a new product
-  const handleAddProduct = async (productData) => {
+  // Handler for adding a new fee type
+  const handleAddFeeType = async (feeTypeData) => {
     try {
-      await createProduct(productData);
+      await createFeeType(feeTypeData);
       setShowAddModal(false);
-      toast.success("Product added successfully!");
-      await loadProducts(); // Re-fetch all products to refresh the list
+      toast.success("Fee Type added successfully!");
+      await loadFeeTypes(); // Re-fetch all fee types to refresh the list
     } catch (error) {
-      console.error("Error adding product:", error);
+      console.error("Error adding fee type:", error);
       toast.error(
-        `Failed to add product: ${
+        `Failed to add fee type: ${
           error.response?.data?.message || error.message
         }`
       );
     }
   };
 
-  // Handler for deleting a product
-  const handleDeleteProduct = async (id) => {
+  // Handler for deleting a fee type
+  const handleDeleteFeeType = async (id) => {
     try {
-      await deleteProduct(id);
-      toast.success("Product deleted successfully!");
-      await loadProducts(); // Re-fetch all products to refresh the list
+      await deleteFeeType(id);
+      toast.success("Fee Type deleted successfully!");
+      await loadFeeTypes(); // Re-fetch all fee types to refresh the list
     } catch (error) {
-      console.error("Error deleting product:", error);
+      console.error("Error deleting fee type:", error);
       toast.error(
-        `Failed to delete product: ${
+        `Failed to delete fee type: ${
           error.response?.data?.message || error.message
         }`
       );
     }
   };
 
-  // Handler to open the update modal with the selected product's data
-  const handleUpdateProduct = (product) => {
-    setProductToEdit(product);
+  // Handler to open the update modal with the selected fee type's data
+  const handleUpdateFeeType = (feeType) => {
+    setFeeTypeToEdit(feeType);
     setShowUpdateModal(true);
   };
 
-  // Handler for submitting the updated product
-  const handleProductUpdated = async (updatedProductData) => {
+  // Handler for submitting the updated fee type
+  const handleFeeTypeUpdated = async (id, updatedFeeTypeData) => {
     try {
-      await updateProduct(updatedProductData._id, updatedProductData);
+      await updateFeeType(id, updatedFeeTypeData);
 
-      toast.success("Product updated successfully!");
+      toast.success("Fee Type updated successfully!");
       setShowUpdateModal(false);
-      await loadProducts(); // Re-fetch all products to refresh the list
+      await loadFeeTypes(); // Re-fetch all fee types to refresh the list
     } catch (error) {
-      console.error("Error updating product:", error);
+      console.error("Error updating fee type:", error);
       toast.error(
-        `Failed to update product: ${
+        `Failed to update fee type: ${
           error.response?.data?.message || error.message
         }`
       );
@@ -101,10 +99,10 @@ function Product() {
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
         <div className="dashboard-content-area d-flex justify-content-between align-items-center">
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Products Dashboard
+            Fee Types Dashboard
           </h4>
           <AddButton
-            label="Add Product"
+            label="Add Fee Type"
             onClick={() => setShowAddModal(true)}
           />
         </div>
@@ -116,28 +114,34 @@ function Product() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>ProductName</th>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Description</th>
+                <th>Status</th>
                 <th colSpan={2}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {products.length > 0 ? (
-                products.map((product, index) => (
-                  <tr key={product._id || index}>
+              {feeTypes.length > 0 ? (
+                feeTypes.map((feeType, index) => (
+                  <tr key={feeType._id || index}>
                     <td>{index + 1}</td>
-                    <td>{product.productName}</td>
+                    <td>{feeType.name}</td>
+                    <td>{feeType.amount}</td>
+                    <td>{feeType.description || "N/A"}</td>
+                    <td>{feeType.status}</td>
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
-                          onConfirm={() => handleUpdateProduct(product)}
-                          confirmMessage={`Are you sure you want to update "${product.productName}"?`}
+                          onConfirm={() => handleUpdateFeeType(feeType)}
+                          confirmMessage={`Are you sure you want to update "${feeType.name}"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
                         <DeleteButton
-                          onConfirm={() => handleDeleteProduct(product._id)}
-                          confirmMessage={`Are you sure you want to delete "${product.productName}"?`}
+                          onConfirm={() => handleDeleteFeeType(feeType._id)}
+                          confirmMessage={`Are you sure you want to delete "${feeType.name}"?`}
                           className="btn-sm"
                         >
                           Delete
@@ -148,9 +152,9 @@ function Product() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="text-center py-4">
+                  <td colSpan="6" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No products found.
+                      No fee types found.
                     </div>
                   </td>
                 </tr>
@@ -160,18 +164,19 @@ function Product() {
         </div>
       </div>
 
-      <AddProductModal
+      <AddFeeTypeModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddProduct}
+        onSubmit={handleAddFeeType}
       />
-      <UpdateProductModal
+      <UpdateFeeTypeModal
         show={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleProductUpdated}
-        productData={productToEdit}
+        onSubmit={handleFeeTypeUpdated}
+        feeTypeToEdit={feeTypeToEdit}
       />
 
+      {/* ToastContainer should ideally be in your top-level App.js */}
       <ToastContainer
         position="bottom-right"
         autoClose={3000}
@@ -187,4 +192,4 @@ function Product() {
   );
 }
 
-export default Product;
+export default FeeType;

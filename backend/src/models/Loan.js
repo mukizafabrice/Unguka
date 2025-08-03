@@ -1,26 +1,18 @@
 import mongoose from "mongoose";
 
 const loanSchema = new mongoose.Schema({
+  // The purchase this loan is associated with
   purchaseInputId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "PurchaseInput",
     required: true,
   },
 
-  quantity: {
+  // Renamed from 'totalPrice' to more accurately reflect the amount owed
+  amountOwed: {
     type: Number,
     required: true,
-    min: [1, "Quantity must be at least 1"],
-    validate: {
-      validator: Number.isInteger,
-      message: "Quantity must be an integer",
-    },
-  },
-
-  totalPrice: {
-    type: Number,
-    required: true,
-    min: [0, "Total price must be a positive number"],
+    min: [0, "Amount owed must be a positive number"],
   },
 
   status: {

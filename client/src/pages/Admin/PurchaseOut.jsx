@@ -1,9 +1,6 @@
-// src/pages/PurchaseInputs.jsx
-
 import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-
+import AddButton from "../../components/buttons/AddButton";
 import {
   fetchPurchaseOut,
   createPurchaseOut,
@@ -13,23 +10,22 @@ import {
 
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
-import AddButton from "../../components/buttons/AddButton";
-
 import AddPurchaseOutModal from "../../features/modals/AddPurchaseOutModal";
 import UpdatePurchaseOutModal from "../../features/modals/UpdatePurchaseOutModal";
-function PurchaseInputs() {
+
+function PurchaseOut() {
   const [purchaseOuts, setPurchaseOuts] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedPurchaseInput, setSelectedPurchaseInput] = useState(null);
+  const [selectedPurchaseOut, setSelectedPurchaseOut] = useState(null); // Consistent naming
 
-  // Function to load purchase inputs data from the backend
+  // Function to load purchase outs data from the backend
   const loadPurchaseOut = async () => {
     try {
       const data = await fetchPurchaseOut();
       setPurchaseOuts(data);
     } catch (error) {
-      console.error("Failed to fetch purchase inputs:", error);
+      console.error("Failed to fetch purchase outs:", error);
       toast.error("Failed to load purchases.");
       setPurchaseOuts([]);
     }
@@ -39,7 +35,7 @@ function PurchaseInputs() {
     loadPurchaseOut();
   }, []);
 
-  // Handler for adding a new purchase input
+  // Handler for adding a new purchase out
   const handleAddPurchaseOut = async (newPurchaseOutData) => {
     try {
       await createPurchaseOut(newPurchaseOutData);
@@ -48,7 +44,6 @@ function PurchaseInputs() {
       setShowAddModal(false);
     } catch (error) {
       console.error("Failed to add purchase:", error);
-      // Display a more specific error message from the backend if available
       toast.error(
         `Failed to add purchase: ${
           error.response?.data?.message || error.message
@@ -57,18 +52,19 @@ function PurchaseInputs() {
     }
   };
 
-  const handleOpenUpdateModal = (purchaseInput) => {
-    setSelectedPurchaseInput(purchaseInput);
+  const handleOpenUpdateModal = (purchaseOut) => {
+    setSelectedPurchaseOut(purchaseOut);
     setShowUpdateModal(true);
   };
 
-  const handleUpdatePurchaseInput = async (id, updatedPurchaseInputData) => {
+  // Handler for updating a purchase out
+  const handleUpdatePurchaseOut = async (id, updatedPurchaseOutData) => {
     try {
-      await updatePurchaseOut(id, updatedPurchaseInputData);
+      await updatePurchaseOut(id, updatedPurchaseOutData);
       toast.success("Purchase updated successfully!");
       await loadPurchaseOut();
       setShowUpdateModal(false);
-      setSelectedPurchaseInput(null);
+      setSelectedPurchaseOut(null);
     } catch (error) {
       console.error("Failed to update purchase:", error);
       toast.error(
@@ -79,8 +75,8 @@ function PurchaseInputs() {
     }
   };
 
-  // Handler for deleting a purchase input
-  const handleDeletePurchaseInput = async (id) => {
+  // Handler for deleting a purchase out
+  const handleDeletePurchaseOut = async (id) => {
     try {
       await deletePurchaseOut(id);
       toast.success("Purchase deleted successfully!");
@@ -118,6 +114,7 @@ function PurchaseInputs() {
                 <th>Product Name</th>
                 <th>Season</th>
                 <th>Quantity</th>
+                <th>Unit Price</th>
                 <th>Amount</th>
                 <th>Date</th>
                 <th colSpan={2}>Action</th>
@@ -129,9 +126,14 @@ function PurchaseInputs() {
                   <tr key={purchaseOut._id}>
                     <td>{index + 1}</td>
                     <td>{purchaseOut.productId?.productName}</td>
-                    <td>{purchaseOut.seasonId?.name}</td>
+                    <td>
+                      {purchaseOut.seasonId?.name +
+                        "" +
+                        purchaseOut.seasonId?.year}
+                    </td>
                     <td>{purchaseOut.quantity}</td>
-                    <td>{purchaseOut.totalPrice}RwF</td>
+                    <td>{purchaseOut.unitPrice} RwF</td>
+                    <td>{purchaseOut.totalPrice} RwF</td>
                     <td>
                       {purchaseOut.createdAt
                         ? new Date(purchaseOut.createdAt).toLocaleDateString()
@@ -142,7 +144,7 @@ function PurchaseInputs() {
                         <UpdateButton
                           onConfirm={() => handleOpenUpdateModal(purchaseOut)}
                           confirmMessage={`Are you sure you want to update purchase for "${
-                            purchaseOut.userId?.names || "N/A"
+                            purchaseOut.productId?.productName || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
@@ -150,10 +152,10 @@ function PurchaseInputs() {
                         </UpdateButton>
                         <DeleteButton
                           onConfirm={() =>
-                            handleDeletePurchaseInput(purchaseOut._id)
+                            handleDeletePurchaseOut(purchaseOut._id)
                           }
                           confirmMessage={`Are you sure you want to delete purchase "${
-                            purchaseOut.userId?.names || "N/A"
+                            purchaseOut.productId?.productName || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
@@ -165,7 +167,8 @@ function PurchaseInputs() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="text-center py-4">
+                  {/* Corrected colspan to match the total number of columns */}
+                  <td colSpan="7" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
                       No Purchases found.
                     </div>
@@ -183,9 +186,9 @@ function PurchaseInputs() {
       />
       <UpdatePurchaseOutModal
         show={showUpdateModal}
-        purchaseInput={selectedPurchaseInput}
+        purchaseOut={selectedPurchaseOut} // Corrected prop name
         onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdatePurchaseInput}
+        onSubmit={handleUpdatePurchaseOut}
       />
 
       <ToastContainer
@@ -203,4 +206,4 @@ function PurchaseInputs() {
   );
 }
 
-export default PurchaseInputs;
+export default PurchaseOut;

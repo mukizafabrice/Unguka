@@ -2,7 +2,7 @@ import Cash from "../models/Cash.js";
 
 export const getCash = async (req, res) => {
   try {
-    const cash = await Cash.findOne(); // assuming you have only one document
+    const cash = await Cash.findOne();
 
     if (!cash) {
       return res.status(404).json({ message: "Cash record not found" });

@@ -10,7 +10,7 @@ import {
 const router = express.Router();
 
 // Record or update payment
-router.post("/payment", recordPayment);
+router.post("/", recordPayment);
 
 // Get fees for a user in a season
 router.get("/user/:userId/season/:seasonId", getFeesByUserAndSeason);

@@ -1,42 +1,56 @@
 import axiosInstance from "../api/axiosInstance";
 
-export const fetchFees = async () => {
-  const response = await axiosInstance.get("/fees");
-  return response.data;
-};
+const API_BASE_URL = "/fees"; 
 
-export const createFees = async (feesData) => {
-  const response = await axiosInstance.post("/fees", feesData);
-  return response.data;
-};
-
-export const updateFees = async (id, data) => {
-  const response = await axiosInstance.put(`/fees/${id}`, data);
-  return response.data;
-};
-export const payFees = async (id, data) => {
+// Fetch all fees (for admin view)
+export const fetchAllFees = async () => {
   try {
-    const response = await axiosInstance.put(`/fees/pay/${id}`, data);
-
+    const response = await axiosInstance.get(API_BASE_URL);
     return response.data;
   } catch (error) {
     console.error(
-      `Error paying fees with ID ${id}:`,
+      "Error fetching all fees:",
       error.response?.data || error.message
     );
-    throw error; // Re-throw the error to be handled by the calling function
+    throw error;
   }
 };
 
-export const deleteFees = async (id) => {
+// Record a new payment
+export const recordPayment = async (paymentData) => {
   try {
-    const response = await axiosInstance.delete(`/fees/${id}`);
+    const response = await axiosInstance.post(API_BASE_URL, paymentData);
     return response.data;
   } catch (error) {
     console.error(
-      `Error deleting fees with ID ${id}:`,
+      "Error recording payment:",
       error.response?.data || error.message
     );
+    throw error;
+  }
+};
+
+// Update an existing fee record
+export const updateFee = async (id, updateData) => {
+  try {
+    const response = await axiosInstance.put(
+      `${API_BASE_URL}/${id}`,
+      updateData
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating fee:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Delete a fee record
+export const deleteFee = async (id) => {
+  try {
+    const response = await axiosInstance.delete(`${API_BASE_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting fee:", error.response?.data || error.message);
     throw error;
   }
 };

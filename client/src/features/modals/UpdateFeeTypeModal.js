@@ -1,63 +1,64 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
-function UpdateFeeModal({ show, onClose, onSubmit, feeToEdit }) {
+function UpdateFeeTypeModal({ show, onClose, onSubmit, feeTypeToEdit }) {
   const [formData, setFormData] = useState({
     _id: "",
-    amountOwed: "",
-    amountPaid: "",
+    name: "",
+    amount: "",
+    description: "",
     status: "",
   });
 
+  // Effect to manage body class for scroll prevention when modal is open
   useEffect(() => {
     if (show) {
       document.body.classList.add("modal-open");
     } else {
       document.body.classList.remove("modal-open");
     }
+    // Cleanup function
     return () => {
       document.body.classList.remove("modal-open");
     };
   }, [show]);
 
+  // Effect to populate form data when the feeTypeToEdit prop changes
   useEffect(() => {
-    if (show && feeToEdit) {
+    if (show && feeTypeToEdit) {
       setFormData({
-        _id: feeToEdit._id,
-        amountOwed: feeToEdit.amountOwed,
-        amountPaid: feeToEdit.amountPaid,
-        status: feeToEdit.status,
+        _id: feeTypeToEdit._id || "",
+        name: feeTypeToEdit.name || "",
+        amount: feeTypeToEdit.amount || "",
+        description: feeTypeToEdit.description || "",
+        status: feeTypeToEdit.status || "active", // Fallback to active
       });
     }
-  }, [show, feeToEdit]);
+  }, [show, feeTypeToEdit]);
 
-  if (!show || !feeToEdit) return null;
+  if (!show) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: name === "amount" ? Number(value) : value,
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.amountOwed || !formData.amountPaid) {
-      toast.error("Amount Owed and Amount Paid are required.");
+    if (!formData.name || !formData.amount) {
+      toast.error("Name and Amount are required.");
       return;
     }
-    if (Number(formData.amountOwed) < 0 || Number(formData.amountPaid) < 0) {
-      toast.error("Amounts cannot be negative.");
+    if (formData.amount < 0) {
+      toast.error("Amount cannot be negative.");
       return;
     }
 
-    onSubmit(formData._id, {
-      amountOwed: Number(formData.amountOwed),
-      amountPaid: Number(formData.amountPaid),
-      status: formData.status,
-    });
+    onSubmit(formData._id, formData);
   };
 
   return (
@@ -72,7 +73,7 @@ function UpdateFeeModal({ show, onClose, onSubmit, feeToEdit }) {
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title text-dark">Update Fee Record</h5>
+              <h5 className="modal-title text-dark">Update Fee Type</h5>
               <button
                 type="button"
                 className="btn-close"
@@ -83,61 +84,46 @@ function UpdateFeeModal({ show, onClose, onSubmit, feeToEdit }) {
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label text-dark">User:</label>
+                  <label htmlFor="name" className="form-label text-dark">
+                    Name
+                  </label>
                   <input
                     type="text"
                     className="form-control"
-                    value={feeToEdit.userId?.name || "N/A"}
-                    disabled
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label text-dark">Season:</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={feeToEdit.seasonId?.name || "N/A"}
-                    disabled
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label text-dark">Fee Type:</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={feeToEdit.feeTypeId?.name || "N/A"}
-                    disabled
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="amountOwed" className="form-label text-dark">
-                    Amount Owed
+                  <label htmlFor="amount" className="form-label text-dark">
+                    Amount
                   </label>
                   <input
                     type="number"
                     className="form-control"
-                    id="amountOwed"
-                    name="amountOwed"
-                    value={formData.amountOwed}
+                    id="amount"
+                    name="amount"
+                    value={formData.amount}
                     onChange={handleChange}
                     min="0"
                     required
                   />
                 </div>
                 <div className="mb-3">
-                  <label htmlFor="amountPaid" className="form-label text-dark">
-                    Amount Paid
+                  <label htmlFor="description" className="form-label text-dark">
+                    Description (Optional)
                   </label>
-                  <input
-                    type="number"
+                  <textarea
                     className="form-control"
-                    id="amountPaid"
-                    name="amountPaid"
-                    value={formData.amountPaid}
+                    id="description"
+                    name="description"
+                    value={formData.description}
                     onChange={handleChange}
-                    min="0"
-                    required
-                  />
+                    rows="3"
+                  ></textarea>
                 </div>
                 <div className="mb-3">
                   <label htmlFor="status" className="form-label text-dark">
@@ -150,9 +136,8 @@ function UpdateFeeModal({ show, onClose, onSubmit, feeToEdit }) {
                     value={formData.status}
                     onChange={handleChange}
                   >
-                    <option value="paid">Paid</option>
-                    <option value="partial">Partial</option>
-                    <option value="unpaid">Unpaid</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
                   </select>
                 </div>
               </div>
@@ -176,4 +161,4 @@ function UpdateFeeModal({ show, onClose, onSubmit, feeToEdit }) {
   );
 }
 
-export default UpdateFeeModal;
+export default UpdateFeeTypeModal;

@@ -69,7 +69,8 @@ function AdminDashboard() {
     const loadCash = async () => {
       try {
         const cashData = await fetchCash();
-        setCash(cashData.totalCash);
+        setCash(cashData.cash);
+        console.log("Cash data:", cashData);
       } catch (error) {
         console.error("Failed to fetch low stock count:", error);
       }
@@ -119,7 +120,7 @@ function AdminDashboard() {
             <div className="col-lg-3 col-md-4 col-sm-6 mb-3">
               <StatCard
                 title="CASH IN HAND"
-                value={`${cash} rwf`}
+                value={`${cash.amount} rwf`}
                 color="black"
                 icon={Wallet}
               />

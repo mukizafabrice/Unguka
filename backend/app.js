@@ -17,6 +17,7 @@ import feesRoutes from "./src/routes/feesRoutes.js";
 import announcementRoutes from "./src/routes/announcementRoutes.js";
 import cashRoutes from "./src/routes/cashRoutes.js";
 import purchaseOutRoutes from "./src/routes/purchaseOutRoutes.js";
+import feeTypeRoutes from "./src/routes/feeTypeRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,7 +47,7 @@ app.use("/api/plots", plotRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/cash", cashRoutes);
 app.use("/api/purchaseOuts", purchaseOutRoutes);
-
+app.use("/api/feeTypes", feeTypeRoutes);
 // handle file uploads
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {

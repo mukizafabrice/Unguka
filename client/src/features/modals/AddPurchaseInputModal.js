@@ -1,7 +1,7 @@
-    import React, { useState, useEffect } from "react";
-import { fetchUsers } from "../../services/userService";     // Assuming this service exists
-import { fetchProduct } from "../../services/productService"; // Assuming this service exists (for product list)
-import { fetchSeasons } from "../../services/seasonService"; // Assuming this service exists
+import React, { useState, useEffect } from "react";
+import { fetchUsers } from "../../services/userService";
+import { fetchProduct } from "../../services/productService";
+import { fetchSeasons } from "../../services/seasonService";
 
 const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -9,8 +9,8 @@ const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
     productId: "",
     seasonId: "",
     quantity: "",
-    totalPrice: "",
-    paymentType: "cash", // Default payment type
+    paymentType: "cash",
+    amountPaid: "", // Added the new amountPaid field
   });
 
   const [users, setUsers] = useState([]);
@@ -51,7 +51,7 @@ const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
         try {
           const [usersResponse, productsResponse, seasonsResponse] = await Promise.all([
             fetchUsers(),
-            fetchProduct(), // Assuming this fetches a list of products
+            fetchProduct(),
             fetchSeasons(),
           ]);
 
@@ -64,6 +64,7 @@ const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
           }
 
           if (productsResponse && Array.isArray(productsResponse.data || productsResponse)) {
+            // Note: The product name field is now 'name', not 'productName'
             setProducts(productsResponse.data || productsResponse);
           } else {
             console.warn("Product data is not an array:", productsResponse);
@@ -104,8 +105,8 @@ const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
         productId: "",
         seasonId: "",
         quantity: "",
-        totalPrice: "",
         paymentType: "cash",
+        amountPaid: "", // Reset amountPaid
       });
       setUsersError(null);
       setProductsError(null);
@@ -128,7 +129,7 @@ const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
     const dataToSubmit = {
       ...formData,
       quantity: Number(formData.quantity),
-      totalPrice: Number(formData.totalPrice),
+      amountPaid: Number(formData.amountPaid), // Ensure amountPaid is a number
     };
     onSubmit(dataToSubmit);
   };
@@ -239,7 +240,7 @@ const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
                         <option value="">Select a product</option>
                         {products.map((product) => (
                           <option key={product._id} value={product._id}>
-                            {product.productName}
+                            {product.name}
                           </option>
                         ))}
                       </select>
@@ -308,23 +309,6 @@ const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
                   />
                 </div>
 
-                {/* Total Price */}
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="totalPrice" className="form-label text-dark">
-                    Total Amount (RWF)
-                  </label>
-                  <input
-                    type="number"
-                    name="totalPrice"
-                    id="totalPrice"
-                    className="form-control"
-                    value={formData.totalPrice}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                </div>
-
                 {/* Payment Type */}
                 <div className="col-md-6 mb-3">
                   <label htmlFor="paymentType" className="form-label text-dark">
@@ -341,6 +325,26 @@ const AddPurchaseInputModal = ({ show, onClose, onSubmit }) => {
                     <option value="cash">Cash</option>
                     <option value="loan">Loan</option>
                   </select>
+                </div>
+
+                {/* Amount Paid */}
+                <div className="col-md-6 mb-3">
+                  <label htmlFor="amountPaid" className="form-label text-dark">
+                    Amount Paid (RWF)
+                  </label>
+                  <input
+                    type="number"
+                    name="amountPaid"
+                    id="amountPaid"
+                    className="form-control"
+                    value={formData.amountPaid}
+                    onChange={handleChange}
+                    min="0"
+                    required
+                  />
+                  <small className="text-muted mt-1 d-block">
+                    The total price will be calculated automatically by the system.
+                  </small>
                 </div>
               </div>
 

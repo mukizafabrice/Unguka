@@ -4,13 +4,17 @@ import PurchaseInput from "../models/PurchaseInput.js";
 import User from "../models/User.js";
 import mongoose from "mongoose";
 
+/**
+ * @desc Get all loans and populate purchase details
+ * @route GET /api/loans
+ */
 export const getAllLoans = async (req, res) => {
   try {
     const loans = await Loan.find()
       .populate({
         path: "purchaseInputId",
         populate: [
-          { path: "productId", select: "productName unitPrice" },
+          { path: "productId", select: "name unitPrice" }, // Changed 'productName' to 'name' to align with common schema naming
           { path: "userId", select: "names phoneNumber" },
           { path: "seasonId", select: "name" },
         ],
@@ -31,6 +35,10 @@ export const getAllLoans = async (req, res) => {
   }
 };
 
+/**
+ * @desc Mark a loan as repaid and update cash
+ * @route PUT /api/loans/repay/:id
+ */
 export const markLoanAsRepaid = async (req, res) => {
   try {
     const { id } = req.params;
@@ -48,34 +56,40 @@ export const markLoanAsRepaid = async (req, res) => {
       return res.status(400).json({ message: "Loan already repaid" });
     }
 
-    // Find the stock record
-    const stock = await Stock.findOne();
-    if (!stock) {
-      return res.status(404).json({ message: "Stock not found" });
+    // Find the cash record
+    let cash = await Cash.findOne();
+    if (!cash) {
+      // Create a cash record if one doesn't exist
+      cash = new Cash({ amount: 0 });
     }
 
-    // Update stock cash
-    stock.cash += loan.totalPrice;
-    await stock.save();
+    // Update cash amount with the amount owed
+    cash.amount += loan.amountOwed;
+    await cash.save();
 
-    // Update loan status
+    // Update loan status to 'repaid'
     loan.status = "repaid";
     await loan.save();
 
     res.status(200).json({
-      message: "Loan marked as repaid and stock cash updated",
+      message: "Loan marked as repaid and cash updated",
       loan,
     });
   } catch (error) {
+    console.error("Error marking loan as repaid:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
+/**
+ * @desc Get all loans for a specific user by phone number
+ * @route GET /api/loans/user/:phoneNumber
+ */
 export const getLoansByPhoneNumber = async (req, res) => {
   try {
     const { phoneNumber } = req.params;
 
-    // Find the user
+    // Find the user by phone number
     const user = await User.findOne({ phoneNumber });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -88,7 +102,7 @@ export const getLoansByPhoneNumber = async (req, res) => {
 
     const purchaseIds = purchases.map((p) => p._id);
 
-    // Find all loans for these purchases
+    // Find all loans for these purchases and populate product details
     const loans = await Loan.find({
       purchaseInputId: { $in: purchaseIds },
     }).populate({
@@ -98,31 +112,62 @@ export const getLoansByPhoneNumber = async (req, res) => {
 
     res.status(200).json({ loans });
   } catch (error) {
+    console.error("Error getting loans by phone number:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-//update loan by id
+/**
+ * @desc Update a loan by ID
+ * @route PUT /api/loans/:id
+ */
 export const updateLoan = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { amountPaid } = req.body; // Expecting amountPaid instead of a generic update
 
-    const updatedLoan = await Loan.findByIdAndUpdate(id, updates, {
-      new: true,
-    });
-
-    if (!updatedLoan) {
+    const loan = await Loan.findById(id);
+    if (!loan) {
       return res.status(404).json({ message: "Loan not found" });
     }
 
-    res.status(200).json({ message: "Loan updated", loan: updatedLoan });
+    // You can't repay more than what's owed
+    if (amountPaid > loan.amountOwed) {
+      return res
+        .status(400)
+        .json({ message: "Amount paid exceeds amount owed" });
+    }
+
+    // Decrease the amount owed
+    loan.amountOwed -= amountPaid;
+
+    // If the full amount is paid, mark the loan as repaid
+    if (loan.amountOwed === 0) {
+      loan.status = "repaid";
+    }
+
+    // Save the updated loan
+    await loan.save();
+
+    // Update cash with the amount paid
+    let cash = await Cash.findOne();
+    if (!cash) {
+      cash = new Cash({ amount: 0 });
+    }
+    cash.amount += amountPaid;
+    await cash.save();
+
+    res.status(200).json({ message: "Loan updated", loan });
   } catch (error) {
+    console.error("Error updating loan:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-//delete loan by id
+/**
+ * @desc Delete a loan by ID
+ * @route DELETE /api/loans/:id
+ */
 export const deleteLoan = async (req, res) => {
   try {
     const { id } = req.params;
@@ -132,8 +177,13 @@ export const deleteLoan = async (req, res) => {
       return res.status(404).json({ message: "Loan not found" });
     }
 
+    console.warn(
+      `Loan ${id} was deleted. Associated records may need manual adjustment.`
+    );
+
     res.status(200).json({ message: "Loan deleted" });
   } catch (error) {
+    console.error("Error deleting loan:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
