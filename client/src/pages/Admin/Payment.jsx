@@ -1,229 +1,286 @@
-import React, { useState, useEffect } from "react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { PlusCircle } from "lucide-react"; // Assuming PlusCircle is still desired for the Add button
-
+import React, { useState, useEffect, useCallback } from "react";
 import {
   fetchPayments,
-  createPayments,
-  updatePayments,
-  deletePayments,
-} from "../../services/paymentService"; // Import all payment service functions
+  createPayment,
+  updatePayment,
+  deletePayment,
+} from "../../services/paymentService";
+import { fetchUsers } from "../../services/userService";
+import { fetchSeasons } from "../../services/seasonService";
 
-import DeleteButton from "../../components/buttons/DeleteButton";
-import UpdateButton from "../../components/buttons/UpdateButton";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import AddButton from "../../components/buttons/AddButton";
+import AddPaymentModal from "../../features/modals/AddPaymentModal"; // Adjust path if needed
 
-import AddPaymentModal from "../../features/modals/AddPaymentModal"; // Import the new AddPaymentModal
-import UpdatePaymentModal from "../../features/modals/UpdatePaymentModal"; // Import the new UpdatePaymentModal
-
-function Payment() {
+const Payment = () => {
   const [payments, setPayments] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [seasons, setSeasons] = useState([]);
+  const [editPaymentId, setEditPaymentId] = useState(null);
+  const [editAmountPaid, setEditAmountPaid] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState(null); // To store the payment being updated
+  const [loading, setLoading] = useState(false); // Used for both modal submission and general data loading indicator
 
-  // Function to load payments data from the backend
-  const loadPayments = async () => {
+  // Using useCallback to memoize loadData, preventing unnecessary re-renders
+  // and ensuring it's stable for useEffect dependencies if ever added.
+  const loadData = useCallback(async () => {
+    setLoading(true); // Indicate loading when fetching initial data
     try {
-      const paymentsData = await fetchPayments();
-      // The fetchPayments service now handles parsing response.data or response directly
-      setPayments(paymentsData.data);
+      // Fetch all necessary data concurrently
+      const [usersData, seasonsData, paymentsData] = await Promise.all([
+        fetchUsers(),
+        fetchSeasons(),
+        fetchPayments(),
+      ]);
+      setUsers(usersData);
+      setSeasons(seasonsData);
+      setPayments(paymentsData);
+      console.log("Initial data loaded successfully.");
     } catch (error) {
-      console.error("Failed to fetch payments:", error);
-      toast.error("Failed to load payments."); // User-friendly error notification
-      setPayments([]); // Ensure payments state is an empty array on error
+      console.error(
+        "Error loading initial data (Users, Seasons, Payments):",
+        error
+      );
+      toast.error(
+        "Error loading initial data. Please check console for details."
+      );
+    } finally {
+      setLoading(false); // End loading
     }
-  };
+  }, []); // Empty dependency array means this function is created once
 
-  // Effect hook to load payments when the component mounts
   useEffect(() => {
-    loadPayments();
-  }, []); // Empty dependency array ensures this runs only once on mount
+    loadData();
+  }, [loadData]); // loadData is stable due to useCallback
 
-  // Handler for adding a new payment
-  const handleAddPayment = async (newPaymentData) => {
+  // Handler for creating a new payment from the modal
+  const handleCreatePayment = async (newPayment) => {
+    setLoading(true); // Indicate loading during payment creation
     try {
-      await createPayments(newPaymentData); // API call to create the payment
-      toast.success("Payment added successfully!"); // Success notification
-      await loadPayments(); // Re-fetch all payments to update the table with the new entry
-      setShowAddModal(false); // Close the Add Payment modal
+      console.log("Attempting to create payment:", newPayment);
+      await createPayment(newPayment);
+      toast.success("Payment recorded successfully!");
+      setShowAddModal(false); // Close the modal on success
+      await loadData(); // Reload all data to show the new payment
     } catch (error) {
-      console.error("Failed to add payment:", error);
-      // Display a more specific error message from the backend if available
+      console.error("Payment creation failed:", error);
+      // More specific error messages could be extracted from error.response.data if available
       toast.error(
-        `Failed to add payment: ${
-          error.response?.data?.message || error.message
-        }`
+        error.response?.data?.message ||
+          "Payment creation failed. Please try again."
       );
+    } finally {
+      setLoading(false); // End loading
     }
   };
 
-  // Handler for opening the Update Payment modal
-  const handleOpenUpdateModal = (payment) => {
-    setSelectedPayment(payment); // Set the payment object to be edited
-    setShowUpdateModal(true); // Open the Update Payment modal
+  // Handlers for editing existing payments in the table
+  const startEdit = (payment) => {
+    setEditPaymentId(payment._id);
+    setEditAmountPaid(payment.amountPaid.toString()); // Convert to string for input value
   };
 
-  // Handler for saving changes from the Update Payment modal
-  const handleUpdatePayment = async (paymentId, updatedPaymentData) => {
-    try {
-      await updatePayments(paymentId, updatedPaymentData); // API call to update the payment
-      toast.success("Payment updated successfully!"); // Success notification
-      await loadPayments(); // Re-fetch all payments to update the table with changes
-      setShowUpdateModal(false); // Close the Update Payment modal
-      setSelectedPayment(null); // Clear the selected payment state
-    } catch (error) {
-      console.error("Failed to update payment:", error);
-      // Display a more specific error message from the backend if available
-      toast.error(
-        `Failed to update payment: ${
-          error.response?.data?.message || error.message
-        }`
+  const cancelEdit = () => {
+    setEditPaymentId(null);
+    setEditAmountPaid("");
+  };
+
+  const handleUpdate = async () => {
+    if (!editPaymentId) {
+      toast.error("No payment selected for update.");
+      return;
+    }
+    const parsedAmountPaid = parseFloat(editAmountPaid);
+    if (isNaN(parsedAmountPaid) || parsedAmountPaid <= 0) {
+      toast.warning(
+        "Please enter a valid amount to update (must be positive)."
       );
+      return;
+    }
+
+    try {
+      setLoading(true); // Indicate loading during update
+      const paymentToUpdate = payments.find((p) => p._id === editPaymentId);
+      if (!paymentToUpdate) {
+        toast.error("Payment not found for update.");
+        setLoading(false);
+        return;
+      }
+
+      const updatedPayment = {
+        amountPaid: parsedAmountPaid,
+        // Include other fields if they can also be updated (e.g., amountDue if it's dynamic)
+      };
+
+      console.log("Updating payment:", editPaymentId, updatedPayment);
+      await updatePayment(editPaymentId, updatedPayment);
+      toast.success("Payment updated successfully!");
+      setEditPaymentId(null); // Exit edit mode
+      setEditAmountPaid("");
+      await loadData(); // Reload data to reflect changes
+    } catch (error) {
+      console.error("Payment update failed:", error);
+      toast.error(
+        error.response?.data?.message ||
+          "Payment update failed. Please try again."
+      );
+    } finally {
+      setLoading(false); // End loading
     }
   };
 
   // Handler for deleting a payment
-  const handleDeletePayment = async (id) => {
+  const handleDelete = async (id) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this payment? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
     try {
-      await deletePayments(id); // API call to delete the payment
-      toast.success("Payment deleted successfully!"); // Success notification
-      await loadPayments(); // Re-fetch all payments to update the table (removed item)
+      setLoading(true); // Indicate loading during deletion
+      console.log("Attempting to delete payment with ID:", id);
+      await deletePayment(id);
+      toast.success("Payment deleted successfully!");
+      await loadData(); // Reload data to remove the deleted payment
     } catch (error) {
       console.error("Failed to delete payment:", error);
-      // Display a more specific error message from the backend if available
       toast.error(
-        `Failed to delete payment: ${
-          error.response?.data?.message || error.message
-        }`
+        error.response?.data?.message ||
+          "Failed to delete payment. Please try again."
       );
+    } finally {
+      setLoading(false); // End loading
     }
   };
 
   return (
-    <div className="p-4 text-white">
-      <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
-        <div className="dashboard-content-area d-flex justify-content-between align-items-center">
-          <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Payment Dashboard
-          </h4>
-          {/* Button to open the Add Payment modal */}
-          <button
-            className="btn btn-success d-flex align-items-center"
-            onClick={() => setShowAddModal(true)} // Correctly opens the AddPaymentModal
-          >
-            <PlusCircle size={20} className="me-1" /> Add Payment
-          </button>
-        </div>
-      </div>
+    <div className="container py-4">
+      <h2 className="mb-4">Manage Payments</h2>
+      <AddButton
+        label="Add Payment"
+        onClick={() => setShowAddModal(true)}
+        disabled={loading}
+      />
 
-      <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
-        <div className="table-responsive">
-          <table className="table table-dark table-striped table-hover mb-0">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Member</th>
-                <th>Product Name</th>
-                <th>Season</th>
-                <th>Amount</th>
-                <th>Date</th>
-                <th colSpan={2}>Action</th>{" "}
-                {/* Colspan for Update and Delete buttons */}
-              </tr>
-            </thead>
-            <tbody>
-              {payments.length > 0 ? (
-                payments.map((payment, index) => (
-                  <tr key={payment._id}>
-                    {" "}
-                    {/* Use payment._id as the unique key for each row */}
-                    <td>{index + 1}</td>
-                    {/* Use optional chaining (?.) for nested properties */}
-                    <td>{payment.productionId?.userId?.names || "N/A"}</td>
-                    <td>
-                      {payment.productionId?.productId?.productName || "N/A"}
-                    </td>
-                    <td>{payment.productionId?.seasonId?.name || "N/A"}</td>
-                    <td>{payment.amount}RwF</td>
-                    <td>
-                      {/* Format the date for display */}
-                      {payment.createdAt
-                        ? new Date(payment.createdAt).toLocaleDateString()
-                        : "N/A"}
-                    </td>
-                    <td>
-                      <div className="d-flex gap-2">
-                        {/* Update Button */}
-                        <UpdateButton
-                          onConfirm={() => handleOpenUpdateModal(payment)} // Pass the entire payment object for editing
-                          confirmMessage={`Are you sure you want to update payment for "${
-                            payment.productionId?.userId?.names || "N/A"
-                          }"?`}
-                          className="btn-sm"
-                        >
-                          Update
-                        </UpdateButton>
-                        {/* Delete Button */}
-                        <DeleteButton
-                          onConfirm={() => handleDeletePayment(payment._id)} // Pass the payment's _id for deletion
-                          confirmMessage={`Are you sure you want to delete payment "${
-                            payment.productionId?.userId?.names || "N/A"
-                          }"?`}
-                          className="btn-sm"
-                        >
-                          Delete
-                        </DeleteButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  {/* Message when no payments are found, colSpan matches total columns */}
-                  <td colSpan="8" className="text-center py-4">
-                    {" "}
-                    {/* Adjusted colspan to 8 */}
-                    <div className="alert alert-info" role="alert">
-                      No payments found.
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Add Payment Modal Component */}
       <AddPaymentModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddPayment}
+        users={users} // Passed to modal for dropdown
+        seasons={seasons} // Passed to modal for dropdown
+        onCreatePayment={handleCreatePayment} // The function to call when payment is submitted
+        loading={loading} // Pass loading state to disable modal buttons during API calls
       />
 
-      {/* Update Payment Modal Component */}
-      <UpdatePaymentModal
-        show={showUpdateModal}
-        payment={selectedPayment} // Prop name 'payment' passed to the modal
-        onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdatePayment} // Handler for saving updates from the modal
-      />
-
-      {/* ToastContainer for displaying success/error notifications */}
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <div className="card p-3 mt-4">
+        <h5>All Payments</h5>
+        {loading && (
+          <div className="text-center my-3">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        )}
+        {!loading && payments.length === 0 && (
+          <div className="alert alert-info text-center">
+            No payments recorded yet.
+          </div>
+        )}
+        {!loading && payments.length > 0 && (
+          <div className="table-responsive">
+            {" "}
+            {/* Added responsive table */}
+            <table className="table table-bordered table-hover mt-3">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Season</th>
+                  <th>Paid Amount</th>
+                  <th>Amount Due</th>
+                  <th>Remaining to Pay</th>
+                  <th>Payment Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p._id}>
+                    <td>{p.userId?.names || "N/A"}</td>{" "}
+                    {/* Handle null user data */}
+                    <td>
+                      {p.seasonId?.name && p.seasonId?.year
+                        ? `${p.seasonId.name} ${p.seasonId.year}`
+                        : "N/A"}
+                    </td>
+                    <td>
+                      {editPaymentId === p._id ? (
+                        <input
+                          type="number"
+                          value={editAmountPaid}
+                          onChange={(e) => setEditAmountPaid(e.target.value)}
+                          className="form-control"
+                          style={{ maxWidth: "120px" }}
+                        />
+                      ) : (
+                        `$${p.amountPaid?.toFixed(2) || "0.00"}`
+                      )}
+                    </td>
+                    <td>${p.amountDue?.toFixed(2) || "0.00"}</td>
+                    <td>${p.amountRemainingToPay?.toFixed(2) || "0.00"}</td>
+                    <td>
+                      {p.createdAt
+                        ? new Date(p.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </td>
+                    <td>
+                      {editPaymentId === p._id ? (
+                        <>
+                          <button
+                            className="btn btn-sm btn-success me-2"
+                            onClick={handleUpdate}
+                            disabled={loading} // Disable save during loading
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            onClick={cancelEdit}
+                            disabled={loading} // Disable cancel during loading
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="btn btn-sm btn-primary me-2"
+                            onClick={() => startEdit(p)}
+                            disabled={loading} // Disable edit during loading
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleDelete(p._id)}
+                            disabled={loading} // Disable delete during loading
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
-}
+};
 
 export default Payment;

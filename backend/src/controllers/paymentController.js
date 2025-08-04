@@ -1,217 +1,229 @@
+// Revised Payment Controller (Clean, Correct)
+
 import Payment from "../models/Payment.js";
 import Production from "../models/Production.js";
-import Cash from "../models/Cash.js";
+import Loan from "../models/Loan.js";
+import Fee from "../models/Fees.js";
+import CooperativeCash from "../models/Cash.js";
+import PurchaseInput from "../models/PurchaseInput.js";
 
-// Create payment
-export const createPayment = async (req, res) => {
+export const processMemberPayment = async (req, res) => {
+  const { productionId, amountPaid } = req.body;
+
   try {
-    const { productionId } = req.body;
-
-    if (!productionId) {
-      return res.status(400).json({ message: "productionId is required" });
-    }
-
-    const production = await Production.findById(productionId);
-    if (!production) {
+    const production = await Production.findById(productionId)
+      .populate("userId")
+      .populate("seasonId");
+    if (!production)
       return res.status(404).json({ message: "Production not found" });
+
+    const userId = production.userId._id;
+    const seasonId = production.seasonId._id;
+    const grossAmount = production.totalPrice;
+
+    const unpaidFees = await Fee.find({ userId, seasonId, status: "unpaid" });
+    const totalFees = unpaidFees.reduce(
+      (acc, fee) => acc + (fee.amountOwed - fee.amountPaid),
+      0
+    );
+
+    const purchaseInputs = await PurchaseInput.find({ userId, seasonId });
+    const purchaseInputIds = purchaseInputs.map((p) => p._id);
+
+    const unpaidLoansRaw = await Loan.find({
+      purchaseInputId: { $in: purchaseInputIds },
+      status: "unpaid",
+    });
+    const totalLoans = unpaidLoansRaw.reduce(
+      (acc, loan) => acc + loan.amountOwed,
+      0
+    );
+
+    const previousUnpaid = await Payment.find({
+      userId,
+      seasonId,
+      status: { $ne: "paid" },
+    });
+    const totalUnpaid = previousUnpaid.reduce(
+      (acc, pay) => acc + pay.amountRemainingToPay,
+      0
+    );
+
+    const totalDeductions = totalFees + totalLoans + totalUnpaid;
+    const amountDue = grossAmount - totalDeductions;
+
+    if (amountPaid > amountDue) {
+      return res
+        .status(400)
+        .json({ message: "Amount paid exceeds amount due" });
     }
 
-    const amount = production.totalPrice;
-
-    // Get the single cash row
-    const cash = await Cash.findOne();
-    if (!cash) {
-      return res.status(404).json({ message: "Cash record not found" });
+    const coopCash = await CooperativeCash.findOne();
+    if (!coopCash || coopCash.balance < amountPaid) {
+      return res
+        .status(400)
+        .json({ message: "Insufficient cooperative funds" });
     }
 
-    if (cash.amount < amount) {
-      return res.status(400).json({ message: "Insufficient cash available" });
+    coopCash.balance -= amountPaid;
+    await coopCash.save();
+
+    let remaining = amountPaid;
+
+    for (const fee of unpaidFees) {
+      const feeRemaining = fee.amountOwed - fee.amountPaid;
+      if (remaining >= feeRemaining) {
+        remaining -= feeRemaining;
+        fee.amountPaid = fee.amountOwed;
+        fee.status = "paid";
+        fee.paidAt = new Date();
+      } else if (remaining > 0) {
+        fee.amountPaid += remaining;
+        fee.status = "partial";
+        remaining = 0;
+      }
+      await fee.save();
     }
 
-    // Create the payment
-    const newPayment = new Payment({ productionId, amount });
+    for (const loan of unpaidLoansRaw) {
+      if (remaining >= loan.amountOwed) {
+        remaining -= loan.amountOwed;
+        loan.amountOwed = 0;
+        loan.status = "paid";
+      } else if (remaining > 0) {
+        loan.amountOwed -= remaining;
+        remaining = 0;
+      }
+      await loan.save();
+    }
+
+    const amountRemainingToPay = amountDue - amountPaid;
+
+    const newPayment = new Payment({
+      userId,
+      productionId,
+      seasonId,
+      grossAmount,
+      totalDeductions,
+      amountDue,
+      amountPaid,
+      amountRemainingToPay,
+      status: amountRemainingToPay > 0 ? "partial" : "paid",
+    });
+
     await newPayment.save();
 
-    // Update cash
-    cash.amount -= amount;
-    await cash.save();
-
-    res.status(201).json({
-      message: "Payment created and cash updated successfully",
-      data: newPayment,
-    });
+    res.status(201).json({ message: "Payment processed", payment: newPayment });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// get all payments
 export const getAllPayments = async (req, res) => {
   try {
-    const payments = await Payment.find().populate({
-      path: "productionId",
-      populate: [
-        { path: "seasonId", select: "name" },
-        { path: "productId", select: "productName" },
-        { path: "userId", select: "names phoneNumber" },
-      ],
-    });
-
-    res.status(200).json({ message: "Payments retrieved", data: payments });
+    const payments = await Payment.find()
+      .populate("userId", "names")
+      .populate("productionId", "totalPrice")
+      .populate("seasonId", "name year");
+    res.status(200).json(payments);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
-
-// get payment by id
 
 export const getPaymentById = async (req, res) => {
   try {
-    const payment = await Payment.findById(req.params.id).populate({
-      path: "productionId",
-      populate: [
-        { path: "seasonId", select: "seasonName" },
-        { path: "productId", select: "productName" },
-        { path: "userId", select: "names phoneNumber" },
-      ],
-    });
-
-    if (!payment) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
-
-    res.status(200).json({ message: "Payment found", data: payment });
+    const payment = await Payment.findById(req.params.id)
+      .populate("userId", "names")
+      .populate("productionId", "totalPrice")
+      .populate("seasonId", "name year");
+    if (!payment) return res.status(404).json({ message: "Payment not found" });
+    res.status(200).json(payment);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
-
-// get payments by phone number
-
-export const getPaymentsByPhoneNumber = async (req, res) => {
-  try {
-    const { phoneNumber } = req.params;
-
-    // Step 1: Find user by phone number
-    const user = await User.findOne({ phoneNumber });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Step 2: Find productions for this user
-    const productions = await Production.find({ userId: user._id }).select(
-      "_id"
-    );
-    if (!productions.length) {
-      return res
-        .status(404)
-        .json({ message: "No productions found for this user" });
-    }
-
-    const productionIds = productions.map((prod) => prod._id);
-
-    // Step 3: Find payments linked to those productions
-    const payments = await Payment.find({
-      productionId: { $in: productionIds },
-    }).populate({
-      path: "productionId",
-      populate: [
-        { path: "userId", select: "name phoneNumber" },
-        { path: "productId", select: "productName" },
-        { path: "seasonId", select: "name" },
-      ],
-    });
-
-    res
-      .status(200)
-      .json({ message: "Payments fetched successfully", data: payments });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-//update by id
 
 export const updatePayment = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { amount } = req.body;
-
-    const payment = await Payment.findById(id);
-    if (!payment) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
-
-    const production = await Production.findById(payment.productionId);
-    if (!production) {
-      return res.status(404).json({ message: "Production not found" });
-    }
-
-    const stock = await Stock.findOne({
-      seasonId: production.seasonId,
-      productId: production.productId,
+    const updated = await Payment.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
     });
-
-    if (!stock) {
-      return res.status(404).json({ message: "Stock not found" });
-    }
-
-    const oldAmount = payment.amount;
-    const diff = amount - oldAmount;
-
-    // If difference is positive, we're increasing payment — reduce stock
-    // If negative, we're decreasing payment — increase stock
-    if (stock.cash < diff) {
-      return res
-        .status(400)
-        .json({ message: "Insufficient cash in stock for this update" });
-    }
-
-    stock.cash -= diff;
-    await stock.save();
-
-    payment.amount = amount;
-    await payment.save();
-
-    res
-      .status(200)
-      .json({ message: "Payment updated successfully", data: payment });
+    res.status(200).json(updated);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
 export const deletePayment = async (req, res) => {
   try {
-    const { id } = req.params;
+    await Payment.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Payment deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-    const payment = await Payment.findById(id);
-    if (!payment) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
+export const getPaymentSummary = async (req, res) => {
+  const { userId, seasonId } = req.query;
 
-    const production = await Production.findById(payment.productionId);
-    if (!production) {
-      return res.status(404).json({ message: "Production not found" });
-    }
+  if (!userId || !seasonId) {
+    return res
+      .status(400)
+      .json({ message: "userId and seasonId are required" });
+  }
 
-    // Get the single cash record
-    const cash = await Cash.findOne();
-    if (!cash) {
-      return res.status(404).json({ message: "Cash record not found" });
-    }
+  try {
+    const productions = await Production.find({ userId, seasonId });
+    const totalProduction = productions.reduce(
+      (sum, prod) => sum + (prod.totalPrice || 0),
+      0
+    );
 
-    // Refund the payment amount
-    cash.amount += payment.amount;
-    await cash.save();
+    const purchaseInputs = await PurchaseInput.find({ userId, seasonId });
+    const purchaseInputIds = purchaseInputs.map((p) => p._id);
 
-    // Delete the payment
-    await Payment.findByIdAndDelete(id);
+    const loans = await Loan.find({
+      purchaseInputId: { $in: purchaseInputIds },
+      status: "pending",
+    });
+    const totalLoans = loans.reduce((sum, loan) => sum + loan.amountOwed, 0);
+
+    const fees = await Fee.find({ userId, seasonId, status: { $ne: "paid" } });
+    const totalUnpaidFees = fees.reduce(
+      (sum, fee) => sum + (fee.amountOwed - fee.amountPaid),
+      0
+    );
+
+    const payments = await Payment.find({ userId, seasonId });
+    const previousRemaining = payments.reduce(
+      (sum, p) => sum + (p.amountRemainingToPay || 0),
+      0
+    );
+
+    // ADD THIS CONSOLE.LOG
+    console.log({
+      totalProduction,
+      totalLoans,
+      totalUnpaidFees,
+      previousRemaining,
+    });
+
+    const netPayable =
+      totalProduction - totalLoans - totalUnpaidFees - previousRemaining;
 
     res.status(200).json({
-      message: "Payment deleted and cash refunded successfully",
+      totalProduction,
+      totalLoans,
+      totalUnpaidFees,
+      previousRemaining,
+      netPayable: netPayable > 0 ? netPayable : 0,
+      loans,
+      fees,
+      payments,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error fetching payment summary:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };

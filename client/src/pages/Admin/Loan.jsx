@@ -4,57 +4,56 @@ import "react-toastify/dist/ReactToastify.css";
 
 import {
   fetchLoans,
-  // createLoans, // Removed
   updateLoans,
   deleteLoans,
-  payLoans, // Function to mark loan as repaid
 } from "../../services/loanService";
 
-import DeleteButton from "../../components/buttons/DeleteButton";
+import PayLoanModal from "../../features/modals/PayLoanModal";
 import UpdateButton from "../../components/buttons/UpdateButton";
-// import AddButton from "../../components/buttons/AddButton"; // Removed
-// import AddLoanModal from "../../features/modals/AddLoanModal"; // Removed
-import UpdateLoanModal from "../../features/modals/UpdateLoanModal"; // Import the UpdateLoanModal
+import DeleteButton from "../../components/buttons/DeleteButton";
+import UpdateLoanModal from "../../features/modals/UpdateLoanModal";
 
 function Loan() {
   const [loans, setLoans] = useState([]);
-  // const [showAddModal, setShowAddModal] = useState(false); // Removed
+  const [showPayModal, setShowPayModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedLoan, setSelectedLoan] = useState(null); // To store the loan being updated
+  const [selectedLoan, setSelectedLoan] = useState(null);
 
-  // Function to load loans data from the backend
   const loadLoans = async () => {
     try {
       const loansData = await fetchLoans();
-      setLoans(loansData.loans);
+      // The backend returns an array directly, so we use loansData directly.
+      setLoans(loansData || []);
     } catch (error) {
       console.error("Failed to fetch loans:", error);
-      toast.error("Failed to load loans."); // User-friendly error notification
-      setLoans([]); // Ensure loans state is an empty array on error
+      toast.error("Failed to load loans.");
+      setLoans([]);
     }
   };
 
-  // Effect hook to load loans when the component mounts
   useEffect(() => {
     loadLoans();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
+
+  const handleOpenPayModal = (loan) => {
+    setSelectedLoan(loan);
+    setShowPayModal(true);
+  };
 
   const handleOpenUpdateModal = (loan) => {
     setSelectedLoan(loan);
     setShowUpdateModal(true);
   };
 
-  // Handler for saving changes from the Update Loan modal
   const handleUpdateLoan = async (loanId, updatedLoanData) => {
     try {
-      await updateLoans(loanId, updatedLoanData); // API call to update the loan
-      toast.success("Loan updated successfully!"); // Success notification
-      await loadLoans(); // Re-fetch all loans to update the table with changes
-      setShowUpdateModal(false); // Close the Update Loan modal
-      setSelectedLoan(null); // Clear the selected loan state
+      await updateLoans(loanId, updatedLoanData);
+      toast.success("Loan updated successfully!");
+      await loadLoans();
+      setShowUpdateModal(false);
+      setSelectedLoan(null);
     } catch (error) {
       console.error("Failed to update loan:", error);
-      // Display a more specific error message from the backend if available
       toast.error(
         `Failed to update loan: ${
           error.response?.data?.message || error.message
@@ -63,34 +62,32 @@ function Loan() {
     }
   };
 
-  // Handler for deleting a loan
-  const handleDeleteLoan = async (id) => {
+  const handlePayLoan = async (loanId, amountPaid) => {
     try {
-      await deleteLoans(id); // API call to delete the loan
-      toast.success("Loan deleted successfully!"); // Success notification
-      await loadLoans(); // Re-fetch all loans to update the table (removed item)
+      await updateLoans(loanId, { amountPaid });
+      toast.success("Loan payment processed successfully!");
+      await loadLoans();
+      setShowPayModal(false);
+      setSelectedLoan(null);
     } catch (error) {
-      console.error("Failed to delete loan:", error);
-      // Display a more specific error message from the backend if available
+      console.error("Failed to process payment:", error);
       toast.error(
-        `Failed to delete loan: ${
+        `Failed to process payment: ${
           error.response?.data?.message || error.message
         }`
       );
     }
   };
 
-  // Handler for marking a loan as repaid
-  const handlePayLoan = async (id) => {
+  const handleDeleteLoan = async (id) => {
     try {
-      await payLoans(id); // API call to mark loan as repaid
-      toast.success("Loan marked as repaid successfully!"); // Success notification
-      await loadLoans(); // Re-fetch all loans to update the table (status change)
+      await deleteLoans(id);
+      toast.success("Loan deleted successfully!");
+      await loadLoans();
     } catch (error) {
-      console.error("Failed to pay loan:", error);
-      // Display a more specific error message from the backend if available
+      console.error("Failed to delete loan:", error);
       toast.error(
-        `Failed to mark loan as repaid: ${
+        `Failed to delete loan: ${
           error.response?.data?.message || error.message
         }`
       );
@@ -104,7 +101,6 @@ function Loan() {
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
             Loan Dashboard
           </h4>
-          {/* Removed Add Loan Button */}
         </div>
       </div>
 
@@ -115,36 +111,35 @@ function Loan() {
               <tr>
                 <th>ID</th>
                 <th>Member</th>
-                <th>Product Name</th>
+                <th>Product</th>
                 <th>Season</th>
                 <th>Quantity</th>
-                <th>Amount</th>
+                <th>Amount Owed</th>
                 <th>Status</th>
-                <th colSpan={2}>Action</th>{" "}
-                {/* Colspan for Update, Delete, Pay buttons */}
+                <th colSpan={3}>Action</th>
               </tr>
             </thead>
             <tbody>
               {loans.length > 0 ? (
                 loans.map((loan, index) => (
                   <tr key={loan._id}>
-                    {" "}
-                    {/* Use loan._id as the unique key for each row */}
                     <td>{index + 1}</td>
-                    {/* Use optional chaining (?.) for nested properties */}
                     <td>{loan.purchaseInputId?.userId?.names || "N/A"}</td>
                     <td>
                       {loan.purchaseInputId?.productId?.productName || "N/A"}
                     </td>
-                    <td>{loan.purchaseInputId?.seasonId?.name || "N/A"}</td>
-                    <td>{loan.quantity}</td>
-                    <td>{loan.totalPrice}</td>
+                    <td>
+                      {loan.purchaseInputId?.seasonId?.name || "N/A"} (
+                      {loan.purchaseInputId?.seasonId?.year})
+                    </td>
+                    <td>{loan.purchaseInputId?.quantity}</td>
+                    <td>{loan.amountOwed.toFixed(2)}</td>
                     <td>
                       <span
                         className={`badge ${
                           loan.status === "repaid"
                             ? "bg-success"
-                            : "bg-warning text-dark" // Added text-dark for better contrast on warning badge
+                            : "bg-warning text-dark"
                         }`}
                       >
                         {loan.status}
@@ -152,45 +147,39 @@ function Loan() {
                     </td>
                     <td>
                       <div className="d-flex gap-2">
-                        {/* Update Button */}
+                        {loan.status === "pending" && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleOpenPayModal(loan)}
+                          >
+                            Pay
+                          </button>
+                        )}
                         <UpdateButton
-                          onConfirm={() => handleOpenUpdateModal(loan)} // Pass the entire loan object for editing
+                          onConfirm={() => handleOpenUpdateModal(loan)}
                           confirmMessage={`Are you sure you want to update loan for "${
-                            loan.purchaseInputId?.productId?.productName ||
-                            "N/A"
+                            loan.purchaseInputId?.productId?.name || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Update
                         </UpdateButton>
-                        {/* Delete Button */}
                         <DeleteButton
-                          onConfirm={() => handleDeleteLoan(loan._id)} // Pass the loan's _id for deletion
+                          onConfirm={() => handleDeleteLoan(loan._id)}
                           confirmMessage={`Are you sure you want to delete loan for "${
-                            loan.purchaseInputId?.productId?.productName ||
-                            "N/A"
+                            loan.purchaseInputId?.productId?.name || "N/A"
                           }"?`}
                           className="btn-sm"
                         >
                           Delete
                         </DeleteButton>
-                        {/* Pay Button (conditionally rendered if status is pending) */}
-                        {loan.status === "pending" && (
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => handlePayLoan(loan._id)} // Pass the loan's _id to mark as repaid
-                          >
-                            Pay
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  {/* Message when no loans are found, colSpan matches total columns */}
-                  <td colSpan="9" className="text-center py-4">
+                  <td colSpan="8" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
                       No loans found.
                     </div>
@@ -202,17 +191,20 @@ function Loan() {
         </div>
       </div>
 
-      {/* Removed Add Loan Modal Component */}
-
-      {/* Update Loan Modal Component */}
-      <UpdateLoanModal
-        show={showUpdateModal}
-        loan={selectedLoan} // Prop name 'loan' passed to the modal
-        onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdateLoan} // Handler for saving updates from the modal
+      <PayLoanModal
+        show={showPayModal}
+        loan={selectedLoan}
+        onClose={() => setShowPayModal(false)}
+        onSubmit={handlePayLoan}
       />
 
-      {/* ToastContainer for displaying success/error notifications */}
+      <UpdateLoanModal
+        show={showUpdateModal}
+        loan={selectedLoan}
+        onClose={() => setShowUpdateModal(false)}
+        onSubmit={handleUpdateLoan}
+      />
+
       <ToastContainer
         position="bottom-right"
         autoClose={3000}

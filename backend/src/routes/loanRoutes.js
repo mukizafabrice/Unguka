@@ -1,18 +1,17 @@
 import express from "express";
 import {
   getAllLoans,
+  getLoanById,
   updateLoan,
   deleteLoan,
-  getLoansByPhoneNumber,
-  markLoanAsRepaid,
 } from "../controllers/loanController.js";
 
 const router = express.Router();
 
+// Define routes for the loan API
 router.get("/", getAllLoans);
-router.put("/:id", markLoanAsRepaid);
-router.get("/by-phone/:phoneNumber", getLoansByPhoneNumber);
-router.put("/:id/repay", updateLoan);
+router.get("/:id", getLoanById);
+router.put("/:id", updateLoan);
 router.delete("/:id", deleteLoan);
 
 export default router;

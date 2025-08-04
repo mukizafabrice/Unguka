@@ -1,9 +1,9 @@
+import mongoose from "mongoose";
 import PurchaseInput from "../models/PurchaseInput.js";
 import Product from "../models/Product.js";
 import Stock from "../models/Stock.js";
 import Cash from "../models/Cash.js";
 import Loan from "../models/Loan.js";
-import mongoose from "mongoose";
 
 export const createPurchaseInput = async (req, res) => {
   try {
@@ -19,6 +19,12 @@ export const createPurchaseInput = async (req, res) => {
         .status(400)
         .json({ message: "Invalid userId, productId, or seasonId" });
     }
+    if (quantity <= 0 || unitPrice <= 0 || amountPaid < 0) {
+      return res.status(400).json({
+        message:
+          "Quantity and Unit Price must be positive, and amount paid cannot be negative.",
+      });
+    }
 
     const productExists = await Product.findById(productId);
     if (!productExists) {
@@ -26,10 +32,6 @@ export const createPurchaseInput = async (req, res) => {
     }
 
     const totalPrice = unitPrice * quantity;
-
-    if (amountPaid === undefined || amountPaid < 0) {
-      return res.status(400).json({ message: "Invalid amountPaid" });
-    }
     if (amountPaid > totalPrice) {
       return res
         .status(400)
@@ -58,6 +60,14 @@ export const createPurchaseInput = async (req, res) => {
     }
 
     const status = amountRemaining > 0 ? "loan" : "paid";
+    let finalAmountRemaining = amountRemaining;
+    let loanRevenue = 0;
+
+    if (amountRemaining > 0) {
+      const loanInterestRate = 0.05;
+      loanRevenue = amountRemaining * loanInterestRate;
+      finalAmountRemaining = amountRemaining + loanRevenue;
+    }
 
     const newPurchase = await PurchaseInput.create({
       userId,
@@ -68,13 +78,16 @@ export const createPurchaseInput = async (req, res) => {
       totalPrice,
       status,
       amountPaid,
-      amountRemaining,
+      amountRemaining: finalAmountRemaining,
     });
 
-    if (amountRemaining > 0) {
+    if (finalAmountRemaining > 0) {
       await Loan.create({
         purchaseInputId: newPurchase._id,
-        amountOwed: amountRemaining,
+        userId,
+        quantity,
+        amountOwed: finalAmountRemaining,
+        loanRevenue: loanRevenue,
         status: "pending",
       });
     }
@@ -93,7 +106,7 @@ export const getAllPurchaseInputs = async (req, res) => {
   try {
     const purchases = await PurchaseInput.find()
       .populate("userId", "names phoneNumber")
-      .populate("productId", "productName")
+      .populate("productId", "name")
       .populate("seasonId", "name year");
 
     res.status(200).json(purchases);
@@ -105,8 +118,8 @@ export const getAllPurchaseInputs = async (req, res) => {
 export const getPurchaseInputById = async (req, res) => {
   try {
     const purchase = await PurchaseInput.findById(req.params.id)
-      .populate("userId", "name phoneNumber")
-      .populate("productId", "productName")
+      .populate("userId", "names phoneNumber")
+      .populate("productId", "name")
       .populate("seasonId", "name year");
 
     if (!purchase) {
@@ -130,7 +143,6 @@ export const updatePurchaseInput = async (req, res) => {
       return res.status(404).json({ message: "Purchase input not found" });
     }
 
-    // Use values from req.body or fallback to oldPurchase data
     const newQuantity =
       quantity !== undefined ? quantity : oldPurchase.quantity;
     const newUnitPrice =
@@ -147,31 +159,64 @@ export const updatePurchaseInput = async (req, res) => {
         .json({ message: "Amount paid cannot exceed new total price" });
     }
 
-    // --- Stock Update Logic ---
+    let cashChange = 0;
+    let stockChange = 0;
+
     const quantityDifference = newQuantity - oldPurchase.quantity;
     if (quantityDifference !== 0) {
-      const stock = await Stock.findOne({ productId: oldPurchase.productId });
-      if (stock) {
-        stock.quantity -= quantityDifference;
-        await stock.save();
-      } else {
-        console.error(`Stock for product ${oldPurchase.productId} not found.`);
-      }
+      stockChange = quantityDifference;
     }
 
-    // --- Cash Update Logic ---
     const amountPaidDifference = newAmountPaid - oldPurchase.amountPaid;
     if (amountPaidDifference !== 0) {
-      let cash = await Cash.findOne();
-      if (cash) {
-        cash.amount += amountPaidDifference;
-        await cash.save();
-      } else {
-        console.error("Cash document not found.");
-      }
+      cashChange += amountPaidDifference;
     }
 
-    const newStatus = newAmountRemaining > 0 ? "loan" : "paid";
+    let finalAmountRemaining = newAmountRemaining;
+    let loanRevenue = 0;
+
+    if (newAmountRemaining > 0) {
+      const loanInterestRate = 0.05;
+      loanRevenue = newAmountRemaining * loanInterestRate;
+      finalAmountRemaining = newAmountRemaining + loanRevenue;
+
+      let loan = await Loan.findOne({ purchaseInputId: oldPurchase._id });
+
+      if (loan) {
+        loan.amountOwed = finalAmountRemaining;
+        loan.loanRevenue = loanRevenue;
+        await loan.save();
+      } else {
+        await Loan.create({
+          purchaseInputId: oldPurchase._id,
+          userId: oldPurchase.userId,
+          quantity: newQuantity,
+          amountOwed: finalAmountRemaining,
+          loanRevenue: loanRevenue,
+          status: "pending",
+        });
+      }
+    } else {
+      await Loan.findOneAndDelete({ purchaseInputId: oldPurchase._id });
+    }
+
+    const stock = await Stock.findOne({ productId: oldPurchase.productId });
+    if (stock) {
+      stock.quantity -= stockChange;
+      await stock.save();
+    } else {
+      console.error(`Stock for product ${oldPurchase.productId} not found.`);
+    }
+
+    const cash = await Cash.findOne();
+    if (cash) {
+      cash.amount += cashChange;
+      await cash.save();
+    } else {
+      console.error("Cash document not found.");
+    }
+
+    const newStatus = finalAmountRemaining > 0 ? "loan" : "paid";
 
     const updatedPurchase = await PurchaseInput.findByIdAndUpdate(
       id,
@@ -183,7 +228,7 @@ export const updatePurchaseInput = async (req, res) => {
         unitPrice: newUnitPrice,
         totalPrice: newTotalPrice,
         amountPaid: newAmountPaid,
-        amountRemaining: newAmountRemaining,
+        amountRemaining: finalAmountRemaining,
         status: newStatus,
       },
       { new: true }
@@ -191,28 +236,6 @@ export const updatePurchaseInput = async (req, res) => {
       .populate("userId", "names phoneNumber")
       .populate("productId", "name")
       .populate("seasonId", "year name");
-
-    // --- Loan Update Logic ---
-    let loan = await Loan.findOne({ purchaseInputId: oldPurchase._id });
-
-    if (newAmountRemaining > 0) {
-      if (loan) {
-        // Fix: Use 'amountOwed' instead of 'totalPrice' to match the Loan model
-        loan.amountOwed = newAmountRemaining;
-        await loan.save();
-      } else {
-        // Fix: Use 'amountOwed' instead of 'totalPrice' to match the Loan model
-        await Loan.create({
-          purchaseInputId: updatedPurchase._id,
-          userId: updatedPurchase.userId,
-          quantity: newQuantity,
-          amountOwed: newAmountRemaining,
-          status: "pending",
-        });
-      }
-    } else if (loan) {
-      await Loan.findByIdAndDelete(loan._id);
-    }
 
     res
       .status(200)
@@ -222,6 +245,7 @@ export const updatePurchaseInput = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 export const deletePurchaseInput = async (req, res) => {
   try {
     const purchase = await PurchaseInput.findById(req.params.id);
