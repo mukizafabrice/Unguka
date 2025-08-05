@@ -1,46 +1,56 @@
 import React, { useState } from "react";
-import { Key } from "lucide-react"; // Icon for visual clarity
+import { Key } from "lucide-react";
+import { toast } from "react-toastify";
+import { changePassword } from "../../services/userService";
 
-// Password Change Modal Component
 const PasswordModal = ({ onClose }) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState(""); // 'success' or 'error'
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(""); // Clear previous messages
-    setMessageType("");
 
     if (newPassword !== confirmPassword) {
-      setMessage("New password and confirm password do not match.");
-      setMessageType("danger"); // Bootstrap's text-danger
+      toast.error("New password and confirm password do not match.");
       return;
     }
     if (newPassword.length < 6) {
-      // Example validation
-      setMessage("New password must be at least 6 characters long.");
-      setMessageType("danger"); // Bootstrap's text-danger
+      toast.error("New password must be at least 6 characters long.");
       return;
     }
 
-    // --- API Call Placeholder ---
-    // In a real application, you would make an API call here to update the password.
-    // Example: authService.changePassword(currentPassword, newPassword)
-    console.log("Attempting to change password:", {
-      currentPassword,
-      newPassword,
-    });
-    setMessage("Password changed successfully!");
-    setMessageType("success"); // Bootstrap's text-success
-    // Optionally close modal after success, e.g., setTimeout(onClose, 1500);
-    // --- End API Call Placeholder ---
+    const user = JSON.parse(localStorage.getItem("user"));
+    const userId = user?.id; // <-- The fix is right here!
+
+    if (!userId) {
+      toast.error("User not found in local storage.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await changePassword(
+        userId,
+        currentPassword,
+        newPassword
+      );
+
+      toast.success(response.message);
+
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Password change failed:", error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    // Bootstrap Modal Structure
     <div
       className="modal fade show d-block"
       tabIndex="-1"
@@ -60,9 +70,7 @@ const PasswordModal = ({ onClose }) => {
               onClick={onClose}
             ></button>
           </div>
-
           <div className="modal-body pt-0">
-            {/* Password Change Form */}
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <label
@@ -78,6 +86,7 @@ const PasswordModal = ({ onClose }) => {
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
               <div className="mb-3">
@@ -94,6 +103,7 @@ const PasswordModal = ({ onClose }) => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
               <div className="mb-3">
@@ -110,30 +120,24 @@ const PasswordModal = ({ onClose }) => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
-
-              {message && (
-                <div
-                  className={`alert alert-${
-                    messageType === "error" ? "danger" : "success"
-                  } py-2`}
-                  role="alert"
-                >
-                  {message}
-                </div>
-              )}
-
               <div className="d-flex justify-content-end pt-3">
                 <button
                   type="button"
                   onClick={onClose}
                   className="btn btn-secondary me-2"
+                  disabled={loading}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Changes
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

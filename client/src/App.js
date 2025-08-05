@@ -44,9 +44,8 @@ function App() {
               <ProtectedRoute
                 allowedRoles={["manager", "accountant", "member"]}
               >
-                {/* <DashboardLayout> <-- COMMENT THIS OUT */}
                 <Profile />
-                {/* </DashboardLayout> <-- COMMENT THIS OUT */}
+              
               </ProtectedRoute>
             }
           />

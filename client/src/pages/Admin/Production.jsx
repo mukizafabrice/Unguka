@@ -139,7 +139,10 @@ function Production() {
                     <td>{index + 1}</td>
                     <td>{production.userId?.names || "N/A"}</td>
                     <td>{production.productId?.productName || "N/A"}</td>
-                    <td>{production.seasonId?.name || "N/A"}</td>
+                    <td>
+                      {production.seasonId?.name || "N/A"}(
+                      {production.seasonId?.year || "N/A"})
+                    </td>
                     <td>{production.quantity}</td>
                     <td>{production.unitPrice}</td>
                     <td>{production.totalPrice}</td>

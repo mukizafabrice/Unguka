@@ -2,31 +2,27 @@ import React, { useState, useEffect } from "react";
 import SideNav from "../components/SideNav";
 import TopNav from "../components/TopNav";
 import { Outlet } from "react-router-dom";
-import "../assets/styles/dashboard.css";
+import "../assets/styles/dashboard.css"; // optional custom styles
 
 function DashboardLayout() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // start open by default on large
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Detect screen size on mount and on resize
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 992) {
-        // Large devices: always open
         setIsSidebarOpen(true);
       } else {
-        // Small/medium devices: always closed initially
         setIsSidebarOpen(false);
       }
     };
 
-    handleResize(); // Set initial state
+    handleResize(); // initial check
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const toggleSidebar = () => {
-    // Only toggle on small/medium screens
     if (window.innerWidth < 992) {
       setIsSidebarOpen((prev) => !prev);
     }
@@ -36,18 +32,24 @@ function DashboardLayout() {
     <div className="app-layout">
       <TopNav onMenuClick={toggleSidebar} />
 
-      <div className="dashboard-body-wrapper d-flex w-100">
-        {/* Pass isHide based on sidebar state */}
-        <SideNav isHide={!isSidebarOpen} />
+      <div className="container-fluid">
+        <div className="row flex-nowrap">
+          {/* Sidebar */}
+          <div
+            className={`col-auto p-0 bg-light sidebar transition ${
+              isSidebarOpen ? "d-block" : "d-none d-lg-block"
+            }`}
+            style={{ minHeight: "100vh", width: "250px" }}
+          >
+            <SideNav />
+          </div>
 
-        <div
-          className={`main-content-wrapper flex-grow-1 ${
-            !isSidebarOpen ? "full-width" : ""
-          }`}
-        >
-          <main className="main-content-area-dashboard overfollow-">
-            <Outlet />
-          </main>
+          {/* Main content */}
+          <div className={`col p-3 main-content transition`}>
+            <main className="main-content-area-dashboard overflow-auto">
+              <Outlet />
+            </main>
+          </div>
         </div>
       </div>
     </div>

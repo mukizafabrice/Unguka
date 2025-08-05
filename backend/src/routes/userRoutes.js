@@ -8,6 +8,7 @@ import {
   getAllUsers,
   getUserById,
   updateUser,
+  changePassword,
   deleteUser,
   changeProfileImage,
 } from "../controllers/userController.js";
@@ -23,6 +24,8 @@ router.get("/", getAllUsers);
 router.get("/user/:id", getUserById);
 
 router.put("/:id", updateUser);
+router.put("/:id/change-password", changePassword);
+
 router.delete("/:id", deleteUser);
 
 // Profile picture update

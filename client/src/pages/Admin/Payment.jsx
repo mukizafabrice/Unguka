@@ -110,15 +110,14 @@ const Payment = () => {
 
       const updatedPayment = {
         amountPaid: parsedAmountPaid,
-        // Include other fields if they can also be updated (e.g., amountDue if it's dynamic)
       };
 
       console.log("Updating payment:", editPaymentId, updatedPayment);
       await updatePayment(editPaymentId, updatedPayment);
       toast.success("Payment updated successfully!");
-      setEditPaymentId(null); // Exit edit mode
+      setEditPaymentId(null);
       setEditAmountPaid("");
-      await loadData(); // Reload data to reflect changes
+      await loadData();
     } catch (error) {
       console.error("Payment update failed:", error);
       toast.error(
