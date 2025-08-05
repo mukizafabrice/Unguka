@@ -82,10 +82,10 @@ function AddFeeModal({ show, onClose, onSubmit, users, seasons, feeTypes }) {
       toast.error("Please fill in all required fields.");
       return;
     }
-    if (Number(formData.paymentAmount) <= 0) {
-      toast.error("Payment amount must be greater than zero.");
-      return;
-    }
+    // if (Number(formData.paymentAmount) < 0) {
+    //   toast.error("Payment amount must be greater than zero.");
+    //   return;
+    // }
 
     // Call the onSubmit function from the parent component
     onSubmit({
@@ -200,8 +200,8 @@ function AddFeeModal({ show, onClose, onSubmit, users, seasons, feeTypes }) {
                     name="paymentAmount"
                     value={formData.paymentAmount}
                     onChange={handleChange}
-                    min="0.01"
-                    step="0.01"
+                    min="0.0"
+                    step="0.0"
                     required
                   />
                 </div>

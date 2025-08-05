@@ -1,75 +1,77 @@
+// src/pages/User.jsx
+
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { fetchUsers } from "../../services/userService";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { fetchUsers, createUser, deleteUser } from "../../services/userService";
 import DeleteButton from "../../components/buttons/DeleteButton";
 import UpdateButton from "../../components/buttons/UpdateButton";
 import AddButton from "../../components/buttons/AddButton";
-import { createUser, deleteUser } from "../../services/userService";
 import AddUserModal from "../../features/modals/AddUserModal";
 import UpdateUserModal from "../../features/modals/UpdateUserModal";
 
 function User() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
-
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
-  const openUpdateModal = (user) => {
-    setUserToEdit(user);
-    setShowUpdateModal(true);
-  };
-  const handleUserUpdated = (updatedUser) => {
-    setUsers((prevUsers) =>
-      prevUsers.map((u) => (u._id === updatedUser._id ? updatedUser : u))
-    );
-    setShowUpdateModal(false);
-  };
 
-  const handleAddUser = async (newUserData) => {
+  // Function to load all users from the API
+  const loadUsers = async () => {
+    setLoading(true);
     try {
-      const response = await createUser(newUserData);
-      setMessage({ type: "success", text: "User added successfully!" });
-      setUsers((prev) => [...prev, response]);
-      setShowAddModal(false);
+      const usersData = await fetchUsers();
+      setUsers(usersData);
     } catch (error) {
-      setMessage({
-        type: "error",
-        text:
-          error.response?.data?.message ||
-          "Failed to add user. Please try again.",
-      });
+      console.error("Failed to fetch users:", error);
+      toast.error("Failed to load users. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Fetch season
-  const [users, setUsers] = useState([]);
+  // Fetch users on component mount
   useEffect(() => {
-    const loadStock = async () => {
-      try {
-        const usersData = await fetchUsers();
-        setUsers(usersData);
-      } catch (error) {
-        console.error("Failed to fetch sales:", error);
-      }
-    };
-
-    loadStock();
+    loadUsers();
   }, []);
 
-  const handleUpdateReason = () => {
-    alert("click to update");
+  const handleAddUser = async (newUserData) => {
+    try {
+      await createUser(newUserData);
+      toast.success("User added successfully!");
+      setShowAddModal(false);
+      loadUsers(); // Reload users to show the new user
+    } catch (error) {
+      console.error("Failed to add user:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to add user. Please try again.";
+      toast.error(errorMessage);
+    }
   };
 
-  //delete user
+  const handleUserUpdated = () => {
+    toast.success("User updated successfully!");
+    setShowUpdateModal(false);
+    loadUsers(); // Reload users to show the updated data
+  };
+
   const handleDeleteUser = async (id) => {
     try {
       await deleteUser(id);
-      setUsers((prevUsers) => prevUsers.filter((user) => user._id !== id));
       toast.success("User deleted successfully!");
+      loadUsers(); // Reload users to remove the deleted user from the list
     } catch (error) {
       console.error("Failed to delete user:", error);
       toast.error("Failed to delete user. Please try again.");
     }
+  };
+
+  const openUpdateModal = (user) => {
+    setUserToEdit(user);
+    setShowUpdateModal(true);
   };
 
   return (
@@ -85,8 +87,6 @@ function User() {
               their key details and membership status.
             </p>
           </div>
-
-         
           <AddButton label="Add User" onClick={() => setShowAddModal(true)} />
         </div>
       </div>
@@ -105,7 +105,15 @@ function User() {
               </tr>
             </thead>
             <tbody>
-              {users.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="9" className="text-center py-4">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : users.length > 0 ? (
                 users.map((user, index) => (
                   <tr key={user._id}>
                     <td>{index + 1}</td>
@@ -113,7 +121,6 @@ function User() {
                     <td>{user.phoneNumber}</td>
                     <td>{user.nationalId}</td>
                     <td>{user.role}</td>
-
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton
@@ -125,7 +132,6 @@ function User() {
                         >
                           Update
                         </UpdateButton>
-
                         <DeleteButton
                           onConfirm={() => handleDeleteUser(user._id)}
                           confirmMessage={`Are you sure you want to delete member "${
@@ -143,7 +149,7 @@ function User() {
                 <tr>
                   <td colSpan="9" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No stock found.
+                      No users found.
                     </div>
                   </td>
                 </tr>
@@ -152,18 +158,29 @@ function User() {
           </table>
         </div>
       </div>
-      {/* Add User Modal */}
+
       <AddUserModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddUser}
       />
-      {/* Update User Modal */}
+
       <UpdateUserModal
         show={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onSubmit={handleUserUpdated}
         userData={userToEdit}
+      />
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
       />
     </div>
   );

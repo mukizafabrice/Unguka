@@ -14,10 +14,7 @@ import {
 
 const router = express.Router();
 
-// Multer setup for profile image upload
 const upload = multer({ dest: "uploads/" });
-
-// Authentication routes
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 
@@ -25,8 +22,7 @@ router.post("/login", loginUser);
 router.get("/", getAllUsers);
 router.get("/user/:id", getUserById);
 
-// User modification
-router.put("/update/:id", updateUser);
+router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
 
 // Profile picture update

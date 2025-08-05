@@ -11,7 +11,7 @@ export const fetchPaymentById = async (id) => {
 };
 
 export const createPayment = async (paymentData) => {
-  const response = await axiosInstance.post("/payments", paymentData);
+  const response = await axiosInstance.post("/payments/process", paymentData);
   return response.data;
 };
 
@@ -25,9 +25,9 @@ export const deletePayment = async (id) => {
   return response.data;
 };
 
-export const fetchPaymentSummary = async (userId, seasonId) => {
+export const fetchPaymentSummary = async (userId, seasonId, productionId) => {
   const response = await axiosInstance.get(
-    `/payments/summary?userId=${userId}&seasonId=${seasonId}`
+    `/payments/summary?userId=${userId}&seasonId=${seasonId}&productionId=${productionId}`
   );
   return response.data;
 };

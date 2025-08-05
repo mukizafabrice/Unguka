@@ -10,10 +10,10 @@ export const recordPayment = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    if (paymentAmount <= 0) {
+    if (paymentAmount < 0) {
       return res
         .status(400)
-        .json({ message: "Payment amount must be greater than zero." });
+        .json({ message: "Payment amount must not be negative " });
     }
 
     const feeType = await FeeType.findById(feeTypeId);
@@ -77,11 +77,9 @@ export const getFeesByUserAndSeason = async (req, res) => {
     );
 
     if (!fees || fees.length === 0) {
-      return res
-        .status(404)
-        .json({
-          message: "No fees found for this user in the specified season.",
-        });
+      return res.status(404).json({
+        message: "No fees found for this user in the specified season.",
+      });
     }
 
     res.status(200).json(fees);

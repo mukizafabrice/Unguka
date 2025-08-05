@@ -57,9 +57,6 @@ export const createProduction = async (req, res) => {
   try {
     const { userId, productId, seasonId, quantity, unitPrice } = req.body;
 
-    // 2. Get unitPrice from Product model
-    const product = await Product.findById(productId);
-
     const totalPrice = quantity * unitPrice;
 
     // 3. Save new production
@@ -111,6 +108,29 @@ export const getAllProductions = async (req, res) => {
     res.status(200).json(productions);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const getProductions = async (req, res) => {
+  try {
+    const { userId, seasonId } = req.query;
+
+    if (!userId || !seasonId) {
+      return res
+        .status(400)
+        .json({ message: "userId and seasonId are required" });
+    }
+
+    // This query finds productions that match BOTH the user and the season
+    const productions = await Production.find({ userId, seasonId })
+      .populate("userId", "names") // <-- ADD THIS LINE
+      .populate("productId", "productName")
+      .sort({ createdAt: 1 });
+
+    res.status(200).json(productions);
+  } catch (error) {
+    console.error("Error fetching productions:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 

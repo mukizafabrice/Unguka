@@ -42,6 +42,11 @@ const DeleteButton = ({
     <>
       <button
         type="button"
+        style={{
+          padding: "4px 10px",
+          fontSize: "0.75rem",
+          lineHeight: "1rem",
+        }}
         className={`btn btn-danger ${className}`}
         onClick={handleClick}
         disabled={isLoading}

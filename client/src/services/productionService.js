@@ -4,6 +4,20 @@ export const fetchProductions = async () => {
   const response = await axiosInstance.get("/productions");
   return response.data;
 };
+export const fetchProduction = async (userId, seasonId) => {
+  try {
+    const response = await axiosInstance.get(`/productions/getProductions`, {
+      params: {
+        userId: userId,
+        seasonId: seasonId,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching productions:", error);
+    throw error;
+  }
+};
 
 export const createProduction = async (productionData) => {
   const response = await axiosInstance.post("/productions", productionData);

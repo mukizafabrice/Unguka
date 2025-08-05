@@ -20,7 +20,7 @@ export const createUser = async (userData) => {
 
 // Update user
 export const updateUser = async (id, userData) => {
-  const response = await axiosInstance.put(`/users/update/${id}`, userData);
+  const response = await axiosInstance.put(`/users/${id}`, userData);
   return response.data;
 };
 

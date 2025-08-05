@@ -143,10 +143,9 @@ const UpdateUserModal = ({ show, onClose, onSubmit, userData }) => {
                     onChange={handleChange}
                     required
                   >
-                    <option value="memeber">Member</option>
+                    <option value="member">Member</option>
                     <option value="manager">Admin</option>
-                    <option value="Accountant">Manager</option>
-                    {/* Add more hardcoded roles here if needed */}
+                    <option value="accountant">Manager</option>
                   </select>
                 </div>
               </div>

@@ -42,7 +42,12 @@ const UpdateButton = ({
     <>
       <button
         type="button"
-        className={`btn btn-warning ${className}`}
+        style={{
+          padding: "4px 10px",
+          fontSize: "0.75rem",
+          lineHeight: "1rem",
+        }}
+        className={`btn btn-primary ${className}`}
         onClick={handleClick}
         disabled={isLoading}
         {...props}

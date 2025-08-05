@@ -140,7 +140,10 @@ function PurchaseInputs() {
                     <td>{index + 1}</td>
                     <td>{purchaseInput.userId?.names || "N/A"}</td>
                     <td>{purchaseInput.productId?.productName || "N/A"}</td>
-                    <td>{purchaseInput.seasonId?.name || "N/A"}</td>
+                    <td>
+                      {purchaseInput.seasonId?.name}(
+                      {purchaseInput.seasonId?.year})
+                    </td>
                     <td>{purchaseInput.quantity || "N/A"}</td>
                     <td>{formatCurrency(purchaseInput.unitPrice)}</td>
                     <td>{formatCurrency(purchaseInput.totalPrice)}</td>

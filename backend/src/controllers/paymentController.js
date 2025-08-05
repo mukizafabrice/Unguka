@@ -21,12 +21,14 @@ export const processMemberPayment = async (req, res) => {
     const seasonId = production.seasonId._id;
     const grossAmount = production.totalPrice;
 
+    // Calculate unpaid fees
     const unpaidFees = await Fee.find({ userId, seasonId, status: "unpaid" });
     const totalFees = unpaidFees.reduce(
       (acc, fee) => acc + (fee.amountOwed - fee.amountPaid),
       0
     );
 
+    // Calculate unpaid loans
     const purchaseInputs = await PurchaseInput.find({ userId, seasonId });
     const purchaseInputIds = purchaseInputs.map((p) => p._id);
 
@@ -39,17 +41,19 @@ export const processMemberPayment = async (req, res) => {
       0
     );
 
-    const previousUnpaid = await Payment.find({
+    // Check for previous unpaid payments EXCLUDING the current production
+    const otherUnpaid = await Payment.find({
       userId,
       seasonId,
+      productionId: { $ne: productionId },
       status: { $ne: "paid" },
     });
-    const totalUnpaid = previousUnpaid.reduce(
+    const totalOtherUnpaid = otherUnpaid.reduce(
       (acc, pay) => acc + pay.amountRemainingToPay,
       0
     );
 
-    const totalDeductions = totalFees + totalLoans + totalUnpaid;
+    const totalDeductions = totalFees + totalLoans + totalOtherUnpaid;
     const amountDue = grossAmount - totalDeductions;
 
     if (amountPaid > amountDue) {
@@ -58,6 +62,7 @@ export const processMemberPayment = async (req, res) => {
         .json({ message: "Amount paid exceeds amount due" });
     }
 
+    // Check cooperative cash
     const coopCash = await CooperativeCash.findOne();
     if (!coopCash || coopCash.balance < amountPaid) {
       return res
@@ -68,8 +73,8 @@ export const processMemberPayment = async (req, res) => {
     coopCash.balance -= amountPaid;
     await coopCash.save();
 
+    // Pay fees
     let remaining = amountPaid;
-
     for (const fee of unpaidFees) {
       const feeRemaining = fee.amountOwed - fee.amountPaid;
       if (remaining >= feeRemaining) {
@@ -85,6 +90,7 @@ export const processMemberPayment = async (req, res) => {
       await fee.save();
     }
 
+    // Pay loans
     for (const loan of unpaidLoansRaw) {
       if (remaining >= loan.amountOwed) {
         remaining -= loan.amountOwed;
@@ -97,24 +103,51 @@ export const processMemberPayment = async (req, res) => {
       await loan.save();
     }
 
-    const amountRemainingToPay = amountDue - amountPaid;
+    const finalAmountPaid = amountPaid;
+    const amountRemainingToPay = amountDue - finalAmountPaid;
+    const status = amountRemainingToPay > 0 ? "partial" : "paid";
 
-    const newPayment = new Payment({
+    // ✅ Check if a payment record already exists for this production
+    let existingPayment = await Payment.findOne({
       userId,
-      productionId,
       seasonId,
-      grossAmount,
-      totalDeductions,
-      amountDue,
-      amountPaid,
-      amountRemainingToPay,
-      status: amountRemainingToPay > 0 ? "partial" : "paid",
+      productionId,
     });
 
-    await newPayment.save();
+    if (existingPayment) {
+      // Update existing record
+      existingPayment.amountPaid += finalAmountPaid;
+      existingPayment.amountRemainingToPay =
+        existingPayment.amountDue - existingPayment.amountPaid;
+      existingPayment.status =
+        existingPayment.amountRemainingToPay > 0 ? "partial" : "paid";
+      await existingPayment.save();
 
-    res.status(201).json({ message: "Payment processed", payment: newPayment });
+      return res.status(200).json({
+        message: "Payment updated successfully",
+        payment: existingPayment,
+      });
+    } else {
+      // Create new payment record
+      const newPayment = new Payment({
+        userId,
+        productionId,
+        seasonId,
+        grossAmount,
+        totalDeductions,
+        amountDue,
+        amountPaid: finalAmountPaid,
+        amountRemainingToPay,
+        status,
+      });
+
+      await newPayment.save();
+      return res
+        .status(201)
+        .json({ message: "Payment processed", payment: newPayment });
+    }
   } catch (error) {
+    console.error("Error in payment processing:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -165,12 +198,13 @@ export const deletePayment = async (req, res) => {
 };
 
 export const getPaymentSummary = async (req, res) => {
-  const { userId, seasonId } = req.query;
+  const { userId, seasonId, productionId } = req.query; // Destructure productionId
 
-  if (!userId || !seasonId) {
+  if (!userId || !seasonId || !productionId) {
+    // Add productionId validation
     return res
       .status(400)
-      .json({ message: "userId and seasonId are required" });
+      .json({ message: "userId, seasonId, and productionId are required" });
   }
 
   try {
@@ -195,13 +229,21 @@ export const getPaymentSummary = async (req, res) => {
       0
     );
 
+    // Fetch all payments for the user and season
     const payments = await Payment.find({ userId, seasonId });
-    const previousRemaining = payments.reduce(
+
+    // Filter payments to exclude the remaining balance from the production being paid against
+    const paymentsForOtherProductions = payments.filter(
+      (p) => p.productionId.toString() !== productionId
+    );
+
+    // Sum the remaining balances from other productions only
+    const previousRemaining = paymentsForOtherProductions.reduce(
       (sum, p) => sum + (p.amountRemainingToPay || 0),
       0
     );
 
-    // ADD THIS CONSOLE.LOG
+    // NOTE: This console.log will help you verify the values
     console.log({
       totalProduction,
       totalLoans,
