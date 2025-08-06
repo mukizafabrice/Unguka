@@ -7,6 +7,7 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
   const [members, setMembers] = useState([]);
   const [products, setProducts] = useState([]);
   const [seasons, setSeasons] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
 
   const [formData, setFormData] = useState({
     userId: "",
@@ -15,6 +16,12 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
     quantity: "",
     unitPrice: "",
   });
+  // Calculate total amount based on quantity and unit price
+  useEffect(() => {
+    const quantity = parseFloat(formData.quantity) || 0;
+    const unitPrice = parseFloat(formData.unitPrice) || 0;
+    setTotalAmount(quantity * unitPrice);
+  }, [formData.quantity, formData.unitPrice]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -190,6 +197,15 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
                     value={formData.unitPrice}
                     onChange={handleChange}
                     required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label text-dark">Total Amount</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={`$${totalAmount.toFixed(2)}`}
+                    readOnly
                   />
                 </div>
               </form>

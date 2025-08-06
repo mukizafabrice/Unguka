@@ -103,7 +103,7 @@ export const getAllProductions = async (req, res) => {
     const productions = await Production.find()
       .populate("userId", "names phoneNumber")
       .populate("productId", "productName")
-      .populate("seasonId", "name");
+      .populate("seasonId", "name year");
 
     res.status(200).json(productions);
   } catch (error) {

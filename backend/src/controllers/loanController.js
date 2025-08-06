@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Loan from "../models/Loan.js";
 import PurchaseInput from "../models/PurchaseInput.js";
 import Cash from "../models/Cash.js";
+import LoanTransaction from "../models/LoanTransaction.js";
 
 export const getAllLoans = async (req, res) => {
   try {
@@ -80,7 +81,14 @@ export const updateLoan = async (req, res) => {
       } else {
         console.error("Associated purchase input not found.");
       }
-
+      //handle loan transaction
+      const loanTransaction = new LoanTransaction({
+        loanId: loan._id,
+        amountPaid: amountToPay,
+        amountRemainingToPay: loan.amountOwed,
+        transactionDate: new Date(),
+      });
+      await loanTransaction.save();
       if (loan.amountOwed === 0) {
         loan.status = "repaid";
       }

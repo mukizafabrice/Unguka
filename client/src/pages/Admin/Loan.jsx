@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import { useNavigate } from "react-router-dom";
 import {
   fetchLoans,
   updateLoans,
@@ -18,7 +18,7 @@ function Loan() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
-
+  const navigate = useNavigate();
   const loadLoans = async () => {
     try {
       const loansData = await fetchLoans();
@@ -61,6 +61,12 @@ function Loan() {
       );
     }
   };
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
 
   const handlePayLoan = async (loanId, amountPaid) => {
     try {
@@ -93,14 +99,25 @@ function Loan() {
       );
     }
   };
+  const viewLoanTransaction = () => {
+    navigate("/admin/dashboard/loan-transaction");
+  };
 
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
         <div className="dashboard-content-area d-flex justify-content-between align-items-center">
-          <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Loan Dashboard
-          </h4>
+          <div>
+            <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
+              Loan Dashboard
+            </h4>
+            <button
+              className="btn btn-success btn-sm"
+              onClick={viewLoanTransaction}
+            >
+              View loanTransaction
+            </button>
+          </div>
         </div>
       </div>
 
@@ -132,8 +149,8 @@ function Loan() {
                       {loan.purchaseInputId?.seasonId?.name || "N/A"} (
                       {loan.purchaseInputId?.seasonId?.year})
                     </td>
-                    <td>{loan.purchaseInputId?.quantity}</td>
-                    <td>{loan.amountOwed.toFixed(2)}</td>
+                    <td>{loan.purchaseInputId?.quantity}kg</td>
+                    <td>{formatCurrency(`${loan.amountOwed}`)}</td>
                     <td>
                       <span
                         className={`badge ${

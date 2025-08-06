@@ -106,7 +106,7 @@ export const getAllPurchaseInputs = async (req, res) => {
   try {
     const purchases = await PurchaseInput.find()
       .populate("userId", "names phoneNumber")
-      .populate("productId", "name")
+      .populate("productId", "productName")
       .populate("seasonId", "name year");
 
     res.status(200).json(purchases);

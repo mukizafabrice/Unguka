@@ -23,6 +23,14 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
   // Error states for data fetching
   const [stocksError, setStocksError] = useState(null); // Renamed from productsError for clarity
   const [seasonsError, setSeasonsError] = useState(null);
+  const [totalAmount, setTotalAmount] = useState(0);
+
+  // Calculate total amount based on quantity and unit price
+  useEffect(() => {
+    const quantity = parseFloat(formData.quantity) || 0;
+    const unitPrice = parseFloat(formData.unitPrice) || 0;
+    setTotalAmount(quantity * unitPrice);
+  }, [formData.quantity, formData.unitPrice]);
 
   // Effect to manage body class for scroll prevention
   useEffect(() => {
@@ -127,7 +135,12 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
       [name]: value,
     }));
   };
-
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -301,7 +314,17 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
                     required
                   />
                 </div>
-
+                <div className="mb-3">
+                  <label htmlFor="totalAmount" className="form-label text-dark">
+                    Total Amount (rwf)
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={formatCurrency(`${totalAmount}`)}
+                    readOnly
+                  />
+                </div>
                 {/* Buyer */}
                 <div className="col-md-6 mb-3">
                   <label htmlFor="buyer" className="form-label text-dark">

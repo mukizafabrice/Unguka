@@ -18,6 +18,14 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit }) {
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [seasons, setSeasons] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+
+  // Calculate total amount based on quantity and unit price
+  useEffect(() => {
+    const quantity = parseFloat(formData.quantity) || 0;
+    const unitPrice = parseFloat(formData.unitPrice) || 0;
+    setTotalAmount(quantity * unitPrice);
+  }, [formData.quantity, formData.unitPrice]);
 
   useEffect(() => {
     if (show) {
@@ -51,7 +59,12 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit }) {
       });
     }
   }, [show]);
-
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     setFormData((prevData) => ({
@@ -192,7 +205,17 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit }) {
                   required
                 />
               </div>
-
+              <div className="mb-3">
+                <label htmlFor="totalAmount" className="form-label">
+                  Total Amount
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={formatCurrency(`${totalAmount}`)}
+                  readOnly
+                />
+              </div>
               <div className="mb-3">
                 <label htmlFor="amountPaid" className="form-label">
                   Amount Paid

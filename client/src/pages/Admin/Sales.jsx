@@ -107,7 +107,12 @@ function Sales() {
       );
     }
   };
-
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -149,13 +154,9 @@ function Sales() {
                       {sale.quantity}
                       <span className="fw-bold">kg</span>
                     </td>
+                    <td>{formatCurrency(`${sale.unitPrice}`)}</td>
                     <td>
-                      {sale.unitPrice}
-                      <span className="fw-bold">rwf</span>
-                    </td>
-                    <td>
-                      {sale.totalPrice}
-                      <span className="fw-bold">rwf</span>
+                      <td>{formatCurrency(`${sale.totalPrice}`)}</td>
                     </td>
                     <td>{sale.buyer}</td>
                     <td>{sale.phoneNumber}</td>

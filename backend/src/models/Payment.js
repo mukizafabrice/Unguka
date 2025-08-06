@@ -6,11 +6,6 @@ const paymentSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  productionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Production",
-    required: true,
-  },
   seasonId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Season",
