@@ -56,7 +56,8 @@ export const getAllPurchaseOut = async (req, res) => {
   try {
     const purchases = await PurchaseOut.find()
       .populate("productId", "productName")
-      .populate("seasonId", "year name");
+      .populate("seasonId", "year name")
+      .sort({ createdAt: -1 });
     res.status(200).json(purchases);
   } catch (error) {
     res.status(500).json({ message: error.message });

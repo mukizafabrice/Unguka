@@ -24,8 +24,10 @@ import FeeTypes from "./pages/Admin/FeeType";
 import PurchaseInput from "./pages/Admin/PurchaseInputs";
 import PurchaseOut from "./pages/Admin/PurchaseOut";
 import Announcement from "./pages/Admin/Announcement";
-import User from "./pages/Admin/User";
+//member routed
 import MemberDashboard from "./pages/Member/MemberDashboard";
+import MemberLayout from "./layouts/MemberLayout";
+import User from "./pages/Admin/User";
 import DashboardLayout from "./layouts/DashboardLayout";
 import LoanTransaction from "./pages/Admin/LoanTransaction";
 import PaymentTransaction from "./pages/Admin/PaymentTransaction";
@@ -42,9 +44,7 @@ function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute
-                allowedRoles={["manager", "accountant", "member"]}
-              >
+              <ProtectedRoute allowedRoles={["manager", "member"]}>
                 <Profile />
               </ProtectedRoute>
             }
@@ -88,12 +88,12 @@ function App() {
             path="/member/dashboard"
             element={
               <ProtectedRoute allowedRoles={["member"]}>
-                <DashboardLayout>
-                  <MemberDashboard />
-                </DashboardLayout>
+                <MemberLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<MemberDashboard />} />
+          </Route>
         </Routes>
       </AuthProvider>
     </BrowserRouter>

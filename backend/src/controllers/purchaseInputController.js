@@ -129,16 +129,21 @@ export const getAllPurchaseInputs = async (req, res) => {
 
 export const getPurchaseInputById = async (req, res) => {
   try {
-    const purchase = await PurchaseInput.findById(req.params.id)
-      .populate("userId", "names phoneNumber")
-      .populate("productId", "name")
-      .populate("seasonId", "name year");
+    const userId = req.params.id;
 
-    if (!purchase) {
-      return res.status(404).json({ message: "Purchase input not found" });
+    const purchases = await PurchaseInput.find({ userId })
+      .populate("userId", "names phoneNumber")
+      .populate("productId", "productName")
+      .populate("seasonId", "name year")
+      .sort({ createdAt: -1 });
+
+    if (!purchases || purchases.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No purchase inputs found for this user" });
     }
 
-    res.status(200).json(purchase);
+    res.status(200).json(purchases);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

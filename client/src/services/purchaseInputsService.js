@@ -5,6 +5,10 @@ export const fetchPurchaseInputs = async () => {
   return response.data;
 };
 
+export const fetchPurchaseInputsById = async (id) => {
+  const response = await axiosInstance.get(`/purchaseInputs/${id}`);
+  return response.data;
+};
 export const createPurchaseInputs = async (purchaseInputData) => {
   try {
     const response = await axiosInstance.post(

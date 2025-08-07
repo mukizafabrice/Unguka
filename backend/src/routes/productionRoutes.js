@@ -3,7 +3,7 @@ import {
   createProduction,
   getAllProductions,
   getProductions,
-  getProductionById,
+  getProductionsByUserId,
   updateProduction,
   deleteProduction,
 } from "../controllers/productionController.js";
@@ -13,7 +13,7 @@ const router = express.Router();
 router.post("/", createProduction);
 router.get("/", getAllProductions);
 router.get("/getProductions", getProductions);
-router.get("/:id", getProductionById);
+router.get("/:id", getProductionsByUserId);
 router.put("/:id", updateProduction);
 router.delete("/:id", deleteProduction);
 

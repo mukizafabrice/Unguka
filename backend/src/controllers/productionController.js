@@ -172,18 +172,23 @@ export const getProductions = async (req, res) => {
 };
 
 // Get one production by ID
-export const getProductionById = async (req, res) => {
+export const getProductionsByUserId = async (req, res) => {
   try {
-    const production = await Production.findById(req.params.id)
-      .populate("userId", "fullName")
-      .populate("productId", "name")
-      .populate("seasonId", "name");
+    const userId = req.params.id;
 
-    if (!production) {
-      return res.status(404).json({ message: "Production not found" });
+    const productions = await Production.find({ userId })
+      .populate("userId", "names")
+      .populate("productId", "productName")
+      .populate("seasonId", "name year")
+      .sort({ createdAt: -1 });
+
+    if (!productions || productions.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No productions found for this user" });
     }
 
-    res.status(200).json(production);
+    res.status(200).json(productions);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

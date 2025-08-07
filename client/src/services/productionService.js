@@ -19,6 +19,11 @@ export const fetchProduction = async (userId, seasonId) => {
   }
 };
 
+export const fetchProductionsById = async (id) => {
+  const response = await axiosInstance.get(`/productions/${id}`);
+  return response.data;
+};
+
 export const createProduction = async (productionData) => {
   const response = await axiosInstance.post("/productions", productionData);
   return response.data;
