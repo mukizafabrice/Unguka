@@ -3,31 +3,112 @@ import mongoose from "mongoose";
 import Stock from "../models/Stock.js";
 import Product from "../models/Product.js";
 
+export const createProduction = async (req, res) => {
+  try {
+    const { userId, productId, seasonId, quantity, unitPrice } = req.body;
+
+    // --- Input Validation and Type Conversion ---
+    // Ensure IDs are valid Mongoose ObjectIds
+    if (
+      !mongoose.Types.ObjectId.isValid(userId) ||
+      !mongoose.Types.ObjectId.isValid(productId) ||
+      !mongoose.Types.ObjectId.isValid(seasonId)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Invalid ID provided for user, product, or season." });
+    }
+
+    // Convert quantity and unitPrice to numbers and validate
+    const parsedQuantity = Number(quantity);
+    const parsedUnitPrice = Number(unitPrice);
+
+    // Check if quantity is a finite positive integer
+    if (
+      !Number.isFinite(parsedQuantity) ||
+      !Number.isInteger(parsedQuantity) ||
+      parsedQuantity <= 0
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Quantity must be a positive integer." });
+    }
+
+    // Check if unitPrice is a finite positive number
+    if (!Number.isFinite(parsedUnitPrice) || parsedUnitPrice <= 0) {
+      return res
+        .status(400)
+        .json({ message: "Unit Price must be a positive number." });
+    }
+    // --- End of Input Validation ---
+
+    const totalPrice = parsedQuantity * parsedUnitPrice;
+
+    // 3. Save new production
+    const newProduction = new Production({
+      userId,
+      productId,
+      seasonId,
+      quantity: parsedQuantity, // Use the validated and parsed quantity
+      unitPrice: parsedUnitPrice, // Use the validated and parsed unitPrice
+      totalPrice,
+    });
+
+    await newProduction.save();
+
+    // 4. Update stock (add to existing or create new)
+    const existingStock = await Stock.findOne({ productId });
+
+    if (existingStock) {
+      // Ensure the addition doesn't result in overflow if numbers are extremely large
+      existingStock.quantity = existingStock.quantity + parsedQuantity;
+      existingStock.totalPrice = existingStock.totalPrice + totalPrice;
+      await existingStock.save(); // This is where the validation error was likely occurring
+    } else {
+      const newStock = new Stock({
+        productId,
+        quantity: parsedQuantity, // Use the validated and parsed quantity
+        totalPrice,
+      });
+      await newStock.save();
+    }
+
+    return res.status(201).json({
+      message: "Production created and stock updated successfully",
+      data: newProduction,
+    });
+  } catch (error) {
+    console.error("Error creating production:", error);
+    // Log specific Mongoose validation errors for better debugging
+    if (error.name === "ValidationError") {
+      console.error("Mongoose Validation Errors:", error.errors);
+      return res
+        .status(400)
+        .json({ message: error.message, errors: error.errors });
+    }
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // export const createProduction = async (req, res) => {
 //   try {
-//     const { userId, productId, seasonId, quantity } = req.body;
+//     const { userId, productId, seasonId, quantity, unitPrice } = req.body;
 
-//     // 1. Find product and get its unit price
-//     const product = await Product.findById(productId);
-//     if (!product) {
-//       return res.status(404).json({ message: "Product not found" });
-//     }
+//     const totalPrice = quantity * unitPrice;
 
-//     const unitPrice = product.unitPrice;
-//     const totalPrice = unitPrice * quantity;
-
-//     // 2. Create new production record
+//     // 3. Save new production
 //     const newProduction = new Production({
 //       userId,
 //       productId,
 //       seasonId,
 //       quantity,
+//       unitPrice,
 //       totalPrice,
 //     });
 
 //     await newProduction.save();
 
-//     // 3. Update or create stock
+//     // 4. Update stock (add to existing or create new)
 //     const existingStock = await Stock.findOne({ productId });
 
 //     if (existingStock) {
@@ -43,59 +124,15 @@ import Product from "../models/Product.js";
 //       await newStock.save();
 //     }
 
-//     res.status(201).json({
+//     return res.status(201).json({
 //       message: "Production created and stock updated successfully",
 //       data: newProduction,
 //     });
 //   } catch (error) {
-//     console.error("Error in createProduction:", error);
+//     console.error("Error creating production:", error);
 //     res.status(500).json({ message: "Server error", error: error.message });
 //   }
 // };
-
-export const createProduction = async (req, res) => {
-  try {
-    const { userId, productId, seasonId, quantity, unitPrice } = req.body;
-
-    const totalPrice = quantity * unitPrice;
-
-    // 3. Save new production
-    const newProduction = new Production({
-      userId,
-      productId,
-      seasonId,
-      quantity,
-      unitPrice,
-      totalPrice,
-    });
-
-    await newProduction.save();
-
-    // 4. Update stock (add to existing or create new)
-    const existingStock = await Stock.findOne({ productId });
-
-    if (existingStock) {
-      existingStock.quantity += quantity;
-      existingStock.totalPrice += totalPrice;
-      await existingStock.save();
-    } else {
-      const newStock = new Stock({
-        productId,
-        quantity,
-        totalPrice,
-      });
-      await newStock.save();
-    }
-
-    return res.status(201).json({
-      message: "Production created and stock updated successfully",
-      data: newProduction,
-    });
-  } catch (error) {
-    console.error("Error creating production:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
 
 // Get all productions
 export const getAllProductions = async (req, res) => {

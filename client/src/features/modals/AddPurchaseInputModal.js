@@ -53,9 +53,10 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit }) {
         userId: "",
         productId: "",
         seasonId: "",
-        quantity: 0,
-        unitPrice: 0,
-        amountPaid: 0,
+        quantity: "",
+        unitPrice: "",
+        amountPaid: "",
+        interest: "",
       });
     }
   }, [show]);
@@ -230,6 +231,23 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit }) {
                   required
                 />
               </div>
+
+              {totalAmount > formData.amountPaid && (
+                <div className="mb-3">
+                  <label htmlFor="interest" className="form-label">
+                    Loan Interest
+                  </label>
+                  <input
+                    type="number"
+                    id="interest"
+                    name="interest"
+                    value={formData.interest}
+                    onChange={handleChange}
+                    className="form-control"
+                    required
+                  />
+                </div>
+              )}
             </form>
           </div>
           <div className="modal-footer">

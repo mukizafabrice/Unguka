@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { fetchPayments } from "../../services/paymentService";
-import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import AddButton from "../../components/buttons/AddButton";
-import AddPaymentModal from "../../features/modals/AddPaymentModal";
+import { useNavigate } from "react-router-dom";
+import { fetchPaymentTransactions } from "../../services/paymentTransactionService";
+import { ArrowLeft } from "lucide-react";
 
-const Payment = () => {
+const PaymentTransaction = () => {
   const [payments, setPayments] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -16,7 +14,7 @@ const Payment = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const paymentsData = await fetchPayments();
+      const paymentsData = await fetchPaymentTransactions();
 
       // Map user info, remove season (no longer available)
       const mappedPayments = paymentsData.map((payment) => {
@@ -43,7 +41,6 @@ const Payment = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
@@ -51,39 +48,20 @@ const Payment = () => {
     }).format(amount);
   };
 
-  const handlePaymentSubmissionSuccess = async () => {
-    setShowAddModal(false);
-    await loadData();
-  };
-
-  const viewpaymentTransaction = () => {
-    navigate("/admin/dashboard/payment-transaction");
-  };
+  const handleBack = () => navigate(-1);
   return (
     <div className="container py-4">
-      <h2 className="mb-4 text-center">Manage Payments</h2>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <AddButton
-          label="Create Payment"
-          onClick={() => setShowAddModal(true)}
-          disabled={loading}
-        />
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={viewpaymentTransaction}
-        >
-          View PaymentTransactions
-        </button>
-      </div>
-
-      <AddPaymentModal
-        show={showAddModal}
-        onClose={handlePaymentSubmissionSuccess}
-      />
-
+      <h2 className="mb-4 text-center text-black"> Payments Transactions</h2>
+      <button
+        onClick={handleBack}
+        className="btn btn-outline-secondary d-flex align-items-center"
+      >
+        <ArrowLeft className="me-2" size={18} />
+        Back
+      </button>
       <div
         className="card p-3 mt-4 overflow-auto"
-        style={{ maxHeight: "400px" }}
+        style={{ maxHeight: "450px" }}
       >
         <h5>All Payments</h5>
         {loading && (
@@ -101,13 +79,12 @@ const Payment = () => {
         {!loading && payments.length > 0 && (
           <div className="table-responsive">
             <table className="table table-bordered table-hover mt-3">
-              <thead className="relative-top">
+              <thead>
                 <tr>
                   <th>User</th>
                   <th>Paid Amount</th>
-                  <th>Amount Due</th>
                   <th>Remaining to Pay</th>
-                  <th>Status</th>
+                  {/* <th>Status</th> */}
                   <th>Payment Date</th>
                 </tr>
               </thead>
@@ -115,12 +92,15 @@ const Payment = () => {
                 {payments.map((p) => (
                   <tr key={p._id}>
                     <td>{p.userName}</td>
-
-                    <td>{formatCurrency(`${p.amountPaid || "0.00"}`)}</td>
-                    <td>{formatCurrency(`${p.amountDue || "0.00"}`)}</td>
                     <td>
-                      {formatCurrency(`${p.amountRemainingToPay || "0.00"}`)}
+                      {formatCurrency(`${p.amountPaid?.toFixed(2) || "0.00"}`)}
                     </td>
+                    <td>
+                      {formatCurrency(
+                        `${p.amountRemainingToPay?.toFixed(2) || "0.00"}`
+                      )}
+                    </td>
+                    {/* 
                     <td>
                       <span
                         className={`badge ${
@@ -129,10 +109,10 @@ const Payment = () => {
                       >
                         {p.status}
                       </span>
-                    </td>
+                    </td> */}
                     <td>
-                      {p.createdAt
-                        ? new Date(p.createdAt).toLocaleDateString()
+                      {p.transactionDate
+                        ? new Date(p.transactionDate).toLocaleDateString()
                         : "N/A"}
                     </td>
                   </tr>
@@ -146,4 +126,4 @@ const Payment = () => {
   );
 };
 
-export default Payment;
+export default PaymentTransaction;

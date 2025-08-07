@@ -38,6 +38,12 @@ const productionSchema = new mongoose.Schema({
     required: true,
     min: [0, "Total price must be a positive number"],
   },
+  paymentStatus: {
+    type: String,
+    enum: ["paid", "pending"],
+    default: "pending",
+    required: true,
+  },
 
   createdAt: {
     type: Date,

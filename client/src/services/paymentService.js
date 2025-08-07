@@ -25,9 +25,9 @@ export const deletePayment = async (id) => {
   return response.data;
 };
 
-export const fetchPaymentSummary = async (userId, seasonId, productionId) => {
+export const fetchPaymentSummary = async (userId) => {
   const response = await axiosInstance.get(
-    `/payments/summary?userId=${userId}&seasonId=${seasonId}&productionId=${productionId}`
+    `/payments/summary?userId=${userId}`
   );
   return response.data;
 };

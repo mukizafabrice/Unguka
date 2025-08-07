@@ -116,7 +116,7 @@ function Production() {
         </div>
       </div>
 
-      <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
+      <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto" style={{maxHeight: "400px"}}>
         <div className="table-responsive">
           <table className="table table-dark table-striped table-hover mb-0">
             <thead>

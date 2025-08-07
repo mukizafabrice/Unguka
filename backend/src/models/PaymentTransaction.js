@@ -6,11 +6,11 @@ const paymentTransactionSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  seasonId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Season",
-    required: true,
-  },
+  // seasonId: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   ref: "Season",
+  //   required: true,
+  // },
   paymentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Payment",

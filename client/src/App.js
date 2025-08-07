@@ -28,6 +28,7 @@ import User from "./pages/Admin/User";
 import MemberDashboard from "./pages/Member/MemberDashboard";
 import DashboardLayout from "./layouts/DashboardLayout";
 import LoanTransaction from "./pages/Admin/LoanTransaction";
+import PaymentTransaction from "./pages/Admin/PaymentTransaction";
 import "./assets/styles/dashboard.css";
 
 function App() {
@@ -45,7 +46,6 @@ function App() {
                 allowedRoles={["manager", "accountant", "member"]}
               >
                 <Profile />
-              
               </ProtectedRoute>
             }
           />
@@ -76,9 +76,13 @@ function App() {
             <Route path="purchase-outputs" element={<PurchaseOut />} />
             <Route path="announcement" element={<Announcement />} />
             <Route path="loan-transaction" element={<LoanTransaction />} />
+            <Route
+              path="payment-transaction"
+              element={<PaymentTransaction />}
+            />
             <Route path="user" element={<User />} />
           </Route>
-          
+
           {/* Member Dashboard Route wrapped in DashboardLayout */}
           <Route
             path="/member/dashboard"

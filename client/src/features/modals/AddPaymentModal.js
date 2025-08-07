@@ -6,13 +6,10 @@ import {
 } from "../../services/paymentService";
 import { fetchFeeTypes } from "../../services/feeTypeService";
 import { fetchUsers } from "../../services/userService";
-import { fetchSeasons } from "../../services/seasonService";
 
 const AddPaymentModal = ({ show, onClose }) => {
   const [users, setUsers] = useState([]);
-  const [seasons, setSeasons] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
-  const [selectedSeason, setSelectedSeason] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
   const [summary, setSummary] = useState(null);
   const [details, setDetails] = useState({
@@ -27,7 +24,6 @@ const AddPaymentModal = ({ show, onClose }) => {
   useEffect(() => {
     if (!show) {
       setSelectedUser("");
-      setSelectedSeason("");
       setAmountPaid("");
       setSummary(null);
       setDetails({ fees: [], loans: [], payments: [] });
@@ -37,17 +33,15 @@ const AddPaymentModal = ({ show, onClose }) => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [usersData, seasonsData, feeTypesData] = await Promise.all([
+        const [usersData, feeTypesData] = await Promise.all([
           fetchUsers(),
-          fetchSeasons(),
           fetchFeeTypes(),
         ]);
         setUsers(usersData);
-        setSeasons(seasonsData);
         setFeeTypes(feeTypesData);
       } catch (error) {
         console.error("Failed to load initial data", error);
-        toast.error("Failed to load users, seasons, or fee types.");
+        toast.error("Failed to load users or fee types.");
       } finally {
         setInitialLoading(false);
       }
@@ -67,20 +61,19 @@ const AddPaymentModal = ({ show, onClose }) => {
 
   useEffect(() => {
     const loadSummary = async () => {
-      if (selectedUser && selectedSeason) {
+      if (selectedUser) {
         setLoading(true);
         try {
-          const data = await fetchPaymentSummary(selectedUser, selectedSeason);
+          // Now backend API only needs userId, no season
+          const data = await fetchPaymentSummary(selectedUser);
           setSummary({
             totalProduction: data.totalProduction,
             totalUnpaidFees: data.totalUnpaidFees,
             totalLoans: data.totalLoans,
             previousRemaining: data.previousRemaining,
-            currentSeasonNet: data.currentSeasonNet,
+            currentNet: data.currentNet,
             amountDue: data.netPayable,
-            // NEW: Store the existing partial payment record for current season
-            existingPartialPaymentForCurrentSeason:
-              data.existingPartialPaymentForCurrentSeason,
+            existingPartialPayment: data.existingPartialPayment,
           });
           setDetails({
             fees: data.fees.map((fee) => ({
@@ -92,21 +85,16 @@ const AddPaymentModal = ({ show, onClose }) => {
             payments: data.payments,
           });
 
-          // --- CONDITIONAL PRE-FILL LOGIC ---
-          if (data.existingPartialPaymentForCurrentSeason) {
-            // If there's an existing partial payment for THIS season, pre-fill with its remaining amount
+          // Pre-fill amountPaid based on existing partial or netPayable
+          if (data.existingPartialPayment) {
             setAmountPaid(
-              data.existingPartialPaymentForCurrentSeason.amountRemainingToPay.toFixed(
-                2
-              )
+              data.existingPartialPayment.amountRemainingToPay.toFixed(2)
             );
           } else if (data.netPayable > 0) {
-            // Otherwise, pre-fill with the overall net payable
             setAmountPaid(data.netPayable.toFixed(2));
           } else {
             setAmountPaid("0.00");
           }
-          // --- END CONDITIONAL PRE-FILL LOGIC ---
 
           toast.success("Payment summary loaded!");
         } catch (error) {
@@ -121,7 +109,7 @@ const AddPaymentModal = ({ show, onClose }) => {
       }
     };
     loadSummary();
-  }, [selectedUser, selectedSeason, getFeeTypeName]);
+  }, [selectedUser, getFeeTypeName]);
 
   const handleSubmit = async () => {
     if (!summary) {
@@ -134,12 +122,9 @@ const AddPaymentModal = ({ show, onClose }) => {
       return;
     }
 
-    // --- CONDITIONAL VALIDATION LOGIC ---
-    let maxAllowedAmount = summary.amountDue; // Default to overall net payable
-    if (summary.existingPartialPaymentForCurrentSeason) {
-      // If continuing a partial payment, max allowed is its remaining balance
-      maxAllowedAmount =
-        summary.existingPartialPaymentForCurrentSeason.amountRemainingToPay;
+    let maxAllowedAmount = summary.amountDue;
+    if (summary.existingPartialPayment) {
+      maxAllowedAmount = summary.existingPartialPayment.amountRemainingToPay;
     }
 
     if (parsedAmountPaid > maxAllowedAmount) {
@@ -152,26 +137,29 @@ const AddPaymentModal = ({ show, onClose }) => {
       );
       return;
     }
-    // --- END CONDITIONAL VALIDATION LOGIC ---
 
     try {
       const newPayment = {
         userId: selectedUser,
-        seasonId: selectedSeason,
         amountPaid: parsedAmountPaid,
       };
-      await createPayment(newPayment); // This calls processMemberPayment on backend
+      await createPayment(newPayment);
       toast.success("Payment submitted successfully!");
       onClose();
     } catch (error) {
       console.error("Payment submission error:", error);
-      toast.error(error.response?.data?.message || "Error processing payment.");
+      const serverErrorMessage =
+        error?.response?.data?.message || // Express-style error
+        error?.response?.data?.error || // Alternate backend format
+        error?.message || // Fallback
+        "An unexpected error occurred.";
+
+      toast.error(`Payment failed: ${serverErrorMessage}`);
     }
   };
 
   if (!show) return null;
 
-  // Adjust payButtonDisabled logic to use the correct max allowed amount
   const payButtonDisabled =
     loading ||
     initialLoading ||
@@ -179,9 +167,15 @@ const AddPaymentModal = ({ show, onClose }) => {
     isNaN(parseFloat(amountPaid)) ||
     parseFloat(amountPaid) <= 0 ||
     parseFloat(amountPaid) >
-      (summary?.existingPartialPaymentForCurrentSeason?.amountRemainingToPay ||
+      (summary?.existingPartialPayment?.amountRemainingToPay ||
         summary?.amountDue ||
         0);
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
 
   return (
     <div
@@ -230,198 +224,176 @@ const AddPaymentModal = ({ show, onClose }) => {
                     ))}
                   </select>
                 </div>
-                <div className="mb-3">
-                  <label htmlFor="seasonSelect" className="form-label">
-                    Select Season
-                  </label>
-                  <select
-                    id="seasonSelect"
-                    className="form-select"
-                    value={selectedSeason}
-                    onChange={(e) => setSelectedSeason(e.target.value)}
-                    disabled={loading}
-                  >
-                    <option value="">-- Select Season --</option>
-                    {seasons.map((season) => (
-                      <option key={season._id} value={season._id}>
-                        {season.name} {season.year}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
 
-            {summary && !loading && !initialLoading && (
-              <>
-                {/* --- CONDITIONAL RENDERING OF SUMMARY DETAILS --- */}
-                {summary.existingPartialPaymentForCurrentSeason ? (
-                  // Simplified View for Subsequent Payments
-                  <div className="alert alert-info mt-4">
-                    <h5 className="mb-2">Continuing Payment for this Season</h5>
-                    <p className="fw-bold fs-4 text-center">
-                      Remaining Amount to Pay for this Season:
-                      <span className="badge bg-danger ms-2">
-                        $
-                        {summary.existingPartialPaymentForCurrentSeason.amountRemainingToPay?.toFixed(
-                          2
-                        )}
-                      </span>
-                    </p>
-                    <p className="text-muted text-center">
-                      This reflects the outstanding balance from a previous
-                      payment for this season.
-                    </p>
-                  </div>
-                ) : (
-                  // Detailed View for First Payment of the Season
+                {summary && !loading && (
                   <>
-                    <h6 className="mt-4 border-bottom pb-2">Summary Totals</h6>
-                    <ul className="list-group mb-3">
-                      <li className="list-group-item d-flex justify-content-between align-items-center">
-                        Total Production Value (Current Season):
-                        <span className="badge bg-primary rounded-pill">
-                          ${summary.totalProduction?.toFixed(2)}
-                        </span>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between align-items-center">
-                        Total Unpaid Fees (Current Season):
-                        <span className="badge bg-danger rounded-pill">
-                          ${summary.totalUnpaidFees?.toFixed(2)}
-                        </span>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between align-items-center">
-                        Total Unpaid Loans (Current Season):
-                        <span className="badge bg-warning text-dark rounded-pill">
-                          ${summary.totalLoans?.toFixed(2)}
-                        </span>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between align-items-center fw-bold fs-5">
-                        Net Balance for Current Season:
-                        <span className="badge bg-info rounded-pill">
-                          ${summary.currentSeasonNet?.toFixed(2)}
-                        </span>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between align-items-center">
-                        Previous Payments with Remaining Balance (Cooperative
-                        Owes Member):
-                        <span className="badge bg-success rounded-pill">
-                          ${summary.previousRemaining?.toFixed(2)}
-                        </span>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between align-items-center fw-bold fs-5">
-                        Total Amount Due (Net Payable by Cooperative):
-                        <span className="badge bg-success rounded-pill">
-                          ${summary.amountDue?.toFixed(2)}
-                        </span>
-                      </li>
-                    </ul>
-                    <h6 className="mt-4 border-bottom pb-2">
-                      Unpaid Fees Breakdown (Current Season)
-                    </h6>
-                    {details.fees.length > 0 ? (
-                      <ul className="list-group mb-3">
-                        {details.fees.map((fee) => (
-                          <li
-                            key={fee._id}
-                            className="list-group-item d-flex justify-content-between align-items-center"
-                          >
-                            Fee Type: {fee.feeTypeName}
+                    {summary.existingPartialPayment ? (
+                      <div className="alert alert-info mt-4">
+                        <h5 className="mb-2">Continuing Payment</h5>
+                        <p className="fw-bold fs-4 text-center">
+                          Remaining Amount to Pay:
+                          <span className="badge bg-danger ms-2">
+                            {formatCurrency(`$
+                            {summary.existingPartialPayment.amountRemainingToPay}`)}{" "}
+                          </span>
+                        </p>
+                        <p className="text-muted text-center">
+                          This reflects the outstanding balance from a previous
+                          payment.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <h6 className="mt-4 border-bottom pb-2">
+                          Summary Totals
+                        </h6>
+                        <ul className="list-group mb-3">
+                          <li className="list-group-item d-flex justify-content-between align-items-center">
+                            Total Production Value:
+                            <span className="badge bg-primary rounded-pill">
+                              {formatCurrency(`${summary.totalProduction}`)}
+                            </span>
+                          </li>
+                          <li className="list-group-item d-flex justify-content-between align-items-center">
+                            Total Unpaid Fees:
                             <span className="badge bg-danger rounded-pill">
-                              Remaining: $
-                              {(fee.amountOwed - (fee.amountPaid || 0)).toFixed(
-                                2
-                              )}
+                              {formatCurrency(`${summary.totalUnpaidFees}`)}
                             </span>
                           </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="alert alert-info mt-2">
-                        No outstanding fees for this user in this season.
-                      </div>
-                    )}
-                    <h6 className="mt-4 border-bottom pb-2">
-                      Outstanding Loans Breakdown (Current Season)
-                    </h6>
-                    {details.loans.length > 0 ? (
-                      <ul className="list-group mb-3">
-                        {details.loans.map((loan) => (
-                          <li
-                            key={loan._id}
-                            className="list-group-item d-flex justify-content-between align-items-center"
-                          >
-                            Loan on{" "}
-                            {new Date(loan.createdAt).toLocaleDateString()}
+                          <li className="list-group-item d-flex justify-content-between align-items-center">
+                            Total Unpaid Loans:
                             <span className="badge bg-warning text-dark rounded-pill">
-                              Amount Owed: ${loan.amountOwed?.toFixed(2)}
+                              {formatCurrency(`${summary.totalLoans}`)}
                             </span>
                           </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="alert alert-info mt-2">
-                        No outstanding loans for this user in this season.
-                      </div>
-                    )}
-                    <h6 className="mt-4 border-bottom pb-2">
-                      Previous Payments with Remaining Balance (Cooperative Owes
-                      Member)
-                    </h6>
-                    {details.payments.length > 0 ? (
-                      <ul className="list-group mb-3">
-                        {details.payments.map((prevPayment) => (
-                          <li
-                            key={prevPayment._id}
-                            className="list-group-item d-flex justify-content-between align-items-center"
-                          >
-                            Payment on{" "}
-                            {new Date(
-                              prevPayment.createdAt
-                            ).toLocaleDateString()}
+                          <li className="list-group-item d-flex justify-content-between align-items-center fw-bold fs-5">
+                            Net Balance:
+                            <span className="badge bg-info rounded-pill">
+                              {formatCurrency(`${summary.currentNet}`)}
+                            </span>
+                          </li>
+                          <li className="list-group-item d-flex justify-content-between align-items-center">
+                            Previous Payments with Remaining Balance:
                             <span className="badge bg-success rounded-pill">
-                              Remaining: $
-                              {prevPayment.amountRemainingToPay?.toFixed(2)}
+                              {formatCurrency(`${summary.previousRemaining}`)}
                             </span>
                           </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="alert alert-info mt-2">
-                        No previous payments with remaining balances for this
-                        user.
-                      </div>
+                          <li className="list-group-item d-flex justify-content-between align-items-center fw-bold fs-5">
+                            Total Amount Due:
+                            <span className="badge bg-success rounded-pill">
+                              {formatCurrency(`${summary.amountDue}`)}
+                            </span>
+                          </li>
+                        </ul>
+
+                        <h6 className="mt-4 border-bottom pb-2">
+                          Unpaid Fees Breakdown
+                        </h6>
+                        {details.fees.length > 0 ? (
+                          <ul className="list-group mb-3">
+                            {details.fees.map((fee) => (
+                              <li
+                                key={fee._id}
+                                className="list-group-item d-flex justify-content-between align-items-center"
+                              >
+                                Fee Type: {fee.feeTypeName}
+                                <span className="badge bg-danger rounded-pill">
+                                  Remaining:
+                                  {formatCurrency(
+                                    `${fee.amountOwed - (fee.amountPaid || 0)}`
+                                  )}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="alert alert-info mt-2">
+                            No outstanding fees for this user.
+                          </div>
+                        )}
+
+                        <h6 className="mt-4 border-bottom pb-2">
+                          Outstanding Loans Breakdown
+                        </h6>
+                        {details.loans.length > 0 ? (
+                          <ul className="list-group mb-3">
+                            {details.loans.map((loan) => (
+                              <li
+                                key={loan._id}
+                                className="list-group-item d-flex justify-content-between align-items-center"
+                              >
+                                Loan on{" "}
+                                {new Date(loan.createdAt).toLocaleDateString()}
+                                <span className="badge bg-warning text-dark rounded-pill">
+                                  Amount Owed: {loan.amountOwed}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="alert alert-info mt-2">
+                            No outstanding loans for this user.
+                          </div>
+                        )}
+
+                        <h6 className="mt-4 border-bottom pb-2">
+                          Previous Payments with Remaining Balance
+                        </h6>
+                        {details.payments.length > 0 ? (
+                          <ul className="list-group mb-3">
+                            {details.payments.map((prevPayment) => (
+                              <li
+                                key={prevPayment._id}
+                                className="list-group-item d-flex justify-content-between align-items-center"
+                              >
+                                Payment on{" "}
+                                {new Date(
+                                  prevPayment.createdAt
+                                ).toLocaleDateString()}
+                                <span className="badge bg-success rounded-pill">
+                                  Remaining:{" "}
+                                  {formatCurrency(
+                                    `${prevPayment.amountRemainingToPay}`
+                                  )}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="alert alert-info mt-2">
+                            No previous payments with remaining balances for
+                            this user.
+                          </div>
+                        )}
+                      </>
                     )}
+                    <div className="mb-3 mt-4">
+                      <label
+                        htmlFor="amountPaidInput"
+                        className="form-label fw-bold"
+                      >
+                        Amount to Pay
+                      </label>
+                      <input
+                        id="amountPaidInput"
+                        type="number"
+                        className="form-control form-control-lg"
+                        value={amountPaid}
+                        onChange={(e) => setAmountPaid(e.target.value)}
+                        placeholder={`Enter amount (Max: ${
+                          summary.existingPartialPayment
+                            ? summary.existingPartialPayment
+                                .amountRemainingToPay
+                            : summary.amountDue   
+                        })`}
+                      />
+                      <div className="form-text">
+                        Current Input:
+                        {formatCurrency(` ${amountPaid}`)}
+                      </div>
+                    </div>
                   </>
                 )}
-                {/* --- END CONDITIONAL RENDERING --- */}
-
-                <div className="mb-3 mt-4">
-                  <label
-                    htmlFor="amountPaidInput"
-                    className="form-label fw-bold"
-                  >
-                    Amount to Pay
-                  </label>
-                  <input
-                    id="amountPaidInput"
-                    type="number"
-                    className="form-control form-control-lg"
-                    value={amountPaid}
-                    onChange={(e) => setAmountPaid(e.target.value)}
-                    placeholder={`Enter amount (Max: ${
-                      summary.existingPartialPaymentForCurrentSeason
-                        ? summary.existingPartialPaymentForCurrentSeason.amountRemainingToPay?.toFixed(
-                            2
-                          )
-                        : summary.amountDue?.toFixed(2) || "0.00"
-                    })`}
-                  />
-                  <div className="form-text">
-                    Current Input: $
-                    {amountPaid ? parseFloat(amountPaid).toFixed(2) : "0.00"}
-                  </div>
-                </div>
               </>
             )}
           </div>

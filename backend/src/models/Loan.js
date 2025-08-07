@@ -14,6 +14,10 @@ const loanSchema = new mongoose.Schema({
     required: true,
     min: [0, "Amount owed must be a positive number"],
   },
+  interest: {
+    type: Number,
+    default: 0,
+  },
 
   status: {
     type: String,

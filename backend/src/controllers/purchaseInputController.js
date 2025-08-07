@@ -5,10 +5,19 @@ import Stock from "../models/Stock.js";
 import Cash from "../models/Cash.js";
 import Loan from "../models/Loan.js";
 
+import LoanTransaction from "../models/LoanTransaction.js";
+
 export const createPurchaseInput = async (req, res) => {
   try {
-    const { userId, productId, seasonId, quantity, unitPrice, amountPaid } =
-      req.body;
+    const {
+      userId,
+      productId,
+      seasonId,
+      quantity,
+      unitPrice,
+      amountPaid,
+      interest,
+    } = req.body;
 
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
@@ -61,10 +70,12 @@ export const createPurchaseInput = async (req, res) => {
 
     const status = amountRemaining > 0 ? "loan" : "paid";
     let finalAmountRemaining = amountRemaining;
+
+    // Declare loanRevenue here and initialize it
     let loanRevenue = 0;
 
     if (amountRemaining > 0) {
-      const loanInterestRate = 0.05;
+      const loanInterestRate = interest / 100;
       loanRevenue = amountRemaining * loanInterestRate;
       finalAmountRemaining = amountRemaining + loanRevenue;
     }
@@ -87,7 +98,8 @@ export const createPurchaseInput = async (req, res) => {
         userId,
         quantity,
         amountOwed: finalAmountRemaining,
-        loanRevenue: loanRevenue,
+        loanRevenue: loanRevenue, // Now loanRevenue is always defined
+        interest,
         status: "pending",
       });
     }

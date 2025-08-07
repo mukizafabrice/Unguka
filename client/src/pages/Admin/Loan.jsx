@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   fetchLoans,
@@ -106,8 +107,8 @@ function Loan() {
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
-        <div className="dashboard-content-area d-flex justify-content-between align-items-center">
-          <div>
+        <div className="dashboard-content-area">
+          <div className="d-flex align-items-center justify-content-between">
             <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
               Loan Dashboard
             </h4>
@@ -115,6 +116,7 @@ function Loan() {
               className="btn btn-success btn-sm"
               onClick={viewLoanTransaction}
             >
+              <Eye />
               View loanTransaction
             </button>
           </div>
@@ -132,6 +134,7 @@ function Loan() {
                 <th>Season</th>
                 <th>Quantity</th>
                 <th>Amount Owed</th>
+                <th>Interest rate</th>
                 <th>Status</th>
                 <th colSpan={3}>Action</th>
               </tr>
@@ -151,6 +154,7 @@ function Loan() {
                     </td>
                     <td>{loan.purchaseInputId?.quantity}kg</td>
                     <td>{formatCurrency(`${loan.amountOwed}`)}</td>
+                    <td>{loan.interest}</td>
                     <td>
                       <span
                         className={`badge ${

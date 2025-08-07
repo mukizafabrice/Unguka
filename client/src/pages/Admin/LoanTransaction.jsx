@@ -25,11 +25,16 @@ const LoanTransactions = () => {
   }, []);
 
   const handleBack = () => navigate(-1);
-
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
   return (
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center  gap-8">
           <button
             onClick={handleBack}
             className="btn btn-outline-secondary d-flex align-items-center"
@@ -37,7 +42,7 @@ const LoanTransactions = () => {
             <ArrowLeft className="me-2" size={18} />
             Back
           </button>
-          <h2 className="text-primary m-0">Loan Transactions</h2>
+          <h2 className="text-primary text-center m-0">Loan Transactions</h2>
         </div>
       </div>
 
@@ -52,9 +57,9 @@ const LoanTransactions = () => {
               <tr>
                 <th>id</th>
                 <th>Member</th>
-                <th>Loan Status</th>
                 <th>Amount Paid</th>
                 <th>Remaining</th>
+                <th>Loan Status</th>
                 <th>Date</th>
               </tr>
             </thead>
@@ -63,10 +68,22 @@ const LoanTransactions = () => {
                 transactions.map((tx, index) => (
                   <tr key={tx._id}>
                     <td>{index + 1}</td>
-                    <td>{tx.userId?.names || "N/A"}</td>
-                    <td>{tx.loanId?.status || "N/A"}</td>
-                    <td>{tx.amountPaid} RWF</td>
-                    <td>{tx.amountRemainingToPay} RWF</td>
+                    <td>
+                      {tx.loanId?.purchaseInputId?.userId?.names || "N/A"}
+                    </td>
+                    <td>{formatCurrency(`${tx.amountPaid}`)}</td>
+                    <td>{formatCurrency(`${tx.amountRemainingToPay}`)}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          tx.loanId?.status === "repaid"
+                            ? "bg-success"
+                            : "bg-warning"
+                        }`}
+                      >
+                        {tx.loanId?.status}
+                      </span>
+                    </td>
                     <td>
                       {tx.transactionDate
                         ? new Date(tx.transactionDate).toLocaleDateString()
