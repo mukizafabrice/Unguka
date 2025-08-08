@@ -21,6 +21,7 @@ function PurchaseInputs() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedPurchaseInput, setSelectedPurchaseInput] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
@@ -100,6 +101,23 @@ function PurchaseInputs() {
     }
   };
 
+  const rowsPerPage = 6;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = purchaseInputs.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(purchaseInputs.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -135,7 +153,7 @@ function PurchaseInputs() {
             </thead>
             <tbody>
               {purchaseInputs.length > 0 ? (
-                purchaseInputs.map((purchaseInput, index) => (
+                currentRows.map((purchaseInput, index) => (
                   <tr key={purchaseInput._id}>
                     <td>{index + 1}</td>
                     <td>{purchaseInput.userId?.names || "N/A"}</td>
@@ -213,6 +231,25 @@ function PurchaseInputs() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
         </div>
       </div>
 

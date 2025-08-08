@@ -11,6 +11,7 @@ const AddUserModal = ({ show, onClose, onSubmit }) => {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -19,10 +20,30 @@ const AddUserModal = ({ show, onClose, onSubmit }) => {
     }));
   };
 
+  // Validate form before sending to backend
+  const validateForm = () => {
+    if (!formData.names.trim()) {
+      setErrorMsg("Full names are required.");
+      return false;
+    }
+    if (!/^\+2507\d{8}$/.test(formData.phoneNumber)) {
+      setErrorMsg("Phone number must be in format +2507XXXXXXXX.");
+      return false;
+    }
+    if (!/^\d{16}$/.test(formData.nationalId)) {
+      setErrorMsg("National ID must be exactly 16 digits.");
+      return false;
+    }
+    return true;
+  };
+
+  // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMsg("");
     setErrorMsg("");
+
+    if (!validateForm()) return;
 
     try {
       const res = await createUser(formData);
@@ -31,9 +52,14 @@ const AddUserModal = ({ show, onClose, onSubmit }) => {
 
       if (onSubmit) onSubmit(res); // callback to parent
     } catch (error) {
-      setErrorMsg(
-        error?.response?.data?.message || "Failed to add user. Try again."
-      );
+      const backendMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        (typeof error?.response?.data === "string"
+          ? error.response.data
+          : null);
+
+      setErrorMsg(backendMessage || "Failed to add user. Try again.");
     }
   };
 
@@ -103,7 +129,7 @@ const AddUserModal = ({ show, onClose, onSubmit }) => {
                     className="form-control"
                     value={formData.phoneNumber}
                     onChange={handleChange}
-                    placeholder=" +250781234567"
+                    placeholder="+250781234567"
                     required
                   />
                 </div>

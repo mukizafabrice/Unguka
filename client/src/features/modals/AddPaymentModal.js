@@ -384,12 +384,12 @@ const AddPaymentModal = ({ show, onClose }) => {
                           summary.existingPartialPayment
                             ? summary.existingPartialPayment
                                 .amountRemainingToPay
-                            : summary.amountDue   
+                            : summary.amountDue
                         })`}
                       />
                       <div className="form-text">
-                        Current Input:
-                        {formatCurrency(` ${amountPaid}`)}
+                        Amount remain: 
+                        {formatCurrency(` ${summary.amountDue - amountPaid}`)}
                       </div>
                     </div>
                   </>

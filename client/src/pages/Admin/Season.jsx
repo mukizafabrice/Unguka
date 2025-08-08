@@ -20,6 +20,7 @@ function Season() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadSeasons = async () => {
     try {
@@ -91,6 +92,22 @@ function Season() {
     }
   };
 
+  const rowsPerPage = 7;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = seasons.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(seasons.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -115,7 +132,7 @@ function Season() {
             </thead>
             <tbody>
               {seasons.length > 0 ? (
-                seasons.map((season, index) => (
+                currentRows.map((season, index) => (
                   <tr key={season._id}>
                     <td>{index + 1}</td>
                     <td>{season.name}</td>
@@ -147,10 +164,7 @@ function Season() {
                 ))
               ) : (
                 <tr>
-                  {/* Message when no seasons are found, colSpan matches total columns */}
                   <td colSpan="5" className="text-center py-4">
-                    {" "}
-                    {/* Adjusted colspan to 5 */}
                     <div className="alert alert-info" role="alert">
                       No seasons found.
                     </div>
@@ -159,6 +173,25 @@ function Season() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
         </div>
       </div>
 

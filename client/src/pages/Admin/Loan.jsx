@@ -19,6 +19,7 @@ function Loan() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
   const loadLoans = async () => {
     try {
@@ -103,6 +104,22 @@ function Loan() {
   const viewLoanTransaction = () => {
     navigate("/admin/dashboard/loan-transaction");
   };
+  const rowsPerPage = 6;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = loans.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(loans.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
 
   return (
     <div className="p-4 text-white">
@@ -168,7 +185,7 @@ function Loan() {
                     </td>
                     <td>
                       <div className="d-flex gap-2">
-                        {loan.status === "pending" && (
+                        {currentRows.status === "pending" && (
                           <button
                             className="btn btn-primary btn-sm"
                             onClick={() => handleOpenPayModal(loan)}
@@ -209,6 +226,25 @@ function Loan() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
         </div>
       </div>
 

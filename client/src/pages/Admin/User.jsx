@@ -17,7 +17,7 @@ function User() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
-
+  const [currentPage, setCurrentPage] = useState(1);
   // Function to load all users from the API
   const loadUsers = async () => {
     setLoading(true);
@@ -74,6 +74,22 @@ function User() {
     setShowUpdateModal(true);
   };
 
+  const rowsPerPage = 7;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = users.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(users.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -114,7 +130,7 @@ function User() {
                   </td>
                 </tr>
               ) : users.length > 0 ? (
-                users.map((user, index) => (
+                currentRows.map((user, index) => (
                   <tr key={user._id}>
                     <td>{index + 1}</td>
                     <td>{user.names}</td>
@@ -156,6 +172,25 @@ function User() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
         </div>
       </div>
 

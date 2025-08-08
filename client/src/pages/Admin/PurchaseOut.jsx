@@ -17,6 +17,7 @@ function PurchaseOut() {
   const [purchaseOuts, setPurchaseOuts] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedPurchaseOut, setSelectedPurchaseOut] = useState(null); // Consistent naming
 
   // Function to load purchase outs data from the backend
@@ -90,7 +91,22 @@ function PurchaseOut() {
       );
     }
   };
+  const rowsPerPage = 7;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = purchaseOuts.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(purchaseOuts.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
 
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -122,7 +138,7 @@ function PurchaseOut() {
             </thead>
             <tbody>
               {purchaseOuts.length > 0 ? (
-                purchaseOuts.map((purchaseOut, index) => (
+                currentRows.map((purchaseOut, index) => (
                   <tr key={purchaseOut._id}>
                     <td>{index + 1}</td>
                     <td>{purchaseOut.productId?.productName}</td>
@@ -177,6 +193,25 @@ function PurchaseOut() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
         </div>
       </div>
       <AddPurchaseOutModal

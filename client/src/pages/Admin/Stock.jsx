@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from "react";
-// Only fetchStock is needed now
 import { fetchStock } from "../../services/stockService";
-// No longer need DeleteButton or UpdateButton
-import AddButton from "../../components/buttons/AddButton"; // Still used for consistent layout
-// No longer need UpdateStockModal
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function Stock() {
   const [stocks, setStocks] = useState([]);
-
+  const [currentPage, setCurrentPage] = useState(1);
   useEffect(() => {
     loadStocks();
   }, []);
@@ -23,9 +19,22 @@ function Stock() {
       toast.error("Failed to load stocks.");
     }
   };
+  const rowsPerPage = 7;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = stocks.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(stocks.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
 
-  // --- Removed handleAddStock, handleOpenUpdateModal, handleUpdateStock, handleDeleteStock ---
-  // No add, update, or delete functions are present here.
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
 
   return (
     <div className="p-4 text-white">
@@ -54,7 +63,7 @@ function Stock() {
             </thead>
             <tbody>
               {stocks.length > 0 ? (
-                stocks.map((stock, index) => (
+                currentRows.map((stock, index) => (
                   <tr key={stock._id}>
                     <td>{index + 1}</td>
                     <td>{stock.productId?.productName || "N/A"}</td>
@@ -77,11 +86,26 @@ function Stock() {
             </tbody>
           </table>
         </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
+        </div>
       </div>
-
-      {/* Removed AddStockModal and UpdateStockModal */}
-      {/* <AddStockModal ... /> */}
-      {/* <UpdateStockModal ... /> */}
 
       <ToastContainer
         position="bottom-right"

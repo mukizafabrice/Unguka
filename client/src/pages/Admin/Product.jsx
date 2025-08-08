@@ -20,6 +20,7 @@ function Product() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [productToEdit, setProductToEdit] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Function to fetch products from the backend
   const loadProducts = async () => {
@@ -95,6 +96,22 @@ function Product() {
       );
     }
   };
+  const rowsPerPage = 7;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = products.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(products.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
 
   return (
     <div className="p-4 text-white">
@@ -122,7 +139,7 @@ function Product() {
             </thead>
             <tbody>
               {products.length > 0 ? (
-                products.map((product, index) => (
+                currentRows.map((product, index) => (
                   <tr key={product._id || index}>
                     <td>{index + 1}</td>
                     <td>{product.productName}</td>
@@ -157,6 +174,25 @@ function Product() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
         </div>
       </div>
 

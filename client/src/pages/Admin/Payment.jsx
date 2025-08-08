@@ -10,6 +10,8 @@ const Payment = () => {
   const [payments, setPayments] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const navigate = useNavigate();
 
   // Load payments data
@@ -59,6 +61,25 @@ const Payment = () => {
   const viewpaymentTransaction = () => {
     navigate("/admin/dashboard/payment-transaction");
   };
+
+  const rowsPerPage = 5;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = payments.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(payments.length / rowsPerPage);
+
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+
   return (
     <div className="container py-4">
       <h2 className="mb-4 text-center">Manage Payments</h2>
@@ -75,12 +96,10 @@ const Payment = () => {
           View PaymentTransactions
         </button>
       </div>
-
       <AddPaymentModal
         show={showAddModal}
         onClose={handlePaymentSubmissionSuccess}
       />
-
       <div
         className="card p-3 mt-4 overflow-auto"
         style={{ maxHeight: "400px" }}
@@ -112,7 +131,7 @@ const Payment = () => {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => (
+                {currentRows.map((p) => (
                   <tr key={p._id}>
                     <td>{p.userName}</td>
 
@@ -141,6 +160,25 @@ const Payment = () => {
             </table>
           </div>
         )}
+      </div>
+      <div className="d-flex justify-content-between align-items-center mt-3">
+        <button
+          onClick={handlePrevious}
+          disabled={currentPage === 1}
+          className="btn btn-outline-primary"
+        >
+          ← Previous
+        </button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={handleNext}
+          disabled={currentPage === totalPages}
+          className="btn btn-outline-primary"
+        >
+          Next →
+        </button>
       </div>
     </div>
   );

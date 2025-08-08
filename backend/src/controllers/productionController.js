@@ -140,7 +140,8 @@ export const getAllProductions = async (req, res) => {
     const productions = await Production.find()
       .populate("userId", "names phoneNumber")
       .populate("productId", "productName")
-      .populate("seasonId", "name year");
+      .populate("seasonId", "name year")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(productions);
   } catch (error) {
@@ -162,7 +163,7 @@ export const getProductions = async (req, res) => {
     const productions = await Production.find({ userId, seasonId })
       .populate("userId", "names") // <-- ADD THIS LINE
       .populate("productId", "productName")
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: -1 });
 
     res.status(200).json(productions);
   } catch (error) {
@@ -180,7 +181,8 @@ export const getProductionsByUserId = async (req, res) => {
       .populate("userId", "names")
       .populate("productId", "productName")
       .populate("seasonId", "name year")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .exec();
 
     if (!productions || productions.length === 0) {
       return res

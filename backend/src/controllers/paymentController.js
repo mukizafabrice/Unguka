@@ -56,8 +56,12 @@ export const processMemberPayment = async (req, res) => {
       status: "pending",
     });
 
+    // const totalLoansOutstanding = unpaidLoans.reduce(
+    //   (sum, loan) => sum + (loan.amountOwed - (loan.amountPaid || 0)),
+    //   0
+    // );
     const totalLoansOutstanding = unpaidLoans.reduce(
-      (sum, loan) => sum + (loan.amountOwed - (loan.amountPaid || 0)),
+      (sum, loan) => sum + (loan.amountOwed || 0),
       0
     );
 
@@ -98,23 +102,40 @@ export const processMemberPayment = async (req, res) => {
     });
 
     if (paymentRecord) {
-      // Update existing partial payment
-      paymentRecord.amountPaid += paymentAmount;
-      paymentRecord.amountRemainingToPay -= paymentAmount;
-      if (paymentRecord.amountRemainingToPay < 0) {
+      if (amountDue > paymentAmount) {
         paymentRecord.amountRemainingToPay = 0;
+        paymentRecord.status = "paid";
+
+        if (!paymentRecord.transactions) paymentRecord.transactions = [];
+        paymentRecord.transactions.push({
+          date: new Date(),
+          amount: paymentAmount,
+        });
+
+        await paymentRecord.save();
+
+        let newAmountRemainingToPay = amountDue - paymentAmount;
+        let newGrossAmount = paymentRecord.grossAmount + grossAmount;
+        let newtotalDeductions =
+          paymentRecord.totalDeductions + totalDeductions;
+
+        const newRecord = new Payment({
+          userId,
+          grossAmount: newGrossAmount,
+          totalDeductions: newtotalDeductions,
+          amountDue,
+          amountPaid: paymentAmount,
+          amountRemainingToPay: newAmountRemainingToPay,
+          status: "partial",
+          transactions: [
+            {
+              date: new Date(),
+              amount: paymentAmount,
+            },
+          ],
+        });
+        await newRecord.save();
       }
-
-      paymentRecord.status =
-        paymentRecord.amountRemainingToPay === 0 ? "paid" : "partial";
-
-      if (!paymentRecord.transactions) paymentRecord.transactions = [];
-      paymentRecord.transactions.push({
-        date: new Date(),
-        amount: paymentAmount,
-      });
-
-      await paymentRecord.save();
     } else {
       // Create new payment record
       paymentRecord = new Payment({
@@ -141,7 +162,7 @@ export const processMemberPayment = async (req, res) => {
       userId,
       paymentId: paymentRecord._id,
       amountPaid: paymentAmount,
-      amountRemainingToPay: paymentRecord.amountRemainingToPay,
+      amountRemainingToPay: amountDue - paymentAmount,
       transactionDate: new Date(),
     });
 
@@ -153,36 +174,27 @@ export const processMemberPayment = async (req, res) => {
       );
     }
 
-    // 10. Distribute payment to unpaid fees
-    let remaining = paymentAmount;
-    for (const fee of unpaidFees) {
-      const feeBalance = fee.amountOwed - (fee.amountPaid || 0);
-      const apply = Math.min(remaining, feeBalance);
-
-      if (apply > 0) {
-        fee.amountPaid = (fee.amountPaid || 0) + apply;
-        fee.status = fee.amountPaid >= fee.amountOwed ? "paid" : "partial";
-        if (fee.status === "paid") fee.paidAt = new Date();
-        await fee.save();
-        remaining -= apply;
-        if (remaining <= 0) break;
-      }
+    // 10. Mark all unpaid fees as fully paid if paymentAmount > 0
+    if (paymentAmount > 0) {
+      await Promise.all(
+        unpaidFees.map((fee) => {
+          fee.amountPaid = fee.amountOwed;
+          fee.status = "paid";
+          fee.paidAt = new Date();
+          return fee.save();
+        })
+      );
     }
 
-    // 11. Distribute to unpaid loans
-    if (remaining > 0) {
-      for (const loan of unpaidLoans) {
-        const loanBalance = loan.amountOwed - (loan.amountPaid || 0);
-        const apply = Math.min(remaining, loanBalance);
-
-        if (apply > 0) {
-          loan.amountPaid = (loan.amountPaid || 0) + apply;
-          if (loan.amountPaid >= loan.amountOwed) loan.status = "repaid";
-          await loan.save();
-          remaining -= apply;
-          if (remaining <= 0) break;
-        }
-      }
+    // 11. Mark all unpaid loans as fully repaid if paymentAmount > 0
+    if (paymentAmount > 0) {
+      await Promise.all(
+        unpaidLoans.map((loan) => {
+          loan.amountPaid = loan.amountOwed;
+          loan.status = "repaid";
+          return loan.save();
+        })
+      );
     }
 
     return res.status(200).json({
@@ -199,196 +211,11 @@ export const processMemberPayment = async (req, res) => {
   }
 };
 
-// export const processMemberPayment = async (req, res) => {
-//   const { userId, seasonId, amountPaid } = req.body;
-
-//   if (!userId || !seasonId || amountPaid === undefined || amountPaid === null) {
-//     return res
-//       .status(400)
-//       .json({ message: "userId, seasonId, and amountPaid are required" });
-//   }
-
-//   const paymentAmount = parseFloat(amountPaid);
-//   if (isNaN(paymentAmount) || paymentAmount <= 0) {
-//     return res
-//       .status(400)
-//       .json({ message: "Amount paid must be a positive number." });
-//   }
-
-//   try {
-//     // Fetch productions for user and season to calculate gross earnings
-//     const productions = await Production.find({ userId, seasonId });
-//     if (!productions || productions.length === 0) {
-//       return res
-//         .status(404)
-//         .json({ message: "No productions found for this user in the season." });
-//     }
-//     const grossAmount = productions.reduce(
-//       (sum, p) => sum + (p.totalPrice || 0),
-//       0
-//     );
-
-//     // Calculate unpaid fees for user in the season
-//     const unpaidFees = await Fee.find({
-//       userId,
-//       seasonId,
-//       status: { $ne: "paid" },
-//     });
-//     const totalFeesOutstanding = unpaidFees.reduce(
-//       (acc, fee) => acc + (fee.amountOwed - (fee.amountPaid || 0)),
-//       0
-//     );
-
-//     // Calculate unpaid loans for user in the season
-//     const purchaseInputs = await PurchaseInput.find({ userId, seasonId });
-//     const purchaseInputIds = purchaseInputs.map((p) => p._id);
-//     const unpaidLoans = await Loan.find({
-//       purchaseInputId: { $in: purchaseInputIds },
-//       status: "pending",
-//     });
-//     const totalLoansOutstanding = unpaidLoans.reduce(
-//       (acc, loan) => acc + (loan.amountOwed - (loan.amountPaid || 0)),
-//       0
-//     );
-
-//     // Calculate previous partial payments for user across all seasons
-//     const allPartialPayments = await Payment.find({
-//       userId,
-//       status: "partial",
-//     });
-//     const previousRemainingBalance = allPartialPayments.reduce(
-//       (sum, p) => sum + (p.amountRemainingToPay || 0),
-//       0
-//     );
-
-//     const totalDeductions = totalFeesOutstanding + totalLoansOutstanding;
-//     const amountDue = grossAmount - totalDeductions + previousRemainingBalance;
-
-//     if (paymentAmount > amountDue) {
-//       return res.status(400).json({
-//         message: `Amount paid (${paymentAmount}) exceeds amount due (${amountDue.toFixed(
-//           2
-//         )}).`,
-//       });
-//     }
-
-//     // Update cooperative cash balance
-//     const coopCash = await CooperativeCash.findOne();
-//     if (!coopCash) {
-//       return res
-//         .status(500)
-//         .json({ message: "Cooperative cash record not found." });
-//     }
-
-//     coopCash.balance += paymentAmount;
-//     await coopCash.save();
-
-//     // Find existing payment for user and season
-//     let paymentRecord = await Payment.findOne({ userId, seasonId });
-//     if (paymentRecord) {
-//       paymentRecord.amountPaid += paymentAmount;
-//       paymentRecord.amountRemainingToPay -= paymentAmount;
-
-//       if (paymentRecord.amountRemainingToPay < 0)
-//         paymentRecord.amountRemainingToPay = 0;
-//       paymentRecord.status =
-//         paymentRecord.amountRemainingToPay === 0 ? "paid" : "partial";
-
-//       if (!paymentRecord.transactions) paymentRecord.transactions = [];
-//       paymentRecord.transactions.push({
-//         date: new Date(),
-//         amount: paymentAmount,
-//       });
-//       await paymentRecord.save();
-
-//       // ✅ NEW: Record transaction
-//       await PaymentTransaction.create({
-//         userId,
-//         seasonId,
-//         paymentId: paymentRecord._id,
-//         amountPaid: paymentAmount,
-//         amountRemainingToPay: paymentRecord.amountRemainingToPay,
-//         transactionDate: new Date(),
-//       });
-//     } else {
-//       // Create new payment record
-//       paymentRecord = new Payment({
-//         userId,
-//         seasonId,
-//         grossAmount,
-//         totalDeductions,
-//         amountDue,
-//         amountPaid: paymentAmount,
-//         amountRemainingToPay: amountDue - paymentAmount,
-//         status: amountDue - paymentAmount === 0 ? "paid" : "partial",
-//         transactions: [
-//           {
-//             date: new Date(),
-//             amount: paymentAmount,
-//           },
-//         ],
-//       });
-
-//       await paymentRecord.save();
-
-//       await PaymentTransaction.create({
-//         userId,
-//         seasonId,
-//         paymentId: paymentRecord._id,
-//         amountPaid: paymentAmount,
-//         amountRemainingToPay: paymentRecord.amountRemainingToPay,
-//         transactionDate: new Date(),
-//       });
-//     }
-
-//     // Distribute payment to unpaid fees
-//     let remainingPayment = paymentAmount;
-//     for (const fee of unpaidFees) {
-//       const feeRemaining = fee.amountOwed - (fee.amountPaid || 0);
-//       const applyAmount = Math.min(remainingPayment, feeRemaining);
-//       if (applyAmount > 0) {
-//         fee.amountPaid = (fee.amountPaid || 0) + applyAmount;
-//         fee.status = fee.amountPaid >= fee.amountOwed ? "paid" : "partial";
-//         if (fee.status === "paid") fee.paidAt = new Date();
-//         await fee.save();
-//         remainingPayment -= applyAmount;
-//         if (remainingPayment <= 0) break;
-//       }
-//     }
-
-//     // Distribute remaining payment to unpaid loans
-//     if (remainingPayment > 0) {
-//       for (const loan of unpaidLoans) {
-//         const loanRemaining = loan.amountOwed - (loan.amountPaid || 0);
-//         const applyAmount = Math.min(remainingPayment, loanRemaining);
-//         if (applyAmount > 0) {
-//           loan.amountPaid = (loan.amountPaid || 0) + applyAmount;
-//           if (loan.amountPaid >= loan.amountOwed) loan.status = "repaid";
-//           await loan.save();
-//           remainingPayment -= applyAmount;
-//           if (remainingPayment <= 0) break;
-//         }
-//       }
-//     }
-
-//     return res.status(200).json({
-//       message: "Payment processed successfully",
-//       payment: paymentRecord,
-//       coopCashBalance: coopCash.balance,
-//     });
-//   } catch (error) {
-//     console.error("Error processing member payment:", error);
-//     return res
-//       .status(500)
-//       .json({ message: "Server error", error: error.message });
-//   }
-// };
-
-// In your backend controller (e.g., controllers/paymentController.js)
-
 export const getAllPayments = async (req, res) => {
   try {
-    const payments = await Payment.find({}).populate("userId", "names"); // Populate only userId with names
+    const payments = await Payment.find({})
+      .populate("userId", "names")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(payments);
   } catch (error) {

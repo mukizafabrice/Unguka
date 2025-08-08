@@ -19,7 +19,7 @@ function Production() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedProduction, setSelectedProduction] = useState(null);
-
+  const [currentPage, setCurrentPage] = useState(1);
   const loadProductions = async () => {
     try {
       const productionsData = await fetchProductions();
@@ -102,6 +102,28 @@ function Production() {
     }
   };
 
+  const rowsPerPage = 7;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = productions.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(productions.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -116,7 +138,7 @@ function Production() {
         </div>
       </div>
 
-      <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto" style={{maxHeight: "400px"}}>
+      <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
         <div className="table-responsive">
           <table className="table table-dark table-striped table-hover mb-0">
             <thead>
@@ -134,7 +156,7 @@ function Production() {
             </thead>
             <tbody>
               {productions.length > 0 ? (
-                productions.map((production, index) => (
+                currentRows.map((production, index) => (
                   <tr key={production._id}>
                     <td>{index + 1}</td>
                     <td>{production.userId?.names || "N/A"}</td>
@@ -144,8 +166,8 @@ function Production() {
                       {production.seasonId?.year || "N/A"})
                     </td>
                     <td>{production.quantity}</td>
-                    <td>{production.unitPrice}</td>
-                    <td>{production.totalPrice}</td>
+                    <td>{formatCurrency(`${production.unitPrice}`)}</td>
+                    <td>{formatCurrency(`${production.totalPrice}`)}</td>
                     <td>
                       {production.createdAt
                         ? new Date(production.createdAt).toLocaleDateString()
@@ -188,6 +210,25 @@ function Production() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
         </div>
       </div>
 

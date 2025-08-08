@@ -2,10 +2,9 @@ import PaymentTransaction from "../models/PaymentTransaction.js";
 
 export const getAllPaymentTransactions = async (req, res) => {
   try {
-    const PaymentTransactions = await PaymentTransaction.find({}).populate(
-      "userId",
-      "names"
-    );
+    const PaymentTransactions = await PaymentTransaction.find({})
+      .populate("userId", "names")
+      .sort({ transactionDate: -1 });
 
     res.status(200).json(PaymentTransactions);
   } catch (error) {

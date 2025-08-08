@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 const PaymentTransaction = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
 
   // Load payments data
@@ -49,6 +50,23 @@ const PaymentTransaction = () => {
   };
 
   const handleBack = () => navigate(-1);
+
+  const rowsPerPage = 5;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = payments.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(payments.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
   return (
     <div className="container py-4">
       <h2 className="mb-4 text-center text-black"> Payments Transactions</h2>
@@ -89,7 +107,7 @@ const PaymentTransaction = () => {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => (
+                {currentRows.map((p) => (
                   <tr key={p._id}>
                     <td>{p.userName}</td>
                     <td>
@@ -121,6 +139,25 @@ const PaymentTransaction = () => {
             </table>
           </div>
         )}
+      </div>
+      <div className="d-flex justify-content-between align-items-center mt-3">
+        <button
+          onClick={handlePrevious}
+          disabled={currentPage === 1}
+          className="btn btn-outline-primary"
+        >
+          ← Previous
+        </button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={handleNext}
+          disabled={currentPage === totalPages}
+          className="btn btn-outline-primary"
+        >
+          Next →
+        </button>
       </div>
     </div>
   );

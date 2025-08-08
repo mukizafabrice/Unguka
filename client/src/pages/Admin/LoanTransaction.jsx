@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 const LoanTransactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,6 +31,22 @@ const LoanTransactions = () => {
       style: "currency",
       currency: "RWF",
     }).format(amount);
+  };
+  const rowsPerPage = 7;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = transactions.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(transactions.length / rowsPerPage);
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
   };
   return (
     <div className="container mt-4">
@@ -65,7 +82,7 @@ const LoanTransactions = () => {
             </thead>
             <tbody>
               {transactions.length > 0 ? (
-                transactions.map((tx, index) => (
+                currentRows.map((tx, index) => (
                   <tr key={tx._id}>
                     <td>{index + 1}</td>
                     <td>
@@ -100,6 +117,25 @@ const LoanTransactions = () => {
               )}
             </tbody>
           </table>
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <button
+              onClick={handlePrevious}
+              disabled={currentPage === 1}
+              className="btn btn-outline-primary"
+            >
+              ← Previous
+            </button>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+              className="btn btn-outline-primary"
+            >
+              Next →
+            </button>
+          </div>
         </div>
       )}
     </div>
