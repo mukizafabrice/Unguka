@@ -26,6 +26,13 @@ import PurchaseOut from "./pages/Admin/PurchaseOut";
 import Announcement from "./pages/Admin/Announcement";
 //member routed
 import MemberDashboard from "./pages/Member/MemberDashboard";
+import MemberSeason from "./pages/Member/MemberSeason";
+import MemberAnnouncement from "./pages/Member/MemberAnnouncement";
+import MemberProduct from "./pages/Member/MemberProduct";
+import MemberFeeTypes from "./pages/Member/MemberFeeTypes";
+import MemberProduction from "./pages/Member/MemberProduction";
+import MemberPlot from "./pages/Member/MemberPlot";
+import MemberFees from "./pages/Member/MemberFees";
 import MemberLayout from "./layouts/MemberLayout";
 import User from "./pages/Admin/User";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -93,6 +100,13 @@ function App() {
             }
           >
             <Route index element={<MemberDashboard />} />
+            <Route path="season" element={<MemberSeason />} />
+            <Route path="announcement" element={<MemberAnnouncement />} />
+            <Route path="product" element={<MemberProduct />} />
+            <Route path="feeTypes" element={<MemberFeeTypes />} />
+            <Route path="production" element={<MemberProduction />} />
+            <Route path="plot" element={<MemberPlot />} />
+            <Route path="fees" element={<MemberFees />} />
           </Route>
         </Routes>
       </AuthProvider>

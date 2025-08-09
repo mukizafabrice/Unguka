@@ -1,29 +1,36 @@
 import React, { useState, useEffect } from "react";
-import { fetchStock } from "../../services/stockService";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-function Stock() {
-  const [stocks, setStocks] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  useEffect(() => {
-    loadStocks();
-  }, []);
+import { fetchProduct } from "../../services/productService";
 
-  const loadStocks = async () => {
+function Product() {
+  const [products, setProducts] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Function to fetch products from the backend
+  const loadProducts = async () => {
     try {
-      const stockData = await fetchStock();
-      setStocks(stockData);
+      const productsData = await fetchProduct();
+      // Log the fetched data to help diagnose the issue
+      console.log("Fetched product data:", productsData);
+      setProducts(productsData);
     } catch (error) {
-      console.error("Failed to fetch stocks:", error);
-      toast.error("Failed to load stocks.");
+      console.error("Failed to fetch products:", error);
+      toast.error("Failed to load products.");
     }
   };
+
+  // Initial data load on component mount
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
   const rowsPerPage = 7;
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = stocks.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(stocks.length / rowsPerPage);
+  const currentRows = products.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(products.length / rowsPerPage);
   const handleNext = () => {
     if (currentPage < totalPages) {
       setCurrentPage((prev) => prev + 1);
@@ -39,12 +46,12 @@ function Stock() {
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
-        <div className="dashboard-content-area  flex-wrap">
+        <div className="dashboard-content-area">
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Stocks Dashboard
+            Products Dashboard
           </h4>
-          <p className="text-muted mt-2">
-            Manage and track current stock levels and updates in real time.
+          <p className="text-dark">
+            Here is a list of products available in the cooperative.
           </p>
         </div>
       </div>
@@ -55,30 +62,22 @@ function Stock() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Product Name</th>
-                <th>Quantity</th>
-                <th>Amount</th>
-                {/* Removed Action column */}
+                <th>ProductName</th>
               </tr>
             </thead>
             <tbody>
-              {stocks.length > 0 ? (
-                currentRows.map((stock, index) => (
-                  <tr key={stock._id}>
+              {products.length > 0 ? (
+                currentRows.map((product, index) => (
+                  <tr key={product._id || index}>
                     <td>{index + 1}</td>
-                    <td>{stock.productId?.productName || "N/A"}</td>
-                    <td>{stock.quantity}</td>
-                    <td>{stock.totalPrice}</td>
-                    {/* Removed Action buttons column */}
+                    <td>{product.productName}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="text-center py-4">
-                    {" "}
-                    {/* Adjusted colspan */}
+                  <td colSpan="5" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No stock found.
+                      No products found.
                     </div>
                   </td>
                 </tr>
@@ -122,4 +121,4 @@ function Stock() {
   );
 }
 
-export default Stock;
+export default Product;

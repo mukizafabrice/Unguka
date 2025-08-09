@@ -11,7 +11,6 @@ const router = express.Router();
 
 router.post("/", createSeason);
 router.get("/", getAllSeasons);
-router.get("/:id", getSeasonById);
 router.put("/:id", updateSeason);
 router.delete("/:id", deleteSeason);
 

@@ -1,5 +1,5 @@
 import Season from "../models/Season.js";
-
+import mongoose from "mongoose";
 // Create a new season
 
 export const createSeason = async (req, res) => {
@@ -30,7 +30,7 @@ export const createSeason = async (req, res) => {
 // Get all seasons
 export const getAllSeasons = async (req, res) => {
   try {
-    const seasons = await Season.find().sort({ startDate: 1 });
+    const seasons = await Season.find().sort({ createdAt: -1 });
     res.status(200).json(seasons);
   } catch (error) {
     console.error("Error fetching seasons:", error);
@@ -53,7 +53,6 @@ export const getSeasonById = async (req, res) => {
 };
 
 // Update a season
-import mongoose from "mongoose";
 
 export const updateSeason = async (req, res) => {
   const { name, year } = req.body;

@@ -1,11 +1,23 @@
 import axiosInstance from "../api/axiosInstance";
 
-const API_BASE_URL = "/fees"; 
+const API_BASE_URL = "/fees";
 
 // Fetch all fees (for admin view)
 export const fetchAllFees = async () => {
   try {
     const response = await axiosInstance.get(API_BASE_URL);
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error fetching all fees:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+export const fetchAllFeesById = async (id) => {
+  try {
+    const response = await axiosInstance.get(`${API_BASE_URL}/${id}`);
     return response.data;
   } catch (error) {
     console.error(

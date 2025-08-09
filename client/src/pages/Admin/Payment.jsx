@@ -169,7 +169,7 @@ const Payment = () => {
         >
           ← Previous
         </button>
-        <span>
+        <span className="text-white">
           Page {currentPage} of {totalPages}
         </span>
         <button

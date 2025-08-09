@@ -37,7 +37,8 @@ export const getAllPlots = async (req, res) => {
   try {
     const plots = await Plot.find()
       .populate("userId", "names phoneNumber") // select fields from user
-      .populate("productId", "productName unitPrice"); // select fields from product
+      .populate("productId", "productName unitPrice")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ data: plots });
   } catch (error) {
@@ -57,7 +58,8 @@ export const getPlotById = async (req, res) => {
 
     const plot = await Plot.findById(id)
       .populate("userId", "names phoneNumber")
-      .populate("productId", "productName unitPrice");
+      .populate("productId", "productName unitPrice")
+      .sort({ createdAt: -1 });
 
     if (!plot) {
       return res.status(404).json({ message: "Plot not found" });

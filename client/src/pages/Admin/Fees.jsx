@@ -211,8 +211,6 @@ function Fees() {
               ) : (
                 <tr>
                   <td colSpan="9" className="text-center py-4">
-                    {" "}
-                    {/* colSpan changed from 8 to 9 */}
                     <div className="alert alert-info" role="alert">
                       No fee records found.
                     </div>

@@ -95,6 +95,7 @@ export const getAllFees = async (req, res) => {
       .populate("userId", "names")
       .populate("seasonId", "name year")
       .populate("feeTypeId", "name amount")
+      .sort({ createdAt: -1 })
       .exec();
 
     res.status(200).json(fees);
@@ -104,6 +105,22 @@ export const getAllFees = async (req, res) => {
   }
 };
 
+export const getAllFeesById = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const fees = await Fees.find({ userId })
+      .populate("userId", "names")
+      .populate("seasonId", "name year")
+      .populate("feeTypeId", "name amount")
+      .sort({ createdAt: -1 })
+      .exec();
+
+    res.status(200).json(fees);
+  } catch (error) {
+    console.error("Error fetching fees by user ID:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 export const updateFee = async (req, res) => {
   try {
     const feeId = req.params.id;

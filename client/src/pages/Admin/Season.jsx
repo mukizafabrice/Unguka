@@ -150,7 +150,7 @@ function Season() {
                         </UpdateButton>
                         {/* Delete Button */}
                         <DeleteButton
-                          onConfirm={() => handleDeleteSeason(season._id)} // Pass the season's _id for deletion
+                          onConfirm={() => handleDeleteSeason(season._id)}
                           confirmMessage={`Are you sure you want to delete season "${
                             season.name || "N/A"
                           }"?`}

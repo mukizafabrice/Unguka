@@ -7,21 +7,16 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
   const [members, setMembers] = useState([]);
   const [products, setProducts] = useState([]);
   const [seasons, setSeasons] = useState([]);
-  const [totalAmount, setTotalAmount] = useState(0);
-
-  const [formData, setFormData] = useState({
-    userId: "",
-    productId: "",
-    seasonId: "",
-    quantity: "",
-    unitPrice: "",
-  });
-  // Calculate total amount based on quantity and unit price
-  useEffect(() => {
-    const quantity = parseFloat(formData.quantity) || 0;
-    const unitPrice = parseFloat(formData.unitPrice) || 0;
-    setTotalAmount(quantity * unitPrice);
-  }, [formData.quantity, formData.unitPrice]);
+  const [productions, setProductions] = useState([
+    {
+      userId: "",
+      productId: "",
+      seasonId: "",
+      quantity: "",
+      unitPrice: "",
+      totalAmount: 0,
+    },
+  ]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -42,62 +37,91 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
     if (show) {
       loadData();
       // Reset form data when modal opens
-      setFormData({
-        userId: "",
-        productId: "",
-        seasonId: "",
-        quantity: "",
-        unitPrice: "",
-      });
-      // Add 'modal-open' class to body to prevent scrolling when modal is open
+      setProductions([
+        {
+          userId: "",
+          productId: "",
+          seasonId: "",
+          quantity: "",
+          unitPrice: "",
+          totalAmount: 0,
+        },
+      ]);
       document.body.classList.add("modal-open");
     } else {
-      // Remove 'modal-open' class when modal is closed
       document.body.classList.remove("modal-open");
     }
 
-    // Cleanup function to remove 'modal-open' class if component unmounts
     return () => {
       document.body.classList.remove("modal-open");
     };
   }, [show]);
 
-  const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e, index) => {
+    const { name, value } = e.target;
+    const list = [...productions];
+    list[index][name] = value;
+
+    // Recalculate totalAmount for the specific production being changed
+    const quantity = parseFloat(list[index].quantity) || 0;
+    const unitPrice = parseFloat(list[index].unitPrice) || 0;
+    list[index].totalAmount = quantity * unitPrice;
+
+    setProductions(list);
+  };
+
+  const handleAddProduction = () => {
+    setProductions([
+      ...productions,
+      {
+        userId: "",
+        productId: "",
+        seasonId: "",
+        quantity: "",
+        unitPrice: "",
+        totalAmount: 0,
+      },
+    ]);
+  };
+
+  const handleRemoveProduction = (index) => {
+    const list = [...productions];
+    list.splice(index, 1);
+    setProductions(list);
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault(); // Prevent default form submission
-    onSave(formData);
+    e.preventDefault();
+    onSave(productions);
     onClose();
   };
 
-  // If the modal is not shown, return null to render nothing
   if (!show) {
     return null;
   }
 
   return (
     <>
-      {/* The Modal Backdrop */}
       <div className="modal-backdrop fade show"></div>
-
-      {/* The Modal itself */}
       <div
         className="modal fade show"
         tabIndex="-1"
         role="dialog"
         aria-labelledby="addProductionModalLabel"
-        aria-hidden="false" // Always false when showing, as it's visible
-        style={{ display: "block", paddingRight: "17px" }} // Manually set display and padding for scrollbar
+        aria-hidden="false"
+        style={{ display: "block", paddingRight: "17px" }}
       >
-        <div className="modal-dialog modal-dialog-centered" role="document">
+        <div
+          className="modal-dialog modal-dialog-centered modal-lg"
+          role="document"
+        >
           <div className="modal-content">
             <div className="modal-header">
               <h5
                 className="modal-title text-dark"
                 id="addProductionModalLabel"
               >
-                Add New Production
+                Add New Productions
               </h5>
               <button
                 type="button"
@@ -108,106 +132,145 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
             </div>
             <div className="modal-body">
               <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="userId" className="form-label text-dark">
-                    Member
-                  </label>
-                  <select
-                    id="userId"
-                    name="userId"
-                    className="form-select"
-                    value={formData.userId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Member</option>
-                    {members.map((member) => (
-                      <option key={member._id} value={member._id}>
-                        {member.names}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {productions.map((production, index) => (
+                  <div key={index} className="border p-3 mb-3">
+                    <h6 className="text-dark">Production #{index + 1}</h6>
+                    {productions.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm float-end"
+                        onClick={() => handleRemoveProduction(index)}
+                      >
+                        Remove
+                      </button>
+                    )}
+                    <div className="mb-3">
+                      <label
+                        htmlFor={`userId-${index}`}
+                        className="form-label text-dark"
+                      >
+                        Member
+                      </label>
+                      <select
+                        id={`userId-${index}`}
+                        name="userId"
+                        className="form-select"
+                        value={production.userId}
+                        onChange={(e) => handleChange(e, index)}
+                        required
+                      >
+                        <option value="">Select Member</option>
+                        {members.map((member) => (
+                          <option key={member._id} value={member._id}>
+                            {member.names}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="mb-3">
-                  <label htmlFor="productId" className="form-label text-dark">
-                    Product
-                  </label>
-                  <select
-                    id="productId"
-                    name="productId"
-                    className="form-select"
-                    value={formData.productId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Product</option>
-                    {products.map((product) => (
-                      <option key={product._id} value={product._id}>
-                        {product.productName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div className="mb-3">
+                      <label
+                        htmlFor={`productId-${index}`}
+                        className="form-label text-dark"
+                      >
+                        Product
+                      </label>
+                      <select
+                        id={`productId-${index}`}
+                        name="productId"
+                        className="form-select"
+                        value={production.productId}
+                        onChange={(e) => handleChange(e, index)}
+                        required
+                      >
+                        <option value="">Select Product</option>
+                        {products.map((product) => (
+                          <option key={product._id} value={product._id}>
+                            {product.productName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="mb-3">
-                  <label htmlFor="seasonId" className="form-label text-dark">
-                    Season
-                  </label>
-                  <select
-                    id="seasonId"
-                    name="seasonId"
-                    className="form-select"
-                    value={formData.seasonId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Season</option>
-                    {seasons.map((season) => (
-                      <option key={season._id} value={season._id}>
-                        {season.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div className="mb-3">
+                      <label
+                        htmlFor={`seasonId-${index}`}
+                        className="form-label text-dark"
+                      >
+                        Season
+                      </label>
+                      <select
+                        id={`seasonId-${index}`}
+                        name="seasonId"
+                        className="form-select"
+                        value={production.seasonId}
+                        onChange={(e) => handleChange(e, index)}
+                        required
+                      >
+                        <option value="">Select Season</option>
+                        {seasons.map((season) => (
+                          <option key={season._id} value={season._id}>
+                            {season.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="mb-3">
-                  <label htmlFor="quantity" className="form-label text-dark">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    id="quantity"
-                    className="form-control"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="unitPrice" className="form-label text-dark">
-                    UnitPrice
-                  </label>
-                  <input
-                    type="number"
-                    id="unitPrice"
-                    className="form-control"
-                    name="unitPrice"
-                    value={formData.unitPrice}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label text-dark">Total Amount</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={`$${totalAmount.toFixed(2)}`}
-                    readOnly
-                  />
-                </div>
+                    <div className="mb-3">
+                      <label
+                        htmlFor={`quantity-${index}`}
+                        className="form-label text-dark"
+                      >
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        id={`quantity-${index}`}
+                        className="form-control"
+                        name="quantity"
+                        value={production.quantity}
+                        onChange={(e) => handleChange(e, index)}
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label
+                        htmlFor={`unitPrice-${index}`}
+                        className="form-label text-dark"
+                      >
+                        UnitPrice
+                      </label>
+                      <input
+                        type="number"
+                        id={`unitPrice-${index}`}
+                        className="form-control"
+                        name="unitPrice"
+                        value={production.unitPrice}
+                        onChange={(e) => handleChange(e, index)}
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-dark">
+                        Total Amount
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={`$${production.totalAmount.toFixed(2)}`}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-info mt-3"
+                  onClick={handleAddProduction}
+                >
+                  Add Another Production
+                </button>
               </form>
             </div>
             <div className="modal-footer">
@@ -223,7 +286,7 @@ const AddProductionModal = ({ show, onClose, onSave }) => {
                 className="btn btn-primary"
                 onClick={handleSubmit}
               >
-                Save changes
+                Save all changes
               </button>
             </div>
           </div>

@@ -3,6 +3,7 @@ import {
   recordPayment,
   getFeesByUserAndSeason,
   getAllFees,
+  getAllFeesById,
   updateFee,
   deleteFee,
 } from "../controllers/feesController.js";
@@ -17,6 +18,7 @@ router.get("/user/:userId/season/:seasonId", getFeesByUserAndSeason);
 
 // Get all fees (admin)
 router.get("/", getAllFees);
+router.get("/:id", getAllFeesById);
 
 // Update a fee by ID
 router.put("/:id", updateFee);

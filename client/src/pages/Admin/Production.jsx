@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { ToastContainer, toast } from "react-toastify"; // Import ToastContainer and toast
-import "react-toastify/dist/ReactToastify.css"; // Import the CSS for react-toastify
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import {
   fetchProductions,
-  createProduction,
+  createProduction, // This function might need to be adjusted or a new one added
   updateProduction,
   deleteProduction,
 } from "../../services/productionService";
@@ -20,13 +20,14 @@ function Production() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedProduction, setSelectedProduction] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+
   const loadProductions = async () => {
     try {
       const productionsData = await fetchProductions();
       setProductions(productionsData);
     } catch (error) {
       console.error("Failed to fetch productions:", error);
-      toast.error("Failed to load productions."); // Error toast for fetching
+      toast.error("Failed to load productions.");
     }
   };
 
@@ -34,17 +35,23 @@ function Production() {
     loadProductions();
   }, []);
 
-  const handleAddProduction = async (newData) => {
-    console.log("New production to be added:", newData);
+  const handleAddProduction = async (newProductionsArray) => {
     try {
-      await createProduction(newData);
-      console.log("Production added successfully!");
+      // Loop through each production in the array
+      for (const production of newProductionsArray) {
+        // Call createProduction for each individual production object
+        await createProduction(production);
+      }
+      console.log("All productions added successfully!");
+      // After all submissions, refresh the data and close the modal
       await loadProductions();
       setShowAddModal(false);
-      toast.success("Production added successfully!"); // Success toast
+      toast.success("Productions added successfully!");
     } catch (error) {
       console.error("Failed to add production:", error);
-      toast.error("Failed to add production."); // Error toast
+      toast.error(
+        "Failed to add one or more productions. Please check the data."
+      );
     }
   };
 
@@ -57,7 +64,7 @@ function Production() {
       await loadProductions();
       setShowUpdateModal(false);
       setSelectedProduction(null);
-      toast.success("Production updated successfully!"); // Success toast
+      toast.success("Production updated successfully!");
     } catch (error) {
       console.error("Failed to update production:", error);
       if (error.response) {
@@ -67,9 +74,9 @@ function Production() {
           `Failed to update production: ${
             error.response.data.message || error.response.statusText
           }`
-        ); // More specific error toast
+        );
       } else {
-        toast.error("Failed to update production."); // Generic error toast
+        toast.error("Failed to update production.");
       }
     }
   };
@@ -85,7 +92,7 @@ function Production() {
       await deleteProduction(id);
       console.log("Production deleted successfully!");
       await loadProductions();
-      toast.success("Production deleted successfully!"); // Success toast
+      toast.success("Production deleted successfully!");
     } catch (error) {
       console.error("Failed to delete production:", error);
       if (error.response) {
@@ -95,9 +102,9 @@ function Production() {
           `Failed to delete production: ${
             error.response.data.message || error.response.statusText
           }`
-        ); // More specific error toast
+        );
       } else {
-        toast.error("Failed to delete production."); // Generic error toast
+        toast.error("Failed to delete production.");
       }
     }
   };
@@ -107,6 +114,7 @@ function Production() {
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = productions.slice(indexOfFirstRow, indexOfLastRow);
   const totalPages = Math.ceil(productions.length / rowsPerPage);
+
   const handleNext = () => {
     if (currentPage < totalPages) {
       setCurrentPage((prev) => prev + 1);
@@ -118,12 +126,14 @@ function Production() {
       setCurrentPage((prev) => prev - 1);
     }
   };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
       currency: "RWF",
     }).format(amount);
   };
+
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -219,7 +229,7 @@ function Production() {
           >
             ← Previous
           </button>
-          <span>
+          <span className="text-white">
             Page {currentPage} of {totalPages}
           </span>
           <button

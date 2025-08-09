@@ -1,5 +1,9 @@
 import axiosInstance from "../api/axiosInstance";
 
+export const fetchPlotById = async (id) => {
+  const response = await axiosInstance.get(`/plots/${id}`);
+  return response.data;
+};
 export const fetchPlot = async () => {
   const response = await axiosInstance.get("/plots");
   return response.data;

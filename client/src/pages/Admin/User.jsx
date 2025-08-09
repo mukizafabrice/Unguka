@@ -1,8 +1,5 @@
-// src/pages/User.jsx
-
 import React, { useState, useEffect } from "react";
-import { toast } from "react-toastify";
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { fetchUsers, createUser, deleteUser } from "../../services/userService";
 import DeleteButton from "../../components/buttons/DeleteButton";
@@ -18,7 +15,9 @@ function User() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  // Function to load all users from the API
+
+  const rowsPerPage = 7;
+
   const loadUsers = async () => {
     setLoading(true);
     try {
@@ -32,7 +31,6 @@ function User() {
     }
   };
 
-  // Fetch users on component mount
   useEffect(() => {
     loadUsers();
   }, []);
@@ -42,7 +40,7 @@ function User() {
       await createUser(newUserData);
       toast.success("User added successfully!");
       setShowAddModal(false);
-      loadUsers(); // Reload users to show the new user
+      loadUsers();
     } catch (error) {
       console.error("Failed to add user:", error);
       const errorMessage =
@@ -55,14 +53,14 @@ function User() {
   const handleUserUpdated = () => {
     toast.success("User updated successfully!");
     setShowUpdateModal(false);
-    loadUsers(); // Reload users to show the updated data
+    loadUsers();
   };
 
   const handleDeleteUser = async (id) => {
     try {
       await deleteUser(id);
       toast.success("User deleted successfully!");
-      loadUsers(); // Reload users to remove the deleted user from the list
+      loadUsers();
     } catch (error) {
       console.error("Failed to delete user:", error);
       toast.error("Failed to delete user. Please try again.");
@@ -74,11 +72,11 @@ function User() {
     setShowUpdateModal(true);
   };
 
-  const rowsPerPage = 7;
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = users.slice(indexOfFirstRow, indexOfLastRow);
   const totalPages = Math.ceil(users.length / rowsPerPage);
+
   const handleNext = () => {
     if (currentPage < totalPages) {
       setCurrentPage((prev) => prev + 1);
@@ -90,6 +88,7 @@ function User() {
       setCurrentPage((prev) => prev - 1);
     }
   };
+
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -173,6 +172,8 @@ function User() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
         <div className="d-flex justify-content-between align-items-center mt-3">
           <button
             onClick={handlePrevious}
@@ -182,7 +183,9 @@ function User() {
             ← Previous
           </button>
           <span>
-            Page {currentPage} of {totalPages}
+            <span className="text-white">
+              Page {currentPage} of {totalPages}
+            </span>
           </span>
           <button
             onClick={handleNext}
@@ -206,17 +209,8 @@ function User() {
         onSubmit={handleUserUpdated}
         userData={userToEdit}
       />
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+
+      <ToastContainer position="top-right" autoClose={5000} />
     </div>
   );
 }

@@ -1,29 +1,35 @@
 import React, { useState, useEffect } from "react";
-import { fetchStock } from "../../services/stockService";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-function Stock() {
-  const [stocks, setStocks] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  useEffect(() => {
-    loadStocks();
-  }, []);
+import { fetchProductionsById } from "../../services/productionService";
 
-  const loadStocks = async () => {
+function Production() {
+  const [productions, setProductions] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const loadProductions = async () => {
     try {
-      const stockData = await fetchStock();
-      setStocks(stockData);
+      const user = JSON.parse(localStorage.getItem("user"));
+      const userId = user?.id;
+      const productionsData = await fetchProductionsById(userId);
+      setProductions(productionsData);
     } catch (error) {
-      console.error("Failed to fetch stocks:", error);
-      toast.error("Failed to load stocks.");
+      console.error("Failed to fetch productions:", error);
+      toast.error("Failed to load productions.");
     }
   };
+
+  useEffect(() => {
+    loadProductions();
+  }, []);
+
   const rowsPerPage = 7;
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = stocks.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(stocks.length / rowsPerPage);
+  const currentRows = productions.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(productions.length / rowsPerPage);
+
   const handleNext = () => {
     if (currentPage < totalPages) {
       setCurrentPage((prev) => prev + 1);
@@ -36,15 +42,23 @@ function Stock() {
     }
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
+
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
-        <div className="dashboard-content-area  flex-wrap">
+        <div className="dashboard-content-area">
           <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-            Stocks Dashboard
+            Productions Dashboard
           </h4>
-          <p className="text-muted mt-2">
-            Manage and track current stock levels and updates in real time.
+          <p className="text-dark">
+            This is your Productions Dashboard, showing all the products you’ve
+            produced and their details.
           </p>
         </div>
       </div>
@@ -55,30 +69,41 @@ function Stock() {
             <thead>
               <tr>
                 <th>ID</th>
+                <th>Member</th>
                 <th>Product Name</th>
+                <th>Season</th>
                 <th>Quantity</th>
+                <th>UnitPrice</th>
                 <th>Amount</th>
-                {/* Removed Action column */}
+                <th>Date</th>
               </tr>
             </thead>
             <tbody>
-              {stocks.length > 0 ? (
-                currentRows.map((stock, index) => (
-                  <tr key={stock._id}>
+              {productions.length > 0 ? (
+                currentRows.map((production, index) => (
+                  <tr key={production._id}>
                     <td>{index + 1}</td>
-                    <td>{stock.productId?.productName || "N/A"}</td>
-                    <td>{stock.quantity}</td>
-                    <td>{stock.totalPrice}</td>
-                    {/* Removed Action buttons column */}
+                    <td>{production.userId?.names || "N/A"}</td>
+                    <td>{production.productId?.productName || "N/A"}</td>
+                    <td>
+                      {production.seasonId?.name || "N/A"}(
+                      {production.seasonId?.year || "N/A"})
+                    </td>
+                    <td>{production.quantity}</td>
+                    <td>{formatCurrency(`${production.unitPrice}`)}</td>
+                    <td>{formatCurrency(`${production.totalPrice}`)}</td>
+                    <td>
+                      {production.createdAt
+                        ? new Date(production.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="text-center py-4">
-                    {" "}
-                    {/* Adjusted colspan */}
+                  <td colSpan="9" className="text-center py-4">
                     <div className="alert alert-info" role="alert">
-                      No stock found.
+                      No production found.
                     </div>
                   </td>
                 </tr>
@@ -122,4 +147,4 @@ function Stock() {
   );
 }
 
-export default Stock;
+export default Production;
