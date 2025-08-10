@@ -56,9 +56,16 @@ function Loan() {
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
         <div className="dashboard-content-area">
           <div className="d-flex align-items-center justify-content-between">
-            <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
-              Loan Dashboard
-            </h4>
+            <div className="w-50">
+              <h4 className="fs-4 fw-medium mb-0" style={{ color: "black" }}>
+                Loan Dashboard
+              </h4>
+              <p className="text-dark text-sm">
+                A place to view and manage loan status, amounts, due dates, and
+                payments.
+              </p>
+            </div>
+
             <button
               className="btn btn-success btn-sm"
               onClick={viewLoanTransaction}

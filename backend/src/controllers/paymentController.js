@@ -235,13 +235,13 @@ export const getAllPayments = async (req, res) => {
 };
 
 export const getPaymentById = async (req, res) => {
+  const { userId } = req.params;
   try {
-    const payment = await Payment.findById(req.params.id)
+    const payments = await Payment.find({ userId })
       .populate("userId", "names")
-      .populate("productionId", "totalPrice")
-      .populate("seasonId", "name year");
-    if (!payment) return res.status(404).json({ message: "Payment not found" });
-    res.status(200).json(payment);
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(payments);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

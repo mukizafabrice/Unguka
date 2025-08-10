@@ -1,8 +1,12 @@
 import express from "express";
-import { getAllPaymentTransactions } from "../controllers/paymentTransactionController.js";
+import {
+  getAllPaymentTransactions,
+  getAllPaymentTransactionsById,
+} from "../controllers/paymentTransactionController.js";
 
 const router = express.Router();
 
 router.get("/", getAllPaymentTransactions);
+router.get("/:userId", getAllPaymentTransactionsById);
 
 export default router;

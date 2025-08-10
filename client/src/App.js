@@ -19,6 +19,7 @@ import Product from "./pages/Admin/Product";
 import Production from "./pages/Admin/Production";
 import Loan from "./pages/Admin/Loan";
 import Payment from "./pages/Admin/Payment";
+import PaymentTransaction from "./pages/Admin/PaymentTransaction";
 import Fees from "./pages/Admin/Fees";
 import FeeTypes from "./pages/Admin/FeeType";
 import PurchaseInput from "./pages/Admin/PurchaseInputs";
@@ -35,11 +36,13 @@ import MemberPlot from "./pages/Member/MemberPlot";
 import MemberFees from "./pages/Member/MemberFees";
 import MemberPurchaseInput from "./pages/Member/MemberPurchaseInputs";
 import MemberLoan from "./pages/Member/MemberLoan";
+import MemberPayment from "./pages/Member/MemberPayment";
+import MemberPaymentTransaction from "./pages/Member/PaymentTransaction";
 import MemberLayout from "./layouts/MemberLayout";
 import User from "./pages/Admin/User";
 import DashboardLayout from "./layouts/DashboardLayout";
 import LoanTransaction from "./pages/Admin/LoanTransaction";
-import PaymentTransaction from "./pages/Admin/PaymentTransaction";
+
 import "./assets/styles/dashboard.css";
 
 function App() {
@@ -111,6 +114,11 @@ function App() {
             <Route path="fees" element={<MemberFees />} />
             <Route path="purchase-inputs" element={<MemberPurchaseInput />} />
             <Route path="loan" element={<MemberLoan />} />
+            <Route path="payment" element={<MemberPayment />} />
+            <Route
+              path="payment-transaction"
+              element={<MemberPaymentTransaction />}
+            />
           </Route>
         </Routes>
       </AuthProvider>
