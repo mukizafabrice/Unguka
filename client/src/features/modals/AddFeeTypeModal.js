@@ -6,7 +6,9 @@ function AddFeeTypeModal({ show, onClose, onSubmit }) {
     name: "",
     amount: "",
     description: "",
-    status: "active", // Default status
+    status: "active",
+    isPerSeason: true,
+    autoApplyOnCreate: true,
   });
 
   // Effect to manage body class for scroll prevention when modal is open
@@ -136,6 +138,43 @@ function AddFeeTypeModal({ show, onClose, onSubmit }) {
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label text-dark">Is Per Season?</label>
+                  <select
+                    className="form-select"
+                    name="isPerSeason"
+                    value={formData.isPerSeason}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isPerSeason: e.target.value === "true",
+                      }))
+                    }
+                  >
+                    <option value="true">Yes (Per Season)</option>
+                    <option value="false">No (One-time/Non-Seasonal)</option>
+                  </select>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label text-dark">
+                    Auto Apply to All Members?
+                  </label>
+                  <select
+                    className="form-select"
+                    name="autoApplyOnCreate"
+                    value={formData.autoApplyOnCreate}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        autoApplyOnCreate: e.target.value === "true",
+                      }))
+                    }
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
                   </select>
                 </div>
               </div>

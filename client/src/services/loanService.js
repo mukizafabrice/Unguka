@@ -4,7 +4,10 @@ export const fetchLoans = async () => {
   const response = await axiosInstance.get("/loans");
   return response.data;
 };
-
+export const fetchLoansById = async (id) => {
+  const response = await axiosInstance.get(`/loans/${id}`);
+  return response.data;
+};
 export const updateLoans = async (id, loanData) => {
   try {
     const response = await axiosInstance.put(`/loans/${id}`, loanData);

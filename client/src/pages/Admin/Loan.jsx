@@ -158,7 +158,7 @@ function Loan() {
             </thead>
             <tbody>
               {loans.length > 0 ? (
-                loans.map((loan, index) => (
+                currentRows.map((loan, index) => (
                   <tr key={loan._id}>
                     <td>{index + 1}</td>
                     <td>{loan.purchaseInputId?.userId?.names || "N/A"}</td>

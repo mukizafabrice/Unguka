@@ -4,6 +4,7 @@ const UpdateSeasonModal = ({ show, onClose, onSubmit, season }) => {
   const [formData, setFormData] = useState({
     name: "",
     year: "",
+    status: "inactive", // Initialize status here
   });
 
   // Effect to manage body class for scroll prevention
@@ -17,12 +18,15 @@ const UpdateSeasonModal = ({ show, onClose, onSubmit, season }) => {
       document.body.classList.remove("modal-open");
     };
   }, [show]);
+
+  // Effect to populate form fields when the modal opens or selectedSeason changes
   useEffect(() => {
     if (show && season) {
       setFormData({
         _id: season._id || "",
         name: season.name || "",
         year: season.year || "",
+        status: season.status || "inactive", // Populate status from season data
       });
     }
   }, [show, season]);
@@ -90,7 +94,7 @@ const UpdateSeasonModal = ({ show, onClose, onSubmit, season }) => {
                 </div>
                 <div className="col-md-6 mb-3">
                   <label htmlFor="year" className="form-label text-dark">
-                    year
+                    Year
                   </label>
                   <input
                     type="text"
@@ -101,6 +105,23 @@ const UpdateSeasonModal = ({ show, onClose, onSubmit, season }) => {
                     onChange={handleChange}
                     required
                   />
+                </div>
+                {/* Added Status Field */}
+                <div className="col-md-6 mb-3">
+                  <label htmlFor="status" className="form-label text-dark">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    id="status"
+                    className="form-control"
+                    value={formData.status}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
                 </div>
               </div>
 

@@ -33,6 +33,8 @@ import MemberFeeTypes from "./pages/Member/MemberFeeTypes";
 import MemberProduction from "./pages/Member/MemberProduction";
 import MemberPlot from "./pages/Member/MemberPlot";
 import MemberFees from "./pages/Member/MemberFees";
+import MemberPurchaseInput from "./pages/Member/MemberPurchaseInputs";
+import MemberLoan from "./pages/Member/MemberLoan";
 import MemberLayout from "./layouts/MemberLayout";
 import User from "./pages/Admin/User";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -107,6 +109,8 @@ function App() {
             <Route path="production" element={<MemberProduction />} />
             <Route path="plot" element={<MemberPlot />} />
             <Route path="fees" element={<MemberFees />} />
+            <Route path="purchase-inputs" element={<MemberPurchaseInput />} />
+            <Route path="loan" element={<MemberLoan />} />
           </Route>
         </Routes>
       </AuthProvider>

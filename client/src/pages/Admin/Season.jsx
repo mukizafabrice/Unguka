@@ -25,7 +25,6 @@ function Season() {
   const loadSeasons = async () => {
     try {
       const seasonsData = await fetchSeasons();
-
       setSeasons(seasonsData);
     } catch (error) {
       console.error("Failed to fetch seasons:", error);
@@ -108,6 +107,7 @@ function Season() {
       setCurrentPage((prev) => prev - 1);
     }
   };
+
   return (
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
@@ -127,7 +127,8 @@ function Season() {
                 <th>ID</th>
                 <th>Season Name</th>
                 <th>Year</th>
-                <th colSpan={2}>Action</th>{" "}
+                <th>Status</th> {/* Added Status column */}
+                <th colSpan={2}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -137,6 +138,7 @@ function Season() {
                     <td>{index + 1}</td>
                     <td>{season.name}</td>
                     <td>{season.year}</td>
+                    <td>{season.status}</td> {/* Display season status */}
                     <td>
                       <div className="d-flex gap-2">
                         <UpdateButton

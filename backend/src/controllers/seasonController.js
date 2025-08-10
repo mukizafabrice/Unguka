@@ -54,9 +54,10 @@ export const getSeasonById = async (req, res) => {
 
 // Update a season
 
+// Update a season
 export const updateSeason = async (req, res) => {
-  const { name, year } = req.body;
   const { id } = req.params;
+  const { name, year, status } = req.body; // 👈 Extract the new status field
 
   // Validate ID format
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -66,8 +67,8 @@ export const updateSeason = async (req, res) => {
   try {
     const season = await Season.findByIdAndUpdate(
       id,
-      { name, year },
-      { new: true }
+      { name, year, status }, // 👈 Include the new status field in the update
+      { new: true, runValidators: true } // 👈 runValidators ensures the enum check for 'status' is performed
     );
 
     if (!season) {

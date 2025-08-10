@@ -24,25 +24,35 @@ export const getAllLoans = async (req, res) => {
   }
 };
 
-export const getLoanById = async (req, res) => {
+export const getLoansByUserId = async (req, res) => {
+  const userId = req.params.userId;
+
   try {
-    const loan = await Loan.findById(req.params.id)
+    // Step 1: Get all purchaseInput IDs for this user
+    const userPurchaseInputs = await PurchaseInput.find({ userId }).select("_id");
+
+    if (userPurchaseInputs.length === 0) {
+      return res.status(404).json({ message: "No purchase inputs found for this user." });
+    }
+
+    const purchaseInputIds = userPurchaseInputs.map(pi => pi._id);
+
+    // Step 2: Find all loans with those purchaseInput IDs
+    const loans = await Loan.find({ purchaseInputId: { $in: purchaseInputIds } })
       .populate("purchaseInputId")
       .populate({
         path: "purchaseInputId",
         populate: { path: "userId", select: "names" },
-      });
+      })
+      .sort({ createdAt: -1 });
 
-    if (!loan) {
-      return res.status(404).json({ message: "Loan not found" });
-    }
-
-    res.status(200).json(loan);
+    res.status(200).json(loans);
   } catch (error) {
-    console.error("Error fetching loan by ID:", error);
+    console.error("Error fetching loans by user ID:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 export const updateLoan = async (req, res) => {
   try {

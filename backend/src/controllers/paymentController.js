@@ -196,6 +196,16 @@ export const processMemberPayment = async (req, res) => {
         })
       );
     }
+    if (paymentAmount > 0) {
+      await Promise.all(
+        purchaseInputs.map((purchaseInput) => {
+          purchaseInput.amountPaid = purchaseInput.totalPrice;
+          purchaseInput.amountRemaining = 0;
+          purchaseInput.status = "paid";
+          return purchaseInput.save();
+        })
+      );
+    }
 
     return res.status(200).json({
       message: "Payment processed successfully",
