@@ -119,7 +119,8 @@ export const getAllPurchaseInputs = async (req, res) => {
     const purchases = await PurchaseInput.find()
       .populate("userId", "names phoneNumber")
       .populate("productId", "productName")
-      .populate("seasonId", "name year");
+      .populate("seasonId", "name year")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(purchases);
   } catch (error) {

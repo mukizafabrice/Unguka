@@ -51,10 +51,12 @@ export const processMemberPayment = async (req, res) => {
     const purchaseInputs = await PurchaseInput.find({ userId });
     const purchaseInputIds = purchaseInputs.map((p) => p._id);
 
-    const unpaidLoans = await Loan.find({
-      purchaseInputId: { $in: purchaseInputIds },
-      status: "pending",
-    });
+    const unpaidLoans = await Loan.find(
+      {
+        purchaseInputId: { $in: purchaseInputIds },
+        status: "pending",
+      } && { userId }
+    );
 
     // const totalLoansOutstanding = unpaidLoans.reduce(
     //   (sum, loan) => sum + (loan.amountOwed - (loan.amountPaid || 0)),
@@ -449,10 +451,12 @@ export const getPaymentSummary = async (req, res) => {
     const purchaseInputIds = purchaseInputs.map((p) => p._id);
 
     // ✅ Fetch ALL pending loans
-    const loans = await Loan.find({
-      purchaseInputId: { $in: purchaseInputIds },
-      status: "pending",
-    });
+    const loans = await Loan.find(
+      {
+        purchaseInputId: { $in: purchaseInputIds },
+        status: "pending",
+      } && { userId }
+    );
     const totalLoans = loans.reduce(
       (sum, loan) => sum + (loan.amountOwed - (loan.amountPaid || 0)),
       0

@@ -39,7 +39,7 @@ function SideNav({ isHide }) {
 
   return (
     <div className={`sidebar ${isHide ? "hide" : ""}`}>
-      <div className="sidebar-header">Unguka CO</div>
+      {/* <div className="sidebar-header">Unguka CO</div> */}
       <ul className="sidebar-menu">
         <li>
           <NavLink

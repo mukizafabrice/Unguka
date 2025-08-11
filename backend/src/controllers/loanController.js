@@ -4,6 +4,48 @@ import PurchaseInput from "../models/PurchaseInput.js";
 import Cash from "../models/Cash.js";
 import LoanTransaction from "../models/LoanTransaction.js";
 
+// create loan
+export const borrowMoney = async (req, res) => {
+  const { userId, amountOwed, interest } = req.body;
+
+  if (!userId || !amountOwed) {
+    return res
+      .status(400)
+      .json({ message: "User ID and amount are required." });
+  }
+
+  // It's also a good idea to validate that interest is not negative
+  if (interest <= 0) {
+    return res
+      .status(400)
+      .json({ message: "Interest rate must be a positive number." });
+  }
+
+  try {
+    // 1. Corrected the interest calculation to include the principal amount
+    const newAmountOwed = amountOwed * (1 + interest / 100);
+
+    const loan = new Loan({
+      userId,
+      amountOwed: newAmountOwed,
+    });
+
+    await loan.save();
+
+    res.status(201).json({
+      success: true,
+      message: "New loan created successfully.",
+      loan,
+    });
+  } catch (error) {
+    console.error("Error creating new loan:", error);
+    res.status(500).json({
+      success: false,
+      message: "An internal server error occurred.",
+    });
+  }
+};
+
 export const getAllLoans = async (req, res) => {
   try {
     const loans = await Loan.find()
@@ -15,7 +57,9 @@ export const getAllLoans = async (req, res) => {
           { path: "productId", select: "productName" },
           { path: "seasonId", select: "name year" },
         ],
-      });
+      })
+      .populate("userId", "names")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(loans);
   } catch (error) {
@@ -29,16 +73,22 @@ export const getLoansByUserId = async (req, res) => {
 
   try {
     // Step 1: Get all purchaseInput IDs for this user
-    const userPurchaseInputs = await PurchaseInput.find({ userId }).select("_id");
+    const userPurchaseInputs = await PurchaseInput.find({ userId }).select(
+      "_id"
+    );
 
     if (userPurchaseInputs.length === 0) {
-      return res.status(404).json({ message: "No purchase inputs found for this user." });
+      return res
+        .status(404)
+        .json({ message: "No purchase inputs found for this user." });
     }
 
-    const purchaseInputIds = userPurchaseInputs.map(pi => pi._id);
+    const purchaseInputIds = userPurchaseInputs.map((pi) => pi._id);
 
     // Step 2: Find all loans with those purchaseInput IDs
-    const loans = await Loan.find({ purchaseInputId: { $in: purchaseInputIds } })
+    const loans = await Loan.find({
+      purchaseInputId: { $in: purchaseInputIds },
+    })
       .populate("purchaseInputId")
       .populate({
         path: "purchaseInputId",
@@ -52,7 +102,6 @@ export const getLoansByUserId = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 export const updateLoan = async (req, res) => {
   try {

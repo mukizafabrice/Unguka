@@ -20,6 +20,7 @@ function FeeType() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [feeTypeToEdit, setFeeTypeToEdit] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Function to fetch fee types from the backend
   const loadFeeTypes = async () => {
@@ -93,6 +94,23 @@ function FeeType() {
       );
     }
   };
+  const rowsPerPage = 7;
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = feeTypes.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(feeTypes.length / rowsPerPage);
+
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => { 
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
 
   return (
     <div className="p-4 text-white">
@@ -123,7 +141,7 @@ function FeeType() {
             </thead>
             <tbody>
               {feeTypes.length > 0 ? (
-                feeTypes.map((feeType, index) => (
+                currentRows.map((feeType, index) => (
                   <tr key={feeType._id || index}>
                     <td>{index + 1}</td>
                     <td>{feeType.name}</td>
@@ -161,6 +179,25 @@ function FeeType() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="btn btn-outline-primary"
+          >
+            ← Previous
+          </button>
+          <span className="text-white">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="btn btn-outline-primary"
+          >
+            Next →
+          </button>
         </div>
       </div>
 

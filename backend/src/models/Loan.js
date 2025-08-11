@@ -1,36 +1,37 @@
 import mongoose from "mongoose";
 
-const loanSchema = new mongoose.Schema({
-  // The purchase this loan is associated with
-  purchaseInputId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "PurchaseInput",
-    required: true,
-  },
+const loanSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
 
-  // Renamed from 'totalPrice' to more accurately reflect the amount owed
-  amountOwed: {
-    type: Number,
-    required: true,
-    min: [0, "Amount owed must be a positive number"],
-  },
-  interest: {
-    type: Number,
-    default: 0,
-  },
+    purchaseInputId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PurchaseInput",
+    },
 
-  status: {
-    type: String,
-    enum: ["pending", "repaid"],
-    required: true,
-    default: "pending",
-  },
+    // Renamed from 'totalPrice' to more accurately reflect the amount owed
+    amountOwed: {
+      type: Number,
+      required: true,
+      min: [0, "Amount owed must be a positive number"],
+    },
+    interest: {
+      type: Number,
+      default: 0,
+    },
 
-  createdAt: {
-    type: Date,
-    default: Date.now,
+    status: {
+      type: String,
+      enum: ["pending", "repaid"],
+      required: true,
+      default: "pending",
+    },
   },
-});
+  { timestamps: true }
+);
 
 const Loan = mongoose.model("Loan", loanSchema);
 export default Loan;

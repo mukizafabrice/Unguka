@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  borrowMoney,
   getAllLoans,
   getLoansByUserId,
   updateLoan,
@@ -9,6 +10,7 @@ import {
 const router = express.Router();
 
 // Define routes for the loan API
+router.post("/", borrowMoney);
 router.get("/", getAllLoans);
 router.get("/:userId", getLoansByUserId);
 router.put("/:id", updateLoan);

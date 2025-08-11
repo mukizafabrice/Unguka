@@ -8,6 +8,8 @@ import {
   updateLoans,
   deleteLoans,
 } from "../../services/loanService";
+import AddLoanModal from "../../features/modals/AddLoanModal";
+import { createLoan } from "../../services/loanService";
 
 import PayLoanModal from "../../features/modals/PayLoanModal";
 import UpdateButton from "../../components/buttons/UpdateButton";
@@ -20,6 +22,7 @@ function Loan() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
   const navigate = useNavigate();
   const loadLoans = async () => {
     try {
@@ -120,6 +123,19 @@ function Loan() {
       setCurrentPage((prev) => prev - 1);
     }
   };
+  const handleAddLoan = async (newLoanData) => {
+    try {
+      await createLoan(newLoanData);
+      toast.success("Loan added successfully!");
+      await loadLoans();
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Failed to add loan:", error);
+      toast.error(
+        `Failed to add loan: ${error.response?.data?.message || error.message}`
+      );
+    }
+  };
 
   return (
     <div className="p-4 text-white">
@@ -135,6 +151,12 @@ function Loan() {
             >
               <Eye />
               View loanTransaction
+            </button>
+            <button
+              className="btn btn-primary btn-sm mb-3"
+              onClick={() => setShowAddModal(true)}
+            >
+              Add Loan
             </button>
           </div>
         </div>
@@ -161,15 +183,18 @@ function Loan() {
                 currentRows.map((loan, index) => (
                   <tr key={loan._id}>
                     <td>{index + 1}</td>
-                    <td>{loan.purchaseInputId?.userId?.names || "N/A"}</td>
                     <td>
-                      {loan.purchaseInputId?.productId?.productName || "N/A"}
+                      {loan.purchaseInputId?.userId?.names ||
+                        loan.userId?.names}
+                    </td>
+                    <td>
+                      {loan.purchaseInputId?.productId?.productName || "money"}
                     </td>
                     <td>
                       {loan.purchaseInputId?.seasonId?.name || "N/A"} (
                       {loan.purchaseInputId?.seasonId?.year})
                     </td>
-                    <td>{loan.purchaseInputId?.quantity}kg</td>
+                    <td>{loan.purchaseInputId?.quantity}</td>
                     <td>{formatCurrency(`${loan.amountOwed}`)}</td>
                     <td>{loan.interest}</td>
                     <td>
@@ -185,7 +210,7 @@ function Loan() {
                     </td>
                     <td>
                       <div className="d-flex gap-2">
-                        {currentRows.status === "pending" && (
+                        {loan.status === "pending" && (
                           <button
                             className="btn btn-primary btn-sm"
                             onClick={() => handleOpenPayModal(loan)}
@@ -248,19 +273,30 @@ function Loan() {
         </div>
       </div>
 
-      <PayLoanModal
-        show={showPayModal}
-        loan={selectedLoan}
-        onClose={() => setShowPayModal(false)}
-        onSubmit={handlePayLoan}
-      />
+      {showPayModal && (
+        <PayLoanModal
+          show={showPayModal}
+          loan={selectedLoan}
+          onClose={() => setShowPayModal(false)}
+          onSubmit={handlePayLoan}
+        />
+      )}
 
-      <UpdateLoanModal
-        show={showUpdateModal}
-        loan={selectedLoan}
-        onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdateLoan}
-      />
+      {showUpdateModal && (
+        <UpdateLoanModal
+          show={showUpdateModal}
+          loan={selectedLoan}
+          onClose={() => setShowUpdateModal(false)}
+          onSubmit={handleUpdateLoan}
+        />
+      )}
+      {showAddModal && (
+        <AddLoanModal
+          show={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddLoan}
+        />
+      )}
 
       <ToastContainer
         position="bottom-right"

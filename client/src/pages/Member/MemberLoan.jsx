@@ -32,7 +32,7 @@ function Loan() {
   };
 
   const viewLoanTransaction = () => {
-    navigate("/admin/dashboard/loan-transaction");
+    navigate("/member/dashboard/loan-transaction");
   };
   const rowsPerPage = 6;
   const indexOfLastRow = currentPage * rowsPerPage;

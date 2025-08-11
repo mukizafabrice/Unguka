@@ -6,18 +6,17 @@ import { Link } from "react-router-dom";
 
 function TopNav({ onMenuClick }) {
   const user = JSON.parse(localStorage.getItem("user"));
-  const profilePic =
-    user?.profilePicture || "https://placehold.co/36x36/4CAF50/ffffff?text=U";
+  const profilePic = user?.profilePicture;
 
   return (
     <nav className="topnav">
       <div className="topnav-left">
+        <span className="topnav-brand-name ms-3">Unguka</span>
         <Menu
           size={28}
           className="topnav-icon menu-icon-left"
           onClick={onMenuClick}
         />
-        <span className="topnav-brand-name ms-3">Dashboard</span>
       </div>
 
       <div className="topnav-right">

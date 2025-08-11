@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchLoanTransactions } from "../../services/loanTransactionService";
+import { fetchLoanTransactionsById } from "../../services/loanTransactionService";
 import { ArrowLeft } from "lucide-react";
 
 const LoanTransactions = () => {
@@ -14,7 +14,9 @@ const LoanTransactions = () => {
   useEffect(() => {
     const getTransactions = async () => {
       try {
-        const res = await fetchLoanTransactions();
+        const user = JSON.parse(localStorage.getItem("user"));
+        const userId = user?.id;
+        const res = await fetchLoanTransactionsById(userId);
         setTransactions(res.transactions);
       } catch (error) {
         console.error("Failed to fetch loan transactions:", error);

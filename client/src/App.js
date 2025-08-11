@@ -25,6 +25,7 @@ import FeeTypes from "./pages/Admin/FeeType";
 import PurchaseInput from "./pages/Admin/PurchaseInputs";
 import PurchaseOut from "./pages/Admin/PurchaseOut";
 import Announcement from "./pages/Admin/Announcement";
+import LoanTransaction from "./pages/Admin/LoanTransaction";
 //member routed
 import MemberDashboard from "./pages/Member/MemberDashboard";
 import MemberSeason from "./pages/Member/MemberSeason";
@@ -38,10 +39,10 @@ import MemberPurchaseInput from "./pages/Member/MemberPurchaseInputs";
 import MemberLoan from "./pages/Member/MemberLoan";
 import MemberPayment from "./pages/Member/MemberPayment";
 import MemberPaymentTransaction from "./pages/Member/PaymentTransaction";
+import MemberLoanTransaction from "./pages/Member/LoanTransaction";
 import MemberLayout from "./layouts/MemberLayout";
 import User from "./pages/Admin/User";
 import DashboardLayout from "./layouts/DashboardLayout";
-import LoanTransaction from "./pages/Admin/LoanTransaction";
 
 import "./assets/styles/dashboard.css";
 
@@ -118,6 +119,10 @@ function App() {
             <Route
               path="payment-transaction"
               element={<MemberPaymentTransaction />}
+            />
+            <Route
+              path="loan-transaction"
+              element={<MemberLoanTransaction />}
             />
           </Route>
         </Routes>

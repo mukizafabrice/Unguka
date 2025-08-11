@@ -1,5 +1,9 @@
 import axiosInstance from "../api/axiosInstance";
 
+export const createLoan = async (loanData) => {
+  const response = await axiosInstance.post("/loans", loanData);
+  return response.data;
+};
 export const fetchLoans = async () => {
   const response = await axiosInstance.get("/loans");
   return response.data;

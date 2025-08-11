@@ -9,11 +9,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+/* body {
   background-color: #ebecef !important;
 
   color: #fff;
-}
+} */
 
 .topnav {
   display: flex;

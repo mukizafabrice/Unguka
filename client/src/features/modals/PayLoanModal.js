@@ -12,7 +12,9 @@ const PayLoanModal = ({ show, loan, onClose, onSubmit }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!amount || amount <= 0 || amount > loan.amountOwed) {
-      alert("Please enter a valid amount less than or equal to the amount owed.");
+      alert(
+        "Please enter a valid amount less than or equal to the amount owed."
+      );
       return;
     }
     onSubmit(loan._id, amount);
@@ -32,7 +34,10 @@ const PayLoanModal = ({ show, loan, onClose, onSubmit }) => {
       <div className="modal-dialog modal-dialog-centered" role="document">
         <div className="modal-content bg-dark text-white">
           <div className="modal-header">
-            <h5 className="modal-title">Pay Loan for {loan.purchaseInputId?.userId?.names || "N/A"}</h5>
+            <h5 className="modal-title">
+              Pay Loan for{" "}
+              {loan.purchaseInputId?.userId?.names || loan.userId?.names}
+            </h5>
             <button
               type="button"
               className="btn-close"
@@ -41,7 +46,8 @@ const PayLoanModal = ({ show, loan, onClose, onSubmit }) => {
           </div>
           <div className="modal-body">
             <p className="text-muted">
-              The member currently owes <span className="fw-bold">{loan.amountOwed.toFixed(2)}</span>.
+              The member currently owes{" "}
+              <span className="fw-bold">{loan.amountOwed.toFixed(2)}</span>.
               Enter the amount you wish to pay.
             </p>
             <form onSubmit={handleSubmit}>
