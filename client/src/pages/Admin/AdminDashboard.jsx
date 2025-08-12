@@ -152,8 +152,8 @@ function AdminDashboard() {
           </div>
         </div>
       </div>
-      <div className="mt-4 p-4 bg-dark-subtle rounded-3">
-        <h4 className="text-white mb-3">Recent Activities</h4>
+      <div className="mt-4 p-4  rounded-3">
+        <h4 className="text-dark mb-3">Recent Activities</h4>
         <div className="row">
           <div className="col-md-6 mb-4">
             <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark">
@@ -175,7 +175,11 @@ function AdminDashboard() {
                       recentSales.slice(0, 3).map((sale, index) => (
                         <tr key={sale.id}>
                           <td>{index + 1}</td>
-                          <td>{sale.stockId.productId.productName}</td>
+                          <td>
+                            {sale.stockId && sale.stockId.productId
+                              ? sale.stockId.productId.productName
+                              : "N/A"}
+                          </td>
                           <td>
                             {sale.quantity}
                             <span className="fw-bold">kg</span>
@@ -224,7 +228,11 @@ function AdminDashboard() {
                         <tr key={prod.id}>
                           <td>{index + 1}</td>
                           <td>{prod.userId.names}</td>
-                          <td>{prod.productId.productName}</td>
+                          <td>
+                            {prod.productId
+                              ? prod.productId.productName
+                              : "N/A"}
+                          </td>
                           <td>
                             {prod.quantity}
                             <span className="fw-bold">kg</span>

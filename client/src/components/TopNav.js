@@ -11,12 +11,12 @@ function TopNav({ onMenuClick }) {
   return (
     <nav className="topnav">
       <div className="topnav-left">
-        <span className="topnav-brand-name ms-3">Unguka</span>
         <Menu
           size={28}
           className="topnav-icon menu-icon-left"
           onClick={onMenuClick}
         />
+        <span className="topnav-brand-name ms-3">Unguka</span>
       </div>
 
       <div className="topnav-right">

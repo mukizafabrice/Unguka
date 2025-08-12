@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const seasonSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -21,5 +22,7 @@ const seasonSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
-const Season = mongoose.model("Season", seasonSchema);
-export default Season;
+seasonSchema.index({ name: 1, year: 1 }, { unique: true });
+
+
+export default mongoose.model("Season", seasonSchema);

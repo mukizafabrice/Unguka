@@ -153,12 +153,10 @@ export const getSalesByPhoneNumber = async (req, res) => {
 
     const sales = await Sales.find({ phoneNumber })
       .populate({
-        path: "stockId",
         populate: {
           path: "productId",
           select: "ProductName",
         },
-        select: "productId",
       })
       .populate({
         path: "seasonId",
