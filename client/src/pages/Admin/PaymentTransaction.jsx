@@ -1,47 +1,146 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchPaymentTransactions } from "../../services/paymentTransactionService";
-import { ArrowLeft } from "lucide-react";
+import {
+  Box,
+  Card,
+  CardHeader,
+  CardContent,
+  Typography,
+  Button,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+  Stack,
+  CircularProgress,
+  Pagination,
+  useMediaQuery,
+  styled,
+  TextField,
+  MenuItem,
+  InputAdornment, // Added for search icon
+} from "@mui/material";
+import {
+  ArrowBack as ArrowLeft, // Renamed for consistency with Material-UI icons
+  Search, // Imported Search icon
+} from "@mui/icons-material"; // Changed import source for icons
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const PaymentTransaction = () => {
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(false);
+// Styled components for a cleaner look consistent with Loan component
+const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[50],
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  "& .MuiCardHeader-title": {
+    fontWeight: 600,
+  },
+}));
+
+// Styled component for table body cells - Adjusted padding for responsiveness
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  padding: "8px 16px", // Consistent row padding
+  borderBottom: `1px solid ${theme.palette.divider}`, // Keep divider for row separation
+  backgroundColor: theme.palette.background.paper, // A slightly different background for body cells
+  color: theme.palette.text.primary, // Ensure text color is readable
+  wordWrap: "break-word", // Ensure text wraps naturally
+  whiteSpace: "normal",
+  [theme.breakpoints.down("sm")]: {
+    // Apply on small screens
+    padding: "6px 8px", // Reduced padding for mobile
+    fontSize: "0.75rem", // Slightly smaller font size
+  },
+}));
+
+// Styled component for table header cells (updated for no background)
+const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
+  padding: "12px 16px", // Slightly more padding for headers
+  backgroundColor: "transparent", // Removed background color
+  color: theme.palette.text.primary, // Set text color to primary text for readability
+  fontWeight: 600, // Bolder font weight
+  borderBottom: `2px solid ${theme.palette.divider}`, // Thicker border bottom, matching divider for subtlety
+  "&:first-of-type": {
+    borderTopLeftRadius: theme.shape.borderRadius,
+  },
+  "&:last-of-type": {
+    borderTopRightRadius: theme.shape.borderRadius,
+  },
+  wordWrap: "break-word", // Ensure text wraps naturally
+  whiteSpace: "normal",
+  [theme.breakpoints.down("sm")]: {
+    // Apply on small screens
+    padding: "8px 8px", // Reduced padding for mobile
+    fontSize: "0.75rem", // Slightly smaller font size
+  },
+}));
+
+// Helper function for status chip color
+const getStatusColor = (status) => {
+  switch (
+    status?.toLowerCase() // Ensure case-insensitivity
+  ) {
+    case "paid":
+      return "success";
+    case "pending": // Assuming 'pending' status for unpaid items
+      return "warning";
+    default:
+      return "default";
+  }
+};
+
+function PaymentTransaction() {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true); // Changed default to true as data is fetched on mount
   const [currentPage, setCurrentPage] = useState(1);
-  const navigate = useNavigate();
+  const rowsPerPage = 7; // Fixed rows per page for consistency
 
-  // Load payments data
-  const loadData = useCallback(async () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchField, setSearchField] = useState("user"); // Default search field
+  const [statusFilter, setStatusFilter] = useState("all"); // Filter by status
+
+  const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  // Function to fetch transactions
+  const getTransactions = useCallback(async () => {
     setLoading(true);
     try {
-      const paymentsData = await fetchPaymentTransactions();
+      const res = await fetchPaymentTransactions();
+      // Ensure res is an array or has a .data property that is an array
+      const paymentsData = res.data || res; // Adjust based on actual API response structure
 
-      // Map user info, remove season (no longer available)
-      const mappedPayments = paymentsData.map((payment) => {
+      // Map user info (assuming userId.names exists)
+      const mappedPayments = (paymentsData || []).map((payment) => {
         const userName = payment.userId?.names || "N/A";
         return {
           ...payment,
           userName,
-          // seasonName removed because seasons are no longer used
         };
       });
 
-      setPayments(mappedPayments);
-      console.log("Payment data loaded successfully.");
+      setTransactions(mappedPayments);
     } catch (error) {
-      console.error("Error loading payment data:", error);
-      toast.error(
-        "Error loading payment data. Please check console for details."
-      );
+      console.error("Failed to fetch payment transactions:", error);
+      toast.error("Failed to load payment transactions.");
+      setTransactions([]); // Ensure transactions is reset on error
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    getTransactions();
+  }, [getTransactions]);
+
+  // Handle back button navigation
+  const handleBack = () => navigate(-1);
+
+  // Currency formatter
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
@@ -49,118 +148,287 @@ const PaymentTransaction = () => {
     }).format(amount);
   };
 
-  const handleBack = () => navigate(-1);
+  // Memoized filtered transactions: this filters the data based on search and status
+  const filteredTransactions = useMemo(() => {
+    let currentFiltered = transactions;
 
-  const rowsPerPage = 5;
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = payments.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(payments.length / rowsPerPage);
-  const handleNext = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => prev + 1);
+    // Apply search filter
+    if (searchTerm) {
+      currentFiltered = currentFiltered.filter((tx) => {
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        switch (searchField) {
+          case "user": // Changed from 'member' to 'user' for consistency with Payment component
+            return tx.userName?.toLowerCase().includes(lowerCaseSearchTerm);
+          case "paymentDate": // Search by formatted date string
+            return tx.transactionDate
+              ? new Date(tx.transactionDate)
+                  .toLocaleDateString()
+                  .toLowerCase()
+                  .includes(lowerCaseSearchTerm)
+              : false;
+          case "amountPaid":
+            return tx.amountPaid
+              ?.toString()
+              .toLowerCase()
+              .includes(lowerCaseSearchTerm);
+          default:
+            return true;
+        }
+      });
     }
-  };
 
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
+    // Apply status filter (for payment status)
+    if (statusFilter !== "all") {
+      currentFiltered = currentFiltered.filter(
+        (tx) => tx.status?.toLowerCase() === statusFilter.toLowerCase()
+      );
     }
-  };
+
+    // Sort by transaction date (newest first by default)
+    currentFiltered.sort((a, b) => {
+      const dateA = new Date(a.transactionDate);
+      const dateB = new Date(b.transactionDate);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return currentFiltered;
+  }, [transactions, searchTerm, searchField, statusFilter]);
+
+  // Reset page to 1 whenever filters change (new filtered data is produced)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredTransactions]);
+
+  // Memoized paginated transactions: this slices the filtered data for the current page
+  const paginatedTransactions = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredTransactions.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredTransactions, currentPage, rowsPerPage]);
+
+  // Calculate total pages based on filtered transactions
+  const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
+
+  // Handle page change for MUI Pagination component
+  const handleChangePage = useCallback((event, newPage) => {
+    setCurrentPage(newPage);
+  }, []);
+
   return (
-    <div className="container py-4">
-      <h2 className="mb-4 text-center text-black"> Payments Transactions</h2>
-      <button
-        onClick={handleBack}
-        className="btn btn-outline-secondary d-flex align-items-center"
-      >
-        <ArrowLeft className="me-2" size={18} />
-        Back
-      </button>
-      <div
-        className="card p-3 mt-4 overflow-auto"
-        style={{ maxHeight: "450px" }}
-      >
-        <h5>All Payments</h5>
-        {loading && (
-          <div className="text-center my-3">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
-        )}
-        {!loading && payments.length === 0 && (
-          <div className="alert alert-info text-center">
-            No payments recorded yet.
-          </div>
-        )}
-        {!loading && payments.length > 0 && (
-          <div className="table-responsive">
-            <table className="table table-bordered table-hover mt-3">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Paid Amount</th>
-                  <th>Remaining to Pay</th>
-                  {/* <th>Status</th> */}
-                  <th>Payment Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentRows.map((p) => (
-                  <tr key={p._id}>
-                    <td>{p.userName}</td>
-                    <td>
-                      {formatCurrency(`${p.amountPaid?.toFixed(2) || "0.00"}`)}
-                    </td>
-                    <td>
-                      {formatCurrency(
-                        `${p.amountRemainingToPay?.toFixed(2) || "0.00"}`
-                      )}
-                    </td>
-                    {/* 
-                    <td>
-                      <span
-                        className={`badge ${
-                          p.status === "paid" ? "bg-success" : "bg-warning"
-                        }`}
-                      >
-                        {p.status}
-                      </span>
-                    </td> */}
-                    <td>
-                      {p.transactionDate
-                        ? new Date(p.transactionDate).toLocaleDateString()
-                        : "N/A"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-      <div className="d-flex justify-content-between align-items-center mt-3">
-        <button
-          onClick={handlePrevious}
-          disabled={currentPage === 1}
-          className="btn btn-outline-primary"
+    <Box px={isMobile ? 2 : 3} pt={0}>
+      {" "}
+      {/* Reduced top padding (pt) to 0 */}
+      <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
+        <StyledCardHeader
+          title={<Typography variant="h6">Payment Transactions</Typography>}
+          action={
+            <Button
+              variant="outlined"
+              size="medium"
+              startIcon={<ArrowLeft />}
+              onClick={handleBack}
+            >
+              Back
+            </Button>
+          }
+        />
+        <CardContent
+          sx={{
+            maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
+            overflow: "hidden", // Hide overflow on CardContent itself
+            display: "flex",
+            flexDirection: "column",
+          }}
         >
-          ← Previous
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={handleNext}
-          disabled={currentPage === totalPages}
-          className="btn btn-outline-primary"
-        >
-          Next →
-        </button>
-      </div>
-    </div>
+          {/* Descriptive Text Section */}
+          <Box mb={3} sx={{ flexShrink: 0 }}>
+            <Typography variant="body2" color="text.secondary">
+              View and manage all individual payment transactions for various
+              fees and loans.
+            </Typography>
+          </Box>
+
+          {/* Filters and Search Section */}
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={2}
+            mb={3}
+            alignItems={isMobile ? "stretch" : "center"}
+            sx={{ flexShrink: 0 }}
+          >
+            <TextField
+              select
+              label="Search By"
+              size="small"
+              value={searchField}
+              onChange={(e) => setSearchField(e.target.value)}
+              sx={{ minWidth: 120, flexShrink: 0 }}
+            >
+              <MenuItem value="user">User Name</MenuItem>
+              <MenuItem value="amountPaid">Amount Paid</MenuItem>
+              <MenuItem value="paymentDate">Payment Date</MenuItem>
+            </TextField>
+            <TextField
+              label={`Search ${
+                searchField === "user"
+                  ? "User Name"
+                  : searchField === "amountPaid"
+                  ? "Amount Paid"
+                  : "Payment Date (e.g., 2/15/2023)"
+              }`}
+              variant="outlined"
+              size="small"
+              fullWidth={isMobile}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              select
+              label="Payment Status"
+              size="small"
+              fullWidth={isMobile}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              sx={{ minWidth: isMobile ? "100%" : 180 }}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="paid">Paid</MenuItem>
+              <MenuItem value="pending">Pending</MenuItem>
+            </TextField>
+          </Stack>
+
+          {loading ? (
+            <Box
+              display="flex"
+              justifyContent="center"
+              my={5}
+              sx={{ flexGrow: 1 }}
+            >
+              <CircularProgress color="primary" />
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                flexGrow: 1,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {" "}
+              {/* This box will scroll */}
+              <TableContainer
+                component={Paper}
+                sx={{
+                  overflowX: "auto",
+                  borderRadius: 2,
+                  boxShadow: 2,
+                  flexGrow: 1,
+                }}
+              >
+                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                      {/* Using StyledTableHeaderCell for header cells */}
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>
+                        ID
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                        User
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Amount Paid
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Remaining to Pay
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Status
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                        Payment Date
+                      </StyledTableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {paginatedTransactions.length > 0 ? (
+                      paginatedTransactions.map((tx, index) => (
+                        <TableRow hover key={tx._id}>
+                          {/* Using StyledTableCell for body cells */}
+                          <StyledTableCell>
+                            {(currentPage - 1) * rowsPerPage + index + 1}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {tx.userName || "N/A"}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {formatCurrency(tx.amountPaid || 0)}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {formatCurrency(tx.amountRemainingToPay || 0)}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            <Chip
+                              label={tx.status || "N/A"}
+                              size="small"
+                              color={getStatusColor(tx.status)}
+                            />
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {tx.transactionDate
+                              ? new Date(
+                                  tx.transactionDate
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </StyledTableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                          <Typography variant="body1" color="text.secondary">
+                            No transactions found.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          {/* Pagination controls: Only show if there's more than one page */}
+          {totalPages > 1 && (
+            <Box
+              mt={3}
+              display="flex"
+              justifyContent="center"
+              sx={{ flexShrink: 0 }}
+            >
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handleChangePage}
+                color="primary"
+                showFirstButton
+                showLastButton
+                siblingCount={isMobile ? 0 : 1}
+                boundaryCount={isMobile ? 0 : 1}
+              />
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+      <ToastContainer position="bottom-right" autoClose={3000} />
+    </Box>
   );
-};
+}
 
 export default PaymentTransaction;

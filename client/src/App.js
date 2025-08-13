@@ -43,6 +43,12 @@ import MemberLoanTransaction from "./pages/Member/LoanTransaction";
 import MemberLayout from "./layouts/MemberLayout";
 import User from "./pages/Admin/User";
 import DashboardLayout from "./layouts/DashboardLayout";
+//superadmin
+
+import SuperDashboard from "./pages/Super/SuperDashboard";
+import Cooperatives from "./pages/Super/Cooperatives";
+import Managers from "./pages/Super/Managers";
+import SuperLayout from "./layouts/SuperLayout";
 
 import "./assets/styles/dashboard.css";
 
@@ -124,6 +130,18 @@ function App() {
               path="loan-transaction"
               element={<MemberLoanTransaction />}
             />
+          </Route>
+          <Route
+            path="/super/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin"]}>
+                <SuperLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<SuperDashboard />} />
+            <Route path="cooperatives" element={<Cooperatives />} />
+            <Route path="managers" element={<Managers />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -131,8 +131,8 @@ function MemberDashboard() {
           </div>
         </div>
       </div>
-      <div className="mt-4 p-4 bg-dark-subtle rounded-3">
-        <h4 className="text-white mb-3">Recent Activities</h4>
+      <div className="mt-4 p-4  rounded-3">
+        <h4 className="text-dark mb-3">Recent Activities</h4>
         <div className="row">
           <div className="col-md-6 mb-4">
             <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
@@ -199,7 +199,11 @@ function MemberDashboard() {
                         <tr key={prod.id}>
                           <td>{index + 1}</td>
                           <td>{prod.userId.names}</td>
-                          <td>{prod.productId.productName}</td>
+                          <td>
+                            {prod.productId
+                              ? prod.productId.productName
+                              : "N/A"}
+                          </td>
                           <td>
                             {prod.quantity}
                             <span className="fw-bold">kg</span>

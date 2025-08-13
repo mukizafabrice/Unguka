@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import authService from "../../services/authService";
 
 const LoginForm = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login } = useAuth(); // Get the login function from the context
 
-  const [formData, setFormData] = useState({ phoneNumber: "", password: "" });
+  const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -24,26 +23,27 @@ const LoginForm = () => {
     setError(null);
 
     try {
-      // Use formData keys consistently
-      const response = await authService.login(
-        formData.phoneNumber,
-        formData.password
-      );
+      // Call the login function from AuthContext directly
+      const response = await login(formData.identifier, formData.password);
 
       if (response.success) {
-        login(formData.phoneNumber, formData.password);
-
+        // Redirect based on the user's role
         const role = response.user.role;
-        if (role === "manager") navigate("/admin/dashboard");
-        else if (role === "accountant") navigate("/manager/dashboard");
-        else navigate("/member/dashboard");
+        if (role === "superadmin") {
+          navigate("/super/dashboard");
+        } else if (role === "manager") {
+          navigate("/admin/dashboard");
+        } else {
+          // Default for "member" or other roles
+          navigate("/member/dashboard");
+        }
       } else {
+        // The error message is already set by the AuthContext's login function
         setError(response.message || "Login failed. Please try again.");
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Login failed. Please try again."
-      );
+      // Fallback for unexpected errors
+      setError("An unexpected error occurred. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -68,21 +68,21 @@ const LoginForm = () => {
       )}
 
       <div className="mb-3">
-        <label htmlFor="phoneNumber" className="form-label">
-          Phone Number
+        <label htmlFor="identifier" className="form-label">
+          Phone Number or Email
         </label>
         <input
-          type="tel"
+          type="text" // Use type="text" for a generic input
           className="form-control rounded-3"
-          id="phoneNumber"
-          name="phoneNumber"
-          placeholder="+250*********"
-          value={formData.phoneNumber}
+          id="identifier"
+          name="identifier"
+          placeholder="Enter phone number or email"
+          value={formData.identifier}
           onChange={handleChange}
           required
         />
         <small className="text-muted">
-          Enter your full number with country code
+          Use your registered phone number or email
         </small>
       </div>
 
@@ -106,7 +106,7 @@ const LoginForm = () => {
         type="submit"
         className="btn w-100 text-white login-button"
         disabled={loading}
-        style={{ backgroundColor: "#282c34" }} // button color as you requested before
+        style={{ backgroundColor: "#282c34" }}
       >
         {loading ? "Logging in..." : "Login"}
       </button>

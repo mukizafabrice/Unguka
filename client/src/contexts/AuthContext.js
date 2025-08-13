@@ -1,4 +1,3 @@
-// src/contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
 
@@ -8,16 +7,37 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(authService.getCurrentUser());
   const [token, setToken] = useState(authService.getToken());
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null); // Add an error state
 
-  const login = async (phoneNumber, password) => {
+  const login = async (identifier, password) => {
     setLoading(true);
-    const response = await authService.login(phoneNumber, password);
-    if (response.success) {
-      setUser(response.user);
-      setToken(response.token);
+    setError(null); // Clear any previous errors
+
+    try {
+      const response = await authService.login(identifier, password);
+
+      if (response.success) {
+        setUser(response.user);
+        setToken(response.token);
+      } else {
+        // If login fails, set the error message
+        setError(
+          response.message || "Login failed. Please check your credentials."
+        );
+        setUser(null);
+        setToken(null);
+      }
+
+      setLoading(false);
+      return response;
+    } catch (err) {
+      // Handle network or unexpected errors
+      setLoading(false);
+      const errorMessage =
+        err.response?.data?.message || "An unexpected error occurred.";
+      setError(errorMessage);
+      return { success: false, message: errorMessage };
     }
-    setLoading(false);
-    return response; // UI can handle success/failure messages here
   };
 
   const logout = () => {
@@ -27,14 +47,21 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // On mount, sync state with localStorage (useful for page refresh)
     setUser(authService.getCurrentUser());
     setToken(authService.getToken());
   }, []);
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, logout, loading, isAuthenticated: !!user }}
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        loading,
+        error, // Provide the error state
+        isAuthenticated: !!user,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,5 +1,3 @@
-// routes/userRoutes.js
-
 import express from "express";
 import multer from "multer";
 import {
@@ -12,27 +10,23 @@ import {
   deleteUser,
   changeProfileImage,
 } from "../controllers/userController.js";
+import { protect, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 const upload = multer({ dest: "uploads/" });
 router.post("/register", registerUser);
 router.post("/login", loginUser);
-
-// User retrieval
-router.get("/", getAllUsers);
-router.get("/user/:id", getUserById);
-
-router.put("/:id", updateUser);
-router.put("/:id/change-password", changePassword);
-
-router.delete("/:id", deleteUser);
-
-// Profile picture update
-router.put(
-  "/user/:id/profile",
+router.get("/", protect, getAllUsers);
+router.get("/:id", protect, getUserById);
+router.put("/:id", protect, updateUser);
+router.patch("/:id/change-password", protect, changePassword);
+router.patch(
+  "/:id/profile-image",
+  protect,
   upload.single("profilePicture"),
   changeProfileImage
 );
+router.delete("/:id", protect, deleteUser);
 
 export default router;

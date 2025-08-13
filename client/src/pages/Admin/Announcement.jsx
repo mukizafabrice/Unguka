@@ -1,34 +1,89 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   fetchAnnouncements,
   createAnnouncement,
 } from "../../services/announcementService";
 
-const Announcement = () => {
+import {
+  Box,
+  Card,
+  CardHeader,
+  CardContent,
+  Typography,
+  Button,
+  TextField,
+  CircularProgress,
+  Stack,
+  List,
+  ListItem,
+  ListItemText,
+  useMediaQuery,
+  styled,
+  Alert, // For displaying errors
+} from "@mui/material";
+import SendIcon from "@mui/icons-material/Send";
+import CampaignIcon from "@mui/icons-material/Campaign"; // Icon for Announcements
+
+// Styled components consistent with other dashboards
+const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[50],
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  "& .MuiCardHeader-title": {
+    fontWeight: 600,
+  },
+}));
+
+const StyledListGroupItem = styled(ListItem)(({ theme }) => ({
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  "&:last-child": {
+    borderBottom: "none",
+  },
+  padding: theme.spacing(2, 3), // 
+  flexDirection: "column",
+  alignItems: "flex-start",
+  backgroundColor: theme.palette.background.paper,
+}));
+
+const StyledCard = styled(Card)(({ theme }) => ({
+  borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[4],
+  height: "100%", // Ensure cards stretch to fill height in Stack
+}));
+
+function Announcement() {
   const [announcements, setAnnouncements] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
-  const fetchAllAnnouncements = async () => {
+
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const fetchAllAnnouncements = useCallback(async () => {
+    setLoading(true);
+    setError(""); // Clear previous errors
     try {
       const data = await fetchAnnouncements();
-      setAnnouncements(data.reverse());
+      setAnnouncements(data ? data.reverse() : []); // Ensure data is an array
     } catch (err) {
       console.error("Error fetching announcements:", err);
       setError("Failed to load announcements.");
+      setAnnouncements([]); // Reset on error
+    } finally {
+      setLoading(false);
     }
-  };
-  
+  }, []);
+
   useEffect(() => {
     fetchAllAnnouncements();
-  }, []);
-  
+  }, [fetchAllAnnouncements]);
+
   const handleSubmit = async (e) => {
-    e.preventDefault(); 
-    setError("");
-    
+    e.preventDefault();
+    setError(""); // Clear previous errors
+
     if (!title.trim() || !description.trim()) {
       setError("Both title and description are required.");
       return;
@@ -36,147 +91,199 @@ const Announcement = () => {
 
     try {
       setLoading(true);
+      // Ensure user is retrieved safely; consider using a global auth context if available
       const user = JSON.parse(localStorage.getItem("user"));
-     
-      await createAnnouncement({ title, description, userId: user?.id });
+      const userId = user?.id; // Get userId if available
+
+      await createAnnouncement({ title, description, userId });
 
       setTitle("");
       setDescription("");
-
-      await fetchAllAnnouncements();
+      toast.success("Announcement sent successfully!"); // Added success toast
+      await fetchAllAnnouncements(); // Re-fetch all announcements
     } catch (err) {
       console.error("Failed to create announcement:", err);
-
-      setError("Failed to send announcement. Please try again.");
+      setError(
+        `Failed to send announcement: ${
+          err.response?.data?.message || err.message
+        }`
+      );
+      toast.error("Failed to send announcement. Please try again."); // Toast for error
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container py-4">
-      <h2 className="mb-4 text-center fw-bold" style={{ clor: "#1a1e27" }}>
-        <span className="me-2"></span>Announcements
-      </h2>
-      <div className="row justify-content-center g-4">
-        <div className="col-lg-6 col-md-6 col-12">
-          <div className="card shadow-sm rounded-3 border-0 h-100">
-            <div className="card-header bg-primary text-white fw-bold rounded-top-3">
-              Create New Announcement
-            </div>
-            <div className="card-body">
+    <Box px={isMobile ? 2 : 3} py={0}>
+      <Typography
+        variant="h5"
+        fontWeight="bold"
+        textAlign="center"
+        mb={4}
+        color="text.primary"
+      >
+        <CampaignIcon sx={{ mr: 1, verticalAlign: "middle" }} /> Announcements
+      </Typography>
+
+      <Stack
+        direction={isMobile ? "column" : "row"}
+        spacing={isMobile ? 3 : 4}
+        justifyContent="center"
+        alignItems="stretch" // Ensures cards stretch to equal height
+      >
+        {/* Card for Create New Announcement */}
+        <Box flex={1}>
+          <StyledCard>
+            <StyledCardHeader
+              title={
+                <Typography variant="h6">Create New Announcement</Typography>
+              }
+              sx={{
+                backgroundColor: "primary.main",
+                color: "primary.contrastText",
+              }}
+            />
+            <CardContent>
               <form onSubmit={handleSubmit}>
                 {error && (
-                  <div className="alert alert-danger py-2" role="alert">
+                  <Alert severity="error" sx={{ mb: 2 }}>
                     {error}
-                  </div>
+                  </Alert>
                 )}
-                <div className="mb-3">
-                  <label
-                    htmlFor="announcementTitle"
-                    className="form-label fw-semibold"
-                  >
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control rounded-pill"
-                    id="announcementTitle"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter announcement title"
-                    aria-describedby="titleHelp"
-                  />
-                  <div id="titleHelp" className="form-text">
-                    Keep the title concise and clear.
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <label
-                    htmlFor="announcementDescription"
-                    className="form-label fw-semibold"
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    className="form-control rounded-3"
-                    id="announcementDescription"
-                    rows="4"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Enter detailed description"
-                    aria-describedby="descriptionHelp"
-                  ></textarea>
-                  <div id="descriptionHelp" className="form-text">
-                    Provide all necessary details for the announcement.
-                  </div>
-                </div>
-                <button
+                <TextField
+                  label="Title"
+                  variant="outlined"
+                  fullWidth
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter announcement title"
+                  margin="normal"
+                  helperText="Keep the title concise and clear."
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  label="Description"
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter detailed description"
+                  margin="normal"
+                  helperText="Provide all necessary details for the announcement."
+                  sx={{ mb: 3 }}
+                />
+                <Button
                   type="submit"
-                  className="btn btn-dark w-100 rounded-pill py-2 fw-bold"
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  size="large"
+                  startIcon={loading ? null : <SendIcon />}
                   disabled={loading}
+                  sx={{ py: 1.5, borderRadius: 2 }}
                 >
                   {loading ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Sending...
-                    </>
+                    <CircularProgress size={24} color="inherit" />
                   ) : (
                     "Send Announcement"
                   )}
-                </button>
+                </Button>
               </form>
-            </div>
-          </div>
-        </div>
-        {/* Column for Displaying announcements */}
-        <div className="col-lg-6 col-md-6 col-12">
-          {" "}
-          {/* Takes 6 columns on large/medium, full width on small */}
-          <div className="card shadow-sm rounded-3 border-0 h-100">
-            {" "}
-            {/* h-100 to make cards same height */}
-            <div className="card-header bg-secondary text-white fw-bold rounded-top-3">
-              Recent Announcements
-            </div>
-            <div className="card-body p-0">
-              {" "}
-              {/* No padding here, handled by list-group-item */}
-              {announcements.length > 0 ? (
-                <ul
-                  className="list-group list-group-flush rounded-bottom-3"
-                  style={{ maxHeight: "400px", overflowY: "auto" }}
+            </CardContent>
+          </StyledCard>
+        </Box>
+
+        {/* Card for Displaying Recent Announcements */}
+        <Box flex={1}>
+          <StyledCard>
+            <StyledCardHeader
+              title={<Typography variant="h6">Recent Announcements</Typography>}
+              sx={{
+                backgroundColor: "primary.main",
+                color: "primary.contrastText",
+              }}
+            />
+            <CardContent
+              sx={{
+                p: 0,
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                maxHeight: isMobile ? "350px" : "400px",
+              }}
+            >
+              {loading && announcements.length === 0 ? (
+                <Box
+                  display="flex"
+                  justifyContent="center"
+                  alignItems="center"
+                  flexGrow={1}
+                  my={3}
                 >
-                  {" "}
-                  {/* Added max-height and overflow-y for scrollbar */}
+                  <CircularProgress color="primary" />
+                </Box>
+              ) : announcements.length > 0 ? (
+                <List sx={{ flexGrow: 1, overflowY: "auto", py: 0 }}>
                   {announcements.map((item) => (
-                    <li
-                      key={item._id}
-                      className="list-group-item d-flex flex-column align-items-start py-3 px-4"
-                    >
-                      <h5 className="mb-1 text-dark fw-bold">{item.title}</h5>
-                      <p className="mb-2 text-muted">{item.description}</p>
-                      <small className="text-info">
-                        Posted on {new Date(item.createdAt).toLocaleString()}
-                      </small>
-                    </li>
+                    <StyledListGroupItem key={item._id}>
+                      <ListItemText
+                        primary={
+                          <Typography
+                            variant="h6"
+                            component="h3"
+                            fontWeight="bold"
+                            color="text.primary"
+                          >
+                            {item.title}
+                          </Typography>
+                        }
+                        secondary={
+                          <>
+                            <Typography
+                              component="p"
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: 0.5, mb: 1 }}
+                            >
+                              {item.description}
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled">
+                              Posted on{" "}
+                              {new Date(item.createdAt).toLocaleString()}
+                            </Typography>
+                          </>
+                        }
+                      />
+                    </StyledListGroupItem>
                   ))}
-                </ul>
+                </List>
               ) : (
-                <p className="p-4 text-center text-muted">
-                  No announcements yet.
-                </p>
+                <Box
+                  display="flex"
+                  justifyContent="center"
+                  alignItems="center"
+                  flexGrow={1}
+                  p={3}
+                >
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    textAlign="center"
+                  >
+                    No announcements yet.
+                  </Typography>
+                </Box>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+            </CardContent>
+          </StyledCard>
+        </Box>
+      </Stack>
+      <ToastContainer position="bottom-right" autoClose={3000} />
+    </Box>
   );
-};
+}
 
 export default Announcement;

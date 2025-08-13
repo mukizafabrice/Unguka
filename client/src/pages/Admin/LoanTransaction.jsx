@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchLoanTransactions } from "../../services/loanTransactionService";
 import { ArrowLeft, Search } from "lucide-react";
@@ -38,18 +38,25 @@ const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   },
 }));
 
-// Styled component for table body cells
+// Styled component for table body cells - Adjusted padding for responsiveness
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  padding: "8px 16px", // Consistent row padding
+  padding: "8px 16px", // Default padding
   borderBottom: `1px solid ${theme.palette.divider}`, // Keep divider for row separation
   backgroundColor: theme.palette.background.paper, // A slightly different background for body cells
   color: theme.palette.text.primary, // Ensure text color is readable
+  wordWrap: "break-word", // Ensure text wraps naturally
+  whiteSpace: "normal",
+  [theme.breakpoints.down("sm")]: {
+    // Apply on small screens
+    padding: "6px 8px", // Reduced padding for mobile
+    fontSize: "0.75rem", // Slightly smaller font size
+  },
 }));
 
 // Styled component for table header cells (updated for no background)
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px", // Slightly more padding for headers
-  backgroundColor: 'transparent', // Removed background color
+  backgroundColor: "transparent", // Removed background color
   color: theme.palette.text.primary, // Set text color to primary text for readability
   fontWeight: 600, // Bolder font weight
   borderBottom: `2px solid ${theme.palette.divider}`, // Thicker border bottom, matching divider for subtlety
@@ -59,8 +66,14 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   "&:last-of-type": {
     borderTopRightRadius: theme.shape.borderRadius,
   },
+  wordWrap: "break-word", // Ensure text wraps naturally
+  whiteSpace: "normal",
+  [theme.breakpoints.down("sm")]: {
+    // Apply on small screens
+    padding: "8px 8px", // Reduced padding for mobile
+    fontSize: "0.75rem", // Slightly smaller font size
+  },
 }));
-
 
 // Helper function for status chip color
 const getStatusColor = (status) => {
@@ -134,11 +147,9 @@ function LoanTransactions() {
                 .includes(lowerCaseSearchTerm)
             );
           case "product":
-            return (
-              tx.loanId?.purchaseInputId?.productId?.productName
-                ?.toLowerCase()
-                .includes(lowerCaseSearchTerm)
-            );
+            return tx.loanId?.purchaseInputId?.productId?.productName
+              ?.toLowerCase()
+              .includes(lowerCaseSearchTerm);
           case "date":
             // Filter by transaction date if available (e.g., "2/15/2023")
             return tx.transactionDate
@@ -197,13 +208,28 @@ function LoanTransactions() {
             </Button>
           }
         />
-        <CardContent>
+        <CardContent
+          sx={{
+            maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
+            overflow: "hidden", // Hide overflow on CardContent itself
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Descriptive Text Section (Optional, can add if needed) */}
+          <Box mb={3} sx={{ flexShrink: 0 }}>
+            <Typography variant="body2" color="text.secondary">
+              View and manage all loan payment transactions.
+            </Typography>
+          </Box>
+
           {/* Filters and Search Section */}
           <Stack
             direction={isMobile ? "column" : "row"}
             spacing={2}
             mb={3}
             alignItems={isMobile ? "stretch" : "center"}
+            sx={{ flexShrink: 0 }} // Ensures this Stack doesn't shrink
           >
             <TextField
               select
@@ -254,25 +280,56 @@ function LoanTransactions() {
           </Stack>
 
           {loading ? (
-            <Box display="flex" justifyContent="center" my={5}>
+            <Box
+              display="flex"
+              justifyContent="center"
+              my={5}
+              sx={{ flexGrow: 1 }}
+            >
               <CircularProgress color="primary" />
             </Box>
           ) : (
-            <>
+            <Box
+              sx={{
+                flexGrow: 1,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {" "}
+              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
-                sx={{ overflowX: "auto", borderRadius: 2, boxShadow: 2 }}
+                sx={{
+                  overflowX: "auto",
+                  borderRadius: 2,
+                  boxShadow: 2,
+                  flexGrow: 1,
+                }}
               >
-                <Table size="small">
+                <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       {/* Using StyledTableHeaderCell for header cells */}
-                      <StyledTableHeaderCell>ID</StyledTableHeaderCell>
-                      <StyledTableHeaderCell>Member</StyledTableHeaderCell>
-                      <StyledTableHeaderCell>Amount Paid</StyledTableHeaderCell>
-                      <StyledTableHeaderCell>Remaining</StyledTableHeaderCell>
-                      <StyledTableHeaderCell>Loan Status</StyledTableHeaderCell>
-                      <StyledTableHeaderCell>Date</StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>
+                        ID
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                        Member
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Amount Paid
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Remaining
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Loan Status
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                        Date
+                      </StyledTableHeaderCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -312,12 +369,8 @@ function LoanTransactions() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} align="center">
-                          <Typography
-                            variant="subtitle1"
-                            color="text.secondary"
-                            p={2}
-                          >
+                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                          <Typography variant="body1" color="text.secondary">
                             No transactions found.
                           </Typography>
                         </TableCell>
@@ -326,23 +379,28 @@ function LoanTransactions() {
                   </TableBody>
                 </Table>
               </TableContainer>
+            </Box>
+          )}
 
-              {/* Pagination controls: Only show if there's more than one page */}
-              {totalPages > 1 && (
-                <Box mt={3} display="flex" justifyContent="center">
-                  <Pagination
-                    count={totalPages}
-                    page={page}
-                    onChange={handleChangePage}
-                    color="primary"
-                    showFirstButton
-                    showLastButton
-                    siblingCount={isMobile ? 0 : 1}
-                    boundaryCount={isMobile ? 0 : 1}
-                  />
-                </Box>
-              )}
-            </>
+          {/* Pagination controls: Only show if there's more than one page */}
+          {totalPages > 1 && (
+            <Box
+              mt={3}
+              display="flex"
+              justifyContent="center"
+              sx={{ flexShrink: 0 }}
+            >
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={handleChangePage}
+                color="primary"
+                showFirstButton
+                showLastButton
+                siblingCount={isMobile ? 0 : 1}
+                boundaryCount={isMobile ? 0 : 1}
+              />
+            </Box>
           )}
         </CardContent>
       </Card>

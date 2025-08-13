@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// Assuming these service imports are correctly pointing to your backend services
 import {
   fetchProduct,
   createProduct,
@@ -12,7 +11,9 @@ import {
 
 import {
   Box,
-  Container,
+  Card, // Added Card import to match Loan.jsx structure
+  CardHeader, // Added CardHeader import to match Loan.jsx structure
+  CardContent, // Added CardContent import to match Loan.jsx structure
   Typography,
   Button,
   Table,
@@ -23,54 +24,103 @@ import {
   TableRow,
   Paper,
   IconButton,
-  TextField, // Import TextField for search input
-  InputAdornment, // For search icon
+  TextField,
+  InputAdornment,
+  Stack,
+  useMediaQuery,
+  styled,
+  Pagination,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import SearchIcon from "@mui/icons-material/Search"; // Import Search icon
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward"; // Import icons for sorting
+import SearchIcon from "@mui/icons-material/Search";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
-// Assuming these modal imports are correctly pointing to your modal components
 import AddProductModal from "../../features/modals/AddProductModal";
 import UpdateProductModal from "../../features/modals/UpdateProductModal";
 
+// Styled components consistent with Loan.jsx
+const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[50],
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  "& .MuiCardHeader-title": {
+    fontWeight: 600,
+  },
+}));
+
+// Styled component for table body cells - Adjusted for responsiveness
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  padding: "8px 16px",
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  backgroundColor: theme.palette.background.paper,
+  color: theme.palette.text.primary,
+  wordWrap: "break-word",
+  whiteSpace: "normal",
+  [theme.breakpoints.down("sm")]: {
+    padding: "4px 6px",
+    fontSize: "0.65rem",
+  },
+}));
+
+// Styled component for table header cells - Adjusted for responsiveness and no background
+const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
+  padding: "12px 16px",
+  backgroundColor: "transparent",
+  color: theme.palette.text.primary,
+  fontWeight: 600,
+  borderBottom: `2px solid ${theme.palette.divider}`,
+  "&:first-of-type": {
+    borderTopLeftRadius: theme.shape.borderRadius,
+  },
+  "&:last-of-type": {
+    borderTopRightRadius: theme.shape.borderRadius,
+  },
+  wordWrap: "break-word",
+  whiteSpace: "normal",
+  [theme.breakpoints.down("sm")]: {
+    padding: "6px 6px",
+    fontSize: "0.65rem",
+  },
+}));
+
 function Product() {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [productToEdit, setProductToEdit] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState(""); // State for search term
-  const [sortOrder, setSortOrder] = useState("asc"); // State for sorting: 'asc' or 'desc'
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to fetch products from the backend
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
     try {
       const productsData = await fetchProduct();
-      setProducts(productsData);
+      setProducts(productsData || []);
     } catch (error) {
       console.error("Failed to fetch products:", error);
       toast.error("Failed to load products.");
+      setProducts([]);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  // Initial data load on component mount
-  useEffect(() => {
-    loadProducts();
   }, []);
 
-  // Handler for adding a new product
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
   const handleAddProduct = async (productData) => {
     try {
       await createProduct(productData);
       setShowAddModal(false);
       toast.success("Product added successfully!");
-      await loadProducts(); // Re-fetch all products to refresh the list
+      await loadProducts();
     } catch (error) {
       console.error("Error adding product:", error);
       toast.error(
@@ -81,12 +131,11 @@ function Product() {
     }
   };
 
-  // Handler for deleting a product
   const handleDeleteProduct = async (id) => {
     try {
       await deleteProduct(id);
       toast.success("Product deleted successfully!");
-      await loadProducts(); // Re-fetch all products to refresh the list
+      await loadProducts();
     } catch (error) {
       console.error("Error deleting product:", error);
       toast.error(
@@ -97,19 +146,17 @@ function Product() {
     }
   };
 
-  // Handler to open the update modal with the selected product's data
   const handleUpdateProduct = (product) => {
     setProductToEdit(product);
     setShowUpdateModal(true);
   };
 
-  // Handler for submitting the updated product
   const handleProductUpdated = async (updatedProductData) => {
     try {
       await updateProduct(updatedProductData._id, updatedProductData);
       toast.success("Product updated successfully!");
       setShowUpdateModal(false);
-      await loadProducts(); // Re-fetch all products to refresh the list
+      await loadProducts();
     } catch (error) {
       console.error("Error updating product:", error);
       toast.error(
@@ -120,13 +167,13 @@ function Product() {
     }
   };
 
-  // Filter and sort products based on searchTerm and sortOrder
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = products.filter((product) =>
-      product.productName.toLowerCase().includes(searchTerm.toLowerCase())
+      product.productName?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     filtered.sort((a, b) => {
+      if (!a.productName || !b.productName) return 0;
       if (sortOrder === "asc") {
         return a.productName.localeCompare(b.productName);
       } else {
@@ -145,195 +192,177 @@ function Product() {
   );
   const totalPages = Math.ceil(filteredAndSortedProducts.length / rowsPerPage);
 
-  const handleNext = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => prev + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
-    }
-  };
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredAndSortedProducts]);
 
   const handleSort = () => {
     setSortOrder((prevSortOrder) => (prevSortOrder === "asc" ? "desc" : "asc"));
-    setCurrentPage(1); // Reset to first page when sorting
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header and Add Product Button */}
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" }, // Stack on small screens, row on larger
-          justifyContent: "space-between",
-          alignItems: { xs: "flex-start", sm: "center" }, // Align items differently based on screen size
-          mb: 4,
-          gap: { xs: 2, sm: 0 }, // Add gap when stacked
-        }}
-      >
-        <Typography variant="h4" component="h1" sx={{ color: "text.primary" }}>
-          Products Dashboard
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setShowAddModal(true)}
-          sx={{ minWidth: { xs: "100%", sm: "auto" } }} // Full width on small screens
-        >
-          Add Product
-        </Button>
-      </Box>
-
-      {/* Search and Filter Section */}
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          gap: 2,
-          alignItems: { xs: "flex-start", sm: "center" },
-        }}
-      >
-        <TextField
-          label="Search Products"
-          variant="outlined"
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setCurrentPage(1); // Reset pagination on search
-          }}
-          sx={{ flexGrow: 1, minWidth: { xs: "100%", sm: "auto" } }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-        <Button
-          variant="outlined"
-          onClick={handleSort}
-          startIcon={
-            sortOrder === "asc" ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />
+    <Box px={isMobile ? 2 : 3} pt={0}>
+      <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
+        <StyledCardHeader
+          title={<Typography variant="h6">Products</Typography>}
+          action={
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setShowAddModal(true)}
+              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
+            >
+              Add Product
+            </Button>
           }
-          sx={{ minWidth: { xs: "100%", sm: "auto" } }} // Full width on small screens
-        >
-          Sort by Name {sortOrder === "asc" ? "(A-Z)" : "(Z-A)"}
-        </Button>
-      </Box>
+        />
+        <CardContent>
+          <Box mb={3}>
+            <Typography variant="body2" color="text.secondary">
+              Manage and track products, including adding new ones, updating
+              details, and removing old entries.
+            </Typography>
+          </Box>
 
-      {/* Product Table */}
-      <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell
-                sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={2}
+            mb={3}
+            alignItems={isMobile ? "stretch" : "center"}
+          >
+            <TextField
+              label="Search Products"
+              variant="outlined"
+              size="small"
+              fullWidth={isMobile}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={handleSort}
+              startIcon={
+                sortOrder === "asc" ? (
+                  <ArrowUpwardIcon />
+                ) : (
+                  <ArrowDownwardIcon />
+                )
+              }
+              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
+            >
+              Sort by Name {sortOrder === "asc" ? "(A-Z)" : "(Z-A)"}
+            </Button>
+          </Stack>
+
+          {loading ? (
+            <Box display="flex" justifyContent="center" my={5}>
+              <CircularProgress color="primary" />
+            </Box>
+          ) : (
+            <>
+              <TableContainer
+                component={Paper}
+                sx={{ boxShadow: 2, borderRadius: 2, overflowX: "auto" }}
               >
-                ID
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-              >
-                Product Name
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-              >
-                Action
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {currentRows.length > 0 ? (
-              currentRows.map((product, index) => (
-                <TableRow
-                  hover
-                  key={product._id || index}
-                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-                >
-                  <TableCell component="th" scope="row">
-                    {indexOfFirstRow + index + 1}
-                  </TableCell>
-                  <TableCell>{product.productName}</TableCell>
-                  <TableCell align="right">
-                    <Box
-                      sx={{
-                        display: "flex",
-                        gap: 1,
-                        justifyContent: "flex-end",
-                      }}
-                    >
-                      <IconButton
-                        aria-label="update"
-                        color="primary"
-                        onClick={() => handleUpdateProduct(product)}
+                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                        ID
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "60%" }}>
+                        Product Name
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell
+                        align="center"
+                        sx={{ width: "30%" }}
                       >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        aria-label="delete"
-                        color="error"
-                        onClick={() => handleDeleteProduct(product._id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body1">No products found.</Typography>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                        Action
+                      </StyledTableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {currentRows.length > 0 ? (
+                      currentRows.map((product, index) => (
+                        <TableRow
+                          hover
+                          key={product._id || index}
+                          sx={{
+                            "&:last-child td, &:last-child th": { border: 0 },
+                          }}
+                        >
+                          <StyledTableCell component="th" scope="row">
+                            {indexOfFirstRow + index + 1}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {product.productName}
+                          </StyledTableCell>
+                          <StyledTableCell align="center">
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              justifyContent="center"
+                            >
+                              <IconButton
+                                aria-label="update"
+                                color="primary"
+                                size="small"
+                                onClick={() => handleUpdateProduct(product)}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                aria-label="delete"
+                                color="error"
+                                size="small"
+                                onClick={() => handleDeleteProduct(product._id)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          </StyledTableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
+                          <Typography variant="body1" color="text.secondary">
+                            No products found.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
-      {/* Pagination Controls */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mt: 3,
-          flexDirection: { xs: "column", sm: "row" }, // Stack on small screens
-          gap: { xs: 2, sm: 0 }, // Add gap when stacked
-        }}
-      >
-        <Button
-          onClick={handlePrevious}
-          disabled={currentPage === 1}
-          startIcon={<ArrowBackIosIcon />}
-          variant="outlined"
-          sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-        >
-          Previous
-        </Button>
-        <Typography variant="body1">
-          Page {currentPage} of {totalPages}
-        </Typography>
-        <Button
-          onClick={handleNext}
-          disabled={currentPage === totalPages}
-          endIcon={<ArrowForwardIosIcon />}
-          variant="outlined"
-          sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-        >
-          Next
-        </Button>
-      </Box>
+              {totalPages > 1 && (
+                <Box mt={3} display="flex" justifyContent="center">
+                  <Pagination
+                    count={totalPages}
+                    page={currentPage}
+                    onChange={(event, newPage) => setCurrentPage(newPage)}
+                    color="primary"
+                    showFirstButton
+                    showLastButton
+                    siblingCount={isMobile ? 0 : 1}
+                    boundaryCount={isMobile ? 0 : 1}
+                  />
+                </Box>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Modals for Add and Update */}
       <AddProductModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
@@ -346,7 +375,6 @@ function Product() {
         productData={productToEdit}
       />
 
-      {/* Toast Notifications */}
       <ToastContainer
         position="bottom-right"
         autoClose={3000}
@@ -358,7 +386,7 @@ function Product() {
         draggable
         pauseOnHover
       />
-    </Container>
+    </Box>
   );
 }
 
