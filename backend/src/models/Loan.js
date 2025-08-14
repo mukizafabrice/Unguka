@@ -12,6 +12,13 @@ const loanSchema = new mongoose.Schema(
       ref: "PurchaseInput",
     },
 
+    cooperativeId: {
+      // New field for cooperative association
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Cooperative", // Reference to the Cooperative model
+      required: true, // Assuming a loan must be associated with a cooperative
+    },
+
     // Renamed from 'totalPrice' to more accurately reflect the amount owed
     amountOwed: {
       type: Number,

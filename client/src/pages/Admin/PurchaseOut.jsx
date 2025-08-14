@@ -2,12 +2,19 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// ⭐ Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
 import {
-  fetchPurchaseOut,
+  fetchAllPurchaseOuts, // ⭐ CORRECTED: Changed from fetchPurchaseOut to fetchAllPurchaseOuts
   createPurchaseOut,
   updatePurchaseOut,
   deletePurchaseOut,
 } from "../../services/purchaseOutService";
+
+// Import fetchProducts and fetchSeasons for dropdowns in modals
+import { fetchProducts } from "../../services/productService";
+import { fetchSeasons } from "../../services/seasonService";
 
 import {
   Box,
@@ -30,9 +37,9 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Chip, // Added Chip for status display
+  CircularProgress,
+  MenuItem,
+  // Chip, // ⭐ REMOVED: No 'status' field in PurchaseOut schema
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -40,9 +47,10 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import ClearIcon from "@mui/icons-material/Clear"; // For Clear Filters button
 
-import AddPurchaseOutModal from "../../features/modals/AddPurchaseOutModal";
-import UpdatePurchaseOutModal from "../../features/modals/UpdatePurchaseOutModal";
+import AddPurchaseOutModal from "../../features/modals/AddPurchaseOutModal"; // Ensure this path is correct
+import UpdatePurchaseOutModal from "../../features/modals/UpdatePurchaseOutModal"; // Ensure this path is correct
 
 // Styled components consistent with other dashboards
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
@@ -68,7 +76,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "transparent",
+  backgroundColor: "#f5f5f5", // ⭐ ADJUSTED: Consistent background for header
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -86,34 +94,25 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// Helper function for status chip color (if needed, assuming purchaseOuts have a status)
-// For PurchaseOut, it's less clear if a 'status' field exists in the data.
-// If not, this function might not be directly applicable unless you introduce a status.
-const getStatusColor = (status) => {
-  switch (status?.toLowerCase()) {
-    case "completed": // Example status
-      return "success";
-    case "pending": // Example status
-      return "warning";
-    default:
-      return "default";
-  }
-};
+// ⭐ REMOVED: getStatusColor function, as there's no 'status' in PurchaseOut schema
 
 function PurchaseOut() {
+  // ⭐ Get user and cooperativeId from AuthContext
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+
   const [purchaseOuts, setPurchaseOuts] = useState([]);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedPurchaseOut, setSelectedPurchaseOut] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Consistent rows per page
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("productName"); // Default search field
+  const [searchField, setSearchField] = useState("productName");
   const [sortOrder, setSortOrder] = useState("desc"); // Default sort by date, newest first
-  // Assuming no specific status filter for PurchaseOut unless data schema shows it.
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -121,35 +120,67 @@ function PurchaseOut() {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
       currency: "RWF",
-    }).format(amount);
+    }).format(amount || 0); // Handle null/undefined amount gracefully
   };
 
-  // Function to load purchase outs data from the backend
+  // ⭐ Modified loadPurchaseOut to fetch purchase outs for the specific cooperativeId
   const loadPurchaseOut = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error(
+        "Manager's cooperative ID is not available. Cannot load purchase outs."
+      );
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await fetchPurchaseOut();
-      setPurchaseOuts(data || []);
+      // Pass the cooperativeId to fetchAllPurchaseOuts
+      const response = await fetchAllPurchaseOuts(cooperativeId);
+      if (response.success && Array.isArray(response.data)) {
+        setPurchaseOuts(response.data);
+      } else {
+        console.error("Failed to fetch purchase outs:", response.message);
+        toast.error(response.message || "Failed to load purchases.");
+        setPurchaseOuts([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch purchase outs:", error);
-      toast.error("Failed to load purchases.");
+      console.error("Failed to fetch purchase outs (catch block):", error);
+      toast.error("An unexpected error occurred while loading purchases.");
       setPurchaseOuts([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]); // Add cooperativeId to dependencies
 
   useEffect(() => {
-    loadPurchaseOut();
-  }, [loadPurchaseOut]);
+    // Only load purchase outs if cooperativeId is available
+    if (cooperativeId) {
+      loadPurchaseOut();
+    }
+  }, [cooperativeId, loadPurchaseOut]); // Depend on cooperativeId and loadPurchaseOut
 
   // Handler for adding a new purchase out
+  // ⭐ Modified handleAddPurchaseOut to include cooperativeId
   const handleAddPurchaseOut = async (newPurchaseOutData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot add purchase out.");
+      return;
+    }
     try {
-      await createPurchaseOut(newPurchaseOutData);
-      toast.success("Purchase added successfully!");
-      await loadPurchaseOut();
-      setShowAddModal(false);
+      // Add the cooperativeId to the purchase out data before sending
+      const dataToSend = {
+        ...newPurchaseOutData,
+        cooperativeId: cooperativeId,
+      };
+      const response = await createPurchaseOut(dataToSend);
+      if (response.success) {
+        toast.success(response.message || "Purchase added successfully!");
+        setShowAddModal(false);
+        await loadPurchaseOut();
+      } else {
+        toast.error(response.message || "Failed to add purchase.");
+      }
     } catch (error) {
       console.error("Failed to add purchase:", error);
       toast.error(
@@ -166,13 +197,31 @@ function PurchaseOut() {
   };
 
   // Handler for updating a purchase out
+  // ⭐ Modified handleUpdatePurchaseOut to include cooperativeId in the data sent
   const handleUpdatePurchaseOut = async (id, updatedPurchaseOutData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot update purchase out.");
+      return;
+    }
     try {
-      await updatePurchaseOut(id, updatedPurchaseOutData);
-      toast.success("Purchase updated successfully!");
-      await loadPurchaseOut();
-      setShowUpdateModal(false);
-      setSelectedPurchaseOut(null);
+      // Add the cooperativeId to the data for authorization at the backend
+      const dataToSend = {
+        ...updatedPurchaseOutData,
+        cooperativeId: cooperativeId,
+      };
+      const response = await updatePurchaseOut(id, dataToSend);
+      if (response.success) {
+        toast.success(response.message || "Purchase updated successfully!");
+        setShowUpdateModal(false);
+        setSelectedPurchaseOut(null);
+        await loadPurchaseOut();
+      } else {
+        toast.error(
+          `Failed to update purchase: ${
+            response.message || "An unexpected error occurred."
+          }`
+        );
+      }
     } catch (error) {
       console.error("Failed to update purchase:", error);
       toast.error(
@@ -184,11 +233,21 @@ function PurchaseOut() {
   };
 
   // Handler for deleting a purchase out
+  // ⭐ Modified handleDeletePurchaseOut to include cooperativeId
   const handleDeletePurchaseOut = async (id) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot delete purchase out.");
+      return;
+    }
     try {
-      await deletePurchaseOut(id);
-      toast.success("Purchase deleted successfully!");
-      await loadPurchaseOut();
+      // Pass the cooperativeId to deletePurchaseOut for backend authorization
+      const response = await deletePurchaseOut(id, cooperativeId);
+      if (response.success) {
+        toast.success(response.message || "Purchase deleted successfully!");
+        await loadPurchaseOut();
+      } else {
+        toast.error(response.message || "Failed to delete purchase.");
+      }
     } catch (error) {
       console.error("Failed to delete purchase:", error);
       toast.error(
@@ -266,6 +325,13 @@ function PurchaseOut() {
     setSortOrder((prevSortOrder) => (prevSortOrder === "asc" ? "desc" : "asc"));
   };
 
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSearchField("productName");
+    setSortOrder("desc");
+    setCurrentPage(1);
+  };
+
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
@@ -297,76 +363,103 @@ function PurchaseOut() {
           </Box>
 
           {/* Search, Filter, and Sort Section */}
-          <Stack
-            direction={isMobile ? "column" : "row"}
-            spacing={2}
-            mb={3}
-            alignItems={isMobile ? "stretch" : "center"}
-            sx={{ flexShrink: 0 }}
+          <Paper
+            sx={{
+              mb: 3,
+              p: { xs: 1.5, sm: 2 },
+              display: "flex",
+              flexDirection: "column",
+              gap: { xs: 1.5, sm: 2 },
+              borderRadius: "8px",
+              boxShadow: 3,
+            }}
           >
-            <TextField
-              select
-              label="Search By"
-              size="small"
-              value={searchField}
-              onChange={(e) => setSearchField(e.target.value)}
-              sx={{ minWidth: 120, flexShrink: 0 }}
-            >
-              <MenuItem value="productName">Product Name</MenuItem>
-              <MenuItem value="season">Season/Year</MenuItem>
-              <MenuItem value="date">Date</MenuItem>
-            </TextField>
-            <TextField
-              label={`Search ${
-                searchField === "productName"
-                  ? "Product Name"
-                  : searchField === "season"
-                  ? "Season/Year"
-                  : "Date (e.g., 2/15/2023)"
-              }`}
-              variant="outlined"
-              size="small"
-              fullWidth={isMobile}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: { xs: 1, sm: 2 },
               }}
-            />
-            {/* No status filter currently, remove if not needed for PurchaseOut */}
-            {/* <TextField
-              select
-              label="Status Filter"
-              size="small"
-              fullWidth={isMobile}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              sx={{ minWidth: isMobile ? "100%" : 180 }}
             >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="paid">Paid</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-            </TextField> */}
-            <Button
-              variant="outlined"
-              size="medium"
-              onClick={handleSort}
-              startIcon={
-                sortOrder === "asc" ? (
-                  <ArrowUpwardIcon />
-                ) : (
-                  <ArrowDownwardIcon />
-                )
-              }
-              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-            >
-              Sort by Date {sortOrder === "asc" ? "(Oldest)" : "(Newest)"}
-            </Button>
-          </Stack>
+              {/* Search Bar */}
+              <TextField
+                variant="outlined"
+                size="small"
+                placeholder="Search purchases..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{
+                  width: { xs: "100%", sm: "300px", md: "350px" },
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "25px",
+                    "& fieldset": { borderColor: "#e0e0e0" },
+                    "&:hover fieldset": { borderColor: "#bdbdbd" },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#1976d2",
+                      borderWidth: "2px",
+                    },
+                  },
+                  "& .MuiInputBase-input": { padding: "8px 12px" },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: "#757575" }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {/* Filter and Sort Buttons */}
+              <Stack
+                direction={isMobile ? "column" : "row"}
+                spacing={2}
+                alignItems={isMobile ? "stretch" : "center"}
+              >
+                <TextField
+                  select
+                  label="Search By"
+                  size="small"
+                  value={searchField}
+                  onChange={(e) => setSearchField(e.target.value)}
+                  sx={{ minWidth: 120, flexShrink: 0 }}
+                >
+                  <MenuItem value="productName">Product Name</MenuItem>
+                  <MenuItem value="season">Season/Year</MenuItem>
+                  <MenuItem value="date">Date</MenuItem>
+                </TextField>
+                <Button
+                  variant="outlined"
+                  size="medium"
+                  onClick={handleSort}
+                  startIcon={
+                    sortOrder === "asc" ? (
+                      <ArrowUpwardIcon />
+                    ) : (
+                      <ArrowDownwardIcon />
+                    )
+                  }
+                  sx={{ minWidth: { xs: "100%", sm: "auto" } }}
+                >
+                  Sort by Date {sortOrder === "asc" ? "(Oldest)" : "(Newest)"}
+                </Button>
+                {(searchTerm ||
+                  searchField !== "productName" ||
+                  sortOrder !== "desc") && (
+                  <Button
+                    variant="outlined"
+                    onClick={handleClearFilters}
+                    startIcon={<ClearIcon />}
+                    size="small"
+                    sx={{ ml: { xs: 0, md: "auto" }, mt: { xs: 1, md: 0 } }}
+                  >
+                    Clear Filters
+                  </Button>
+                )}
+              </Stack>
+            </Box>
+          </Paper>
 
           {loading ? (
             <Box
@@ -386,44 +479,61 @@ function PurchaseOut() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
+                  boxShadow: 3, // Consistent shadow
+                  borderRadius: 2, // Consistent border radius
                   overflowX: "auto",
-                  borderRadius: 2,
-                  boxShadow: 2,
                   flexGrow: 1,
+                  maxHeight: { xs: "50vh", md: "70vh" }, // Responsive max height for table scroll
                 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table
+                  stickyHeader
+                  size="small"
+                  sx={{ minWidth: 900, tableLayout: "fixed" }}
+                >
+                  {" "}
+                  {/* stickyHeader and minWidth */}
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "20%", minWidth: "150px" }}
+                      >
                         Product Name
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "15%", minWidth: "120px" }}
+                      >
                         Season
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "10%", minWidth: "80px" }}
+                      >
                         Quantity
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "15%", minWidth: "100px" }}
+                      >
                         Unit Price
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "15%", minWidth: "100px" }}
+                      >
                         Total Price
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "10%", minWidth: "90px" }}
+                      >
                         Date
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell
                         align="center"
-                        sx={{ width: "10%" }}
+                        sx={{ width: "10%", minWidth: "100px" }}
                       >
                         Action
                       </StyledTableHeaderCell>
@@ -493,7 +603,7 @@ function PurchaseOut() {
                       <TableRow>
                         <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
-                            No purchases found.
+                            No purchases found for this cooperative.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -526,10 +636,12 @@ function PurchaseOut() {
         </CardContent>
       </Card>
 
+      {/* AddPurchaseOutModal and UpdatePurchaseOutModal will be passed the cooperativeId */}
       <AddPurchaseOutModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddPurchaseOut}
+        cooperativeId={cooperativeId} // Pass cooperativeId to the modal
       />
 
       <UpdatePurchaseOutModal
@@ -537,19 +649,10 @@ function PurchaseOut() {
         purchaseOut={selectedPurchaseOut}
         onClose={() => setShowUpdateModal(false)}
         onSubmit={handleUpdatePurchaseOut}
+        cooperativeId={cooperativeId} // Pass cooperativeId to the modal
       />
 
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
     </Box>
   );
 }

@@ -2,12 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import {
-  fetchSeasons,
-  createSeasons,
-  updateSeasons,
-  deleteSeasons,
-} from "../../services/seasonService";
+// Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
+// Only fetchSeasons is needed for a read-only view
+import { fetchSeasons } from "../../services/seasonService";
 
 import {
   Box,
@@ -15,7 +14,6 @@ import {
   CardHeader,
   CardContent,
   Typography,
-  Button,
   Table,
   TableBody,
   TableCell,
@@ -30,13 +28,11 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Chip, // Added Chip for status display
+  CircularProgress,
+  MenuItem,
+  Chip,
+  Button, // Keep Button for sort control if desired, otherwise remove
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
@@ -65,7 +61,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "transparent",
+  backgroundColor: "#f5f5f5", // Explicit background for header
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -83,29 +79,28 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// Helper function for status chip color (assuming season status like 'active' or 'closed')
+// Helper function for status chip color (matching model's enum: "active", "inactive")
 const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
     case "active":
       return "success";
-    case "closed": // Or 'inactive', 'archived' depending on your backend data
+    case "inactive": // Changed from 'closed' to 'inactive' to match the enum in your model
       return "error";
-    case "pending": // If there's a pending status
-      return "info";
     default:
       return "default";
   }
 };
 
 function Season() {
-  const [seasons, setSeasons] = useState([]);
-  const [loading, setLoading] = useState(true); // Added loading state
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedSeason, setSelectedSeason] = useState(null);
+  // Get current user's cooperative ID from AuthContext
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
 
+  const [seasons, setSeasons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Consistent rows per page
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("name"); // Default search field
@@ -114,80 +109,39 @@ function Season() {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to load seasons data from the backend
+  // Function to load seasons data from the backend, filtered by cooperativeId
   const loadSeasons = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is not available. Cannot load seasons.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const seasonsData = await fetchSeasons();
-      setSeasons(seasonsData || []); // Ensure data is an array
+      // Pass cooperativeId to fetchSeasons
+      const response = await fetchSeasons(cooperativeId);
+      if (response.success && Array.isArray(response.data)) {
+        setSeasons(response.data);
+      } else {
+        console.error("Failed to fetch seasons:", response.message);
+        toast.error(response.message || "Failed to load seasons.");
+        setSeasons([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch seasons:", error);
-      toast.error("Failed to load seasons.");
-      setSeasons([]); // Reset seasons on error
+      console.error("Failed to fetch seasons (catch block):", error);
+      toast.error("An unexpected error occurred while loading seasons.");
+      setSeasons([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]);
 
   useEffect(() => {
-    loadSeasons();
-  }, [loadSeasons]);
-
-  // Handler for adding a new season
-  const handleAddSeason = async (newSeasonData) => {
-    try {
-      await createSeasons(newSeasonData);
-      toast.success("Season added successfully!");
-      await loadSeasons(); // Re-fetch all seasons to refresh the list
-      setShowAddModal(false);
-    } catch (error) {
-      console.error("Failed to add season:", error);
-      toast.error(
-        `Failed to add season: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    if (cooperativeId) { // Only load if cooperativeId is available
+      loadSeasons();
     }
-  };
-
-  const handleOpenUpdateModal = (season) => {
-    setSelectedSeason(season);
-    setShowUpdateModal(true);
-  };
-
-  // Handler for updating a season
-  const handleUpdateSeason = async (seasonId, updatedSeasonData) => {
-    try {
-      await updateSeasons(seasonId, updatedSeasonData);
-      toast.success("Season updated successfully!");
-      await loadSeasons();
-      setShowUpdateModal(false);
-      setSelectedSeason(null); // Clear selected season after update
-    } catch (error) {
-      console.error("Failed to update season:", error);
-      toast.error(
-        `Failed to update season: ${
-          error.response?.data?.message || error.message
-        }`
-      );
-    }
-  };
-
-  // Handler for deleting a season
-  const handleDeleteSeason = async (id) => {
-    try {
-      await deleteSeasons(id);
-      toast.success("Season deleted successfully!");
-      await loadSeasons();
-    } catch (error) {
-      console.error("Failed to delete season:", error);
-      toast.error(
-        `Failed to delete season: ${
-          error.response?.data?.message || error.message
-        }`
-      );
-    }
-  };
+  }, [cooperativeId, loadSeasons]);
 
   // Filter and sort seasons based on search, status filter, and sort order
   const filteredAndSortedSeasons = useMemo(() => {
@@ -263,30 +217,20 @@ function Season() {
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         <StyledCardHeader
-          title={<Typography variant="h6">Seasons Dashboard</Typography>}
-          action={
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setShowAddModal(true)}
-              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-            >
-              Add Season
-            </Button>
-          }
+          title={<Typography variant="h6">My Seasons</Typography>}
+          // Removed "Add Season" button from here
         />
         <CardContent
           sx={{
             maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflow: "hidden", // Hide overflow on CardContent itself
+            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
         >
           <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
-              Manage and track different agricultural seasons, including their
-              names, years, and statuses.
+              View agricultural seasons active within your cooperative.
             </Typography>
           </Box>
 
@@ -342,9 +286,7 @@ function Season() {
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="closed">Closed</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>{" "}
-              {/* Example status */}
+              <MenuItem value="inactive">Inactive</MenuItem> {/* Corrected to 'inactive' */}
             </TextField>
             <Button
               variant="outlined"
@@ -382,8 +324,6 @@ function Season() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
@@ -396,24 +336,19 @@ function Season() {
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                      <StyledTableHeaderCell sx={{ width: "5%" }}>
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
                         ID
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "30%" }}>
+                      <StyledTableHeaderCell sx={{ width: "35%" }}>
                         Season Name
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
                         Year
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                      <StyledTableHeaderCell sx={{ width: "35%" }}>
                         Status
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        align="center"
-                        sx={{ width: "30%" }}
-                      >
-                        Action
-                      </StyledTableHeaderCell>
+                      {/* Removed Action column */}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -436,37 +371,14 @@ function Season() {
                               color={getStatusColor(season.status)}
                             />
                           </StyledTableCell>
-                          <StyledTableCell align="center">
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              justifyContent="center"
-                            >
-                              <IconButton
-                                aria-label="update"
-                                color="primary"
-                                size="small"
-                                onClick={() => handleOpenUpdateModal(season)}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                aria-label="delete"
-                                color="error"
-                                size="small"
-                                onClick={() => handleDeleteSeason(season._id)}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Stack>
-                          </StyledTableCell>
+                          {/* Removed Action cell */}
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={4} align="center" sx={{ py: 4 }}> {/* Adjusted colspan */}
                           <Typography variant="body1" color="text.secondary">
-                            No seasons found.
+                            No seasons found for your cooperative.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -498,19 +410,6 @@ function Season() {
           )}
         </CardContent>
       </Card>
-
-      {/* ToastContainer for displaying success/error notifications */}
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
     </Box>
   );
 }

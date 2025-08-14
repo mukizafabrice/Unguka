@@ -95,11 +95,9 @@ export const loginUser = async (req, res) => {
   const { identifier, password } = req.body;
 
   if (!identifier || !password) {
-    return res
-      .status(400)
-      .json({
-        message: "Please provide an email or phone number and a password",
-      });
+    return res.status(400).json({
+      message: "Please provide an email or phone number and a password",
+    });
   }
 
   try {
@@ -155,14 +153,14 @@ export const getAllUsers = async (req, res) => {
     const requestingUser = req.user; // Assumes authentication middleware is in place
 
     if (requestingUser.role === "superadmin") {
-      const users = await User.find().populate("cooperativeId");
+      const users = await User.find().populate("cooperativeId", "name");
       return res.status(200).json(users);
     }
 
     if (requestingUser.role === "manager") {
       const users = await User.find({
         cooperativeId: requestingUser.cooperativeId,
-      }).populate("cooperativeId");
+      }).populate("cooperativeId", "name");
       return res.status(200).json(users);
     }
 

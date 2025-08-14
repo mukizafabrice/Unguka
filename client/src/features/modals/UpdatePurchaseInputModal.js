@@ -1,61 +1,144 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  MenuItem,
+  Grid,
+  Typography,
+  CircularProgress, // For loading state
+} from "@mui/material";
+import { styled } from "@mui/system"; // Import styled for custom components
 
-// These service imports are crucial for fetching the dropdown data
+// ⭐ Updated import paths to ensure consistency.
+// Assuming these service functions can accept a cooperativeId to filter results.
 import { fetchSeasons } from "../../services/seasonService";
 import { fetchProduct } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
+
+// Styled components for consistent modal header
+const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[50],
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  "& .MuiTypography-root": {
+    fontWeight: 600,
+  },
+}));
 
 export default function UpdatePurchaseInputModal({
   show,
   onClose,
   onSubmit,
   initialData,
+  cooperativeId, // ⭐ NEW: Accept cooperativeId prop
 }) {
   const [formData, setFormData] = useState({
     userId: "",
     productId: "",
     seasonId: "",
-    quantity: 0,
-    unitPrice: 0,
-    amountPaid: 0,
+    quantity: "",
+    unitPrice: "",
+    amountPaid: "",
+    interest: "",
   });
 
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [seasons, setSeasons] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [loading, setLoading] = useState(false); // Loading state for form data
 
-  // useEffect hook to fetch data for dropdowns when the modal is shown
+  // Calculate total amount based on quantity and unit price
   useEffect(() => {
-    if (show) {
-      const loadData = async () => {
-        try {
-          const usersData = await fetchUsers();
-          const productsData = await fetchProduct();
-          const seasonsData = await fetchSeasons();
-
-          setUsers(usersData);
-          setProducts(productsData);
-          setSeasons(seasonsData);
-        } catch (error) {
-          console.error("Failed to load modal data:", error);
-          toast.error("Failed to load required data for the form.");
-        }
-      };
-      loadData();
+    const quantity = parseFloat(formData.quantity) || 0;
+    const unitPrice = parseFloat(formData.unitPrice) || 0;
+    setTotalAmount(quantity * unitPrice);
+    // If total amount is less than or equal to amount paid, reset interest
+    if (quantity * unitPrice <= (parseFloat(formData.amountPaid) || 0)) {
+      setFormData((prevData) => ({ ...prevData, interest: "" }));
     }
-  }, [show]);
+  }, [formData.quantity, formData.unitPrice, formData.amountPaid]);
+
+  // Load data (users, products, seasons) when the modal opens or cooperativeId changes
+  useEffect(() => {
+    const loadModalData = async () => {
+      if (!cooperativeId) {
+        toast.error("Cooperative ID is missing. Cannot load form data.");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // ⭐ Pass cooperativeId to fetch functions for multi-cooperative filtering
+        const [usersResponse, productsResponse, seasonsResponse] =
+          await Promise.all([
+            fetchUsers(cooperativeId), // Assuming fetchUsers can filter by cooperativeId
+            fetchProduct(cooperativeId), // Assuming fetchProduct can filter by cooperativeId
+            fetchSeasons(cooperativeId), // Assuming fetchSeasons can filter by cooperativeId
+          ]);
+
+        // ⭐ Enhanced error handling for each fetch operation
+        if (usersResponse.success && Array.isArray(usersResponse.data)) {
+          setUsers(usersResponse.data);
+        } else {
+          toast.error(usersResponse.message || "Failed to load users.");
+          setUsers([]);
+        }
+
+        if (productsResponse.success && Array.isArray(productsResponse.data)) {
+          setProducts(productsResponse.data);
+        } else {
+          toast.error(productsResponse.message || "Failed to load products.");
+          setProducts([]);
+        }
+
+        if (seasonsResponse.success && Array.isArray(seasonsResponse.data)) {
+          setSeasons(seasonsResponse.data);
+        } else {
+          toast.error(seasonsResponse.message || "Failed to load seasons.");
+          setSeasons([]);
+        }
+      } catch (error) {
+        console.error("Failed to load modal data:", error);
+        toast.error("An unexpected error occurred while loading form data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (show) {
+      loadModalData();
+    }
+  }, [show, cooperativeId]); // Re-run effect if show or cooperativeId changes
 
   // useEffect hook to populate the form with the initial data
-  // This runs whenever the modal is opened with a new purchase item.
   useEffect(() => {
     if (show && initialData) {
-      // Ensure all numbers are cast to the correct type to prevent form errors
       setFormData({
-        ...initialData,
-        quantity: Number(initialData.quantity),
-        unitPrice: Number(initialData.unitPrice),
-        amountPaid: Number(initialData.amountPaid),
+        _id: initialData._id, // Keep the _id for update operation
+        userId: initialData.userId?._id || "", // Access _id from nested object
+        productId: initialData.productId?._id || "", // Access _id from nested object
+        seasonId: initialData.seasonId?._id || "", // Access _id from nested object
+        quantity:
+          initialData.quantity !== undefined
+            ? String(initialData.quantity)
+            : "",
+        unitPrice:
+          initialData.unitPrice !== undefined
+            ? String(initialData.unitPrice)
+            : "",
+        amountPaid:
+          initialData.amountPaid !== undefined
+            ? String(initialData.amountPaid)
+            : "",
+        interest:
+          initialData.interest !== undefined
+            ? String(initialData.interest)
+            : "",
       });
     }
   }, [show, initialData]);
@@ -67,195 +150,279 @@ export default function UpdatePurchaseInputModal({
         userId: "",
         productId: "",
         seasonId: "",
-        quantity: 0,
-        unitPrice: 0,
-        amountPaid: 0,
+        quantity: "",
+        unitPrice: "",
+        amountPaid: "",
+        interest: "",
       });
+      setTotalAmount(0); // Also reset total amount
     }
   }, [show]);
 
   // Handles changes to form inputs, converting number types as needed
-  const handleChange = (e) => {
-    const { name, value, type } = e.target;
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
     setFormData((prevData) => ({
       ...prevData,
-      [name]: type === "number" ? Number(value) : value,
+      [name]: value,
     }));
-  };
+  }, []);
 
   // Handles form submission, performs validation, and calls the onSubmit prop
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
 
-    if (!formData.userId || !formData.productId || !formData.seasonId) {
-      toast.error("Please select a user, product, and season.");
-      return;
-    }
-    if (formData.quantity <= 0 || formData.unitPrice <= 0) {
-      toast.error("Quantity and Unit Price must be greater than 0.");
-      return;
-    }
+      if (!formData.userId || !formData.productId || !formData.seasonId) {
+        toast.error("Please select a user, product, and season.");
+        return;
+      }
+      const quantityNum = parseFloat(formData.quantity);
+      const unitPriceNum = parseFloat(formData.unitPrice);
+      const amountPaidNum = parseFloat(formData.amountPaid);
+      const interestNum = parseFloat(formData.interest) || 0; // Default to 0 if not entered
 
-    const totalPrice = formData.quantity * formData.unitPrice;
-    if (formData.amountPaid > totalPrice) {
-      toast.error("Amount paid cannot exceed the total price.");
-      return;
-    }
+      if (isNaN(quantityNum) || quantityNum <= 0) {
+        toast.error("Quantity must be a number greater than 0.");
+        return;
+      }
+      if (isNaN(unitPriceNum) || unitPriceNum <= 0) {
+        toast.error("Unit Price must be a number greater than 0.");
+        return;
+      }
 
-    onSubmit(formData);
-  };
+      const calculatedTotalPrice = quantityNum * unitPriceNum;
 
-  // The modal component is only rendered if the 'show' prop is true
-  if (!show) {
-    return null;
-  }
+      if (isNaN(amountPaidNum) || amountPaidNum < 0) {
+        toast.error("Amount paid must be a non-negative number.");
+        return;
+      }
+
+      if (amountPaidNum > calculatedTotalPrice) {
+        toast.error("Amount paid cannot exceed the total price.");
+        return;
+      }
+
+      // Determine status
+      let status = "paid";
+      if (calculatedTotalPrice > amountPaidNum) {
+        status = "loan"; // ⭐ Set status to 'loan' if there's a remaining balance
+      }
+
+      // Prepare data to submit, including _id and cooperativeId
+      const dataToSubmit = {
+        _id: formData._id, // Include the _id for update operation
+        userId: formData.userId,
+        productId: formData.productId,
+        seasonId: formData.seasonId,
+        quantity: quantityNum,
+        unitPrice: unitPriceNum,
+        amountPaid: amountPaidNum,
+        totalPrice: calculatedTotalPrice,
+        amountRemaining: calculatedTotalPrice - amountPaidNum,
+        status: status,
+        interest: status === "loan" ? interestNum : 0, // Only include interest if status is 'loan'
+        cooperativeId: cooperativeId, // ⭐ Crucially, add cooperativeId here
+      };
+
+      onSubmit(dataToSubmit);
+    },
+    [formData, onSubmit, cooperativeId]
+  );
+
+  const formatCurrency = useCallback((amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  }, []);
 
   return (
-    <div className="modal d-block" tabIndex="-1">
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Update Purchase</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-              aria-label="Close"
-            ></button>
-          </div>
-          <div className="modal-body">
-            {/* Added a key to the form to ensure a re-render when a different purchase is selected */}
-            <form
-              onSubmit={handleSubmit}
-              key={initialData ? initialData._id : "new"}
-            >
-              <div className="mb-3">
-                <label htmlFor="userId" className="form-label">
-                  User
-                </label>
-                <select
-                  id="userId"
+    <Dialog open={show} onClose={onClose} fullWidth maxWidth="sm">
+      <StyledDialogTitle onClose={onClose}>Update Purchase</StyledDialogTitle>
+      <DialogContent dividers>
+        {loading ? (
+          <Grid
+            container
+            justifyContent="center"
+            alignItems="center"
+            sx={{ height: 200 }}
+          >
+            <CircularProgress />
+            <Typography variant="subtitle1" sx={{ ml: 2 }}>
+              Loading data...
+            </Typography>
+          </Grid>
+        ) : (
+          <form>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  select
+                  label="Member"
                   name="userId"
                   value={formData.userId}
                   onChange={handleChange}
-                  className="form-select"
+                  fullWidth
                   required
+                  margin="normal"
+                  variant="outlined"
+                  size="small"
+                  // disabled when data is loading to prevent changing a selected item prematurely
+                  disabled={loading}
                 >
-                  <option value="">Select a user</option>
+                  <MenuItem value="">Select a member</MenuItem>
                   {users.map((user) => (
-                    <option key={user._id} value={user._id}>
+                    <MenuItem key={user._id} value={user._id}>
                       {user.names}
-                    </option>
+                    </MenuItem>
                   ))}
-                </select>
-              </div>
+                </TextField>
+              </Grid>
 
-              <div className="mb-3">
-                <label htmlFor="productId" className="form-label">
-                  Product
-                </label>
-                <select
-                  id="productId"
+              <Grid item xs={12}>
+                <TextField
+                  select
+                  label="Product"
                   name="productId"
                   value={formData.productId}
                   onChange={handleChange}
-                  className="form-select"
+                  fullWidth
                   required
+                  margin="normal"
+                  variant="outlined"
+                  size="small"
+                  disabled={loading}
                 >
-                  <option value="">Select a product</option>
+                  <MenuItem value="">Select a product</MenuItem>
                   {products.map((product) => (
-                    <option key={product._id} value={product._id}>
+                    <MenuItem key={product._id} value={product._id}>
                       {product.productName}
-                    </option>
+                    </MenuItem>
                   ))}
-                </select>
-              </div>
+                </TextField>
+              </Grid>
 
-              <div className="mb-3">
-                <label htmlFor="seasonId" className="form-label">
-                  Season
-                </label>
-                <select
-                  id="seasonId"
+              <Grid item xs={12}>
+                <TextField
+                  select
+                  label="Season"
                   name="seasonId"
                   value={formData.seasonId}
                   onChange={handleChange}
-                  className="form-select"
+                  fullWidth
                   required
+                  margin="normal"
+                  variant="outlined"
+                  size="small"
+                  disabled={loading}
                 >
-                  <option value="">Select a season</option>
+                  <MenuItem value="">Select a season</MenuItem>
                   {seasons.map((season) => (
-                    <option key={season._id} value={season._id}>
+                    <MenuItem key={season._id} value={season._id}>
                       {season.name} ({season.year})
-                    </option>
+                    </MenuItem>
                   ))}
-                </select>
-              </div>
+                </TextField>
+              </Grid>
 
-              <div className="mb-3">
-                <label htmlFor="quantity" className="form-label">
-                  Quantity
-                </label>
-                <input
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Quantity"
                   type="number"
-                  id="quantity"
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleChange}
-                  className="form-control"
+                  fullWidth
                   required
+                  margin="normal"
+                  variant="outlined"
+                  size="small"
+                  inputProps={{ min: "0" }}
                 />
-              </div>
+              </Grid>
 
-              <div className="mb-3">
-                <label htmlFor="unitPrice" className="form-label">
-                  Unit Price
-                </label>
-                <input
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Unit Price"
                   type="number"
-                  id="unitPrice"
                   name="unitPrice"
                   value={formData.unitPrice}
                   onChange={handleChange}
-                  className="form-control"
+                  fullWidth
                   required
+                  margin="normal"
+                  variant="outlined"
+                  size="small"
+                  inputProps={{ min: "0" }}
                 />
-              </div>
+              </Grid>
 
-              <div className="mb-3">
-                <label htmlFor="amountPaid" className="form-label">
-                  Amount Paid
-                </label>
-                <input
+              <Grid item xs={12}>
+                <TextField
+                  label="Total Amount"
+                  value={formatCurrency(totalAmount)}
+                  fullWidth
+                  margin="normal"
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  label="Amount Paid"
                   type="number"
-                  id="amountPaid"
                   name="amountPaid"
                   value={formData.amountPaid}
                   onChange={handleChange}
-                  className="form-control"
+                  fullWidth
                   required
+                  margin="normal"
+                  variant="outlined"
+                  size="small"
+                  inputProps={{ min: "0" }}
                 />
-              </div>
-            </form>
-          </div>
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              onClick={handleSubmit}
-            >
-              Update Purchase
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+              </Grid>
+
+              {totalAmount > (parseFloat(formData.amountPaid) || 0) && (
+                <Grid item xs={12}>
+                  <TextField
+                    label="Loan Interest (%)"
+                    type="number"
+                    name="interest"
+                    value={formData.interest}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                    margin="normal"
+                    variant="outlined"
+                    size="small"
+                    inputProps={{ min: "0", max: "100" }}
+                    helperText="Enter interest rate if a balance remains (loan)"
+                  />
+                </Grid>
+              )}
+            </Grid>
+          </form>
+        )}
+      </DialogContent>
+      <DialogActions
+        sx={{
+          padding: 2,
+          borderTop: `1px solid ${(theme) => theme.palette.divider}`,
+        }}
+      >
+        <Button onClick={onClose} variant="outlined" color="secondary">
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit} variant="contained" color="primary">
+          Update Purchase
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

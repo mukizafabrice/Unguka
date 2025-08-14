@@ -2,8 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// ⭐ NEW: Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
 import {
-  fetchPlot,
+  fetchPlots, // ⭐ CORRECTED: Changed from fetchPlot to fetchPlots (plural)
   createPlot,
   updatePlot,
   deletePlot,
@@ -67,7 +70,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "transparent",
+  backgroundColor: "#f5f5f5", // Explicit background for header
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -86,6 +89,10 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 }));
 
 function Plot() {
+  // ⭐ Get user and cooperativeId from AuthContext
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+
   const [plots, setPlots] = useState([]);
   const [loading, setLoading] = useState(true); // Added loading state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -93,40 +100,65 @@ function Plot() {
   const [selectedPlot, setSelectedPlot] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState(""); // State for search input
-  const [searchField, setSearchField] = useState("member"); // State for selected search field
+  // ⭐ UPDATED: Default search field now includes 'size' and 'member' for plots. Removed 'productName', 'area'.
+  const [searchField, setSearchField] = useState("member");
   const [sortOrder, setSortOrder] = useState("asc"); // State for sorting
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  // Function to fetch plots for the manager's specific cooperativeId
   const loadPlots = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error("Manager's cooperative ID is not available. Cannot load plots.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const plotsData = await fetchPlot();
-      // Ensure plotsData.data is an array. If plotsData itself is the array, remove .data
-      setPlots(plotsData.data || []);
+      // ⭐ Pass cooperativeId to fetchPlots
+      const response = await fetchPlots(null, cooperativeId); // Pass null for userId as manager gets all for their coop
+      if (response.success && Array.isArray(response.data)) {
+        setPlots(response.data);
+      } else {
+        console.error("Failed to fetch plots:", response.message);
+        toast.error(response.message || "Failed to load plots.");
+        setPlots([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch plots:", error);
-      toast.error("Failed to load plots.");
+      console.error("Failed to fetch plots (catch block):", error);
+      toast.error("An unexpected error occurred while loading plots.");
       setPlots([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]); // Add cooperativeId to dependencies
 
   useEffect(() => {
-    loadPlots();
-  }, [loadPlots]);
+    if (cooperativeId) { // Only load plots if cooperativeId is available
+      loadPlots();
+    }
+  }, [cooperativeId, loadPlots]); // Depend on cooperativeId and loadPlots
 
+  // ⭐ Modified handleAddPlot to include cooperativeId
   const handleAddPlot = async (newData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot add plot.");
+      return;
+    }
     try {
-      await createPlot(newData);
-      setShowAddModal(false);
-      toast.success("Plot added successfully!");
-      await loadPlots();
+      // Add the cooperativeId to the data before sending
+      const dataToSend = { ...newData, cooperativeId: cooperativeId };
+      const response = await createPlot(dataToSend);
+      if (response.success) {
+        setShowAddModal(false);
+        toast.success(response.message || "Plot added successfully!");
+        await loadPlots();
+      } else {
+        toast.error(response.message || "Failed to add plot.");
+      }
     } catch (error) {
       console.error("Failed to add plot:", error);
-      toast.error(
-        `Failed to add plot: ${error.response?.data?.message || error.message}`
-      );
+      toast.error("An unexpected error occurred while adding plot.");
     }
   };
 
@@ -135,36 +167,49 @@ function Plot() {
     setShowUpdateModal(true);
   };
 
+  // ⭐ Modified handleUpdatePlot to include cooperativeId
   const handleUpdatePlot = async (updatedData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot update plot.");
+      return;
+    }
     try {
       const { _id, ...dataToUpdate } = updatedData;
-      await updatePlot(_id, dataToUpdate);
-      toast.success("Plot updated successfully!");
-      setShowUpdateModal(false);
-      setSelectedPlot(null);
-      await loadPlots();
+      // Add the cooperativeId to the data before sending for update
+      const dataToSend = { ...dataToUpdate, cooperativeId: cooperativeId };
+      const response = await updatePlot(_id, dataToSend);
+      if (response.success) {
+        toast.success(response.message || "Plot updated successfully!");
+        setShowUpdateModal(false);
+        setSelectedPlot(null);
+        await loadPlots();
+      } else {
+        toast.error(response.message || "Failed to update plot.");
+      }
     } catch (error) {
       console.error("Failed to update plot:", error);
-      toast.error(
-        `Failed to update plot: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      toast.error("An unexpected error occurred while updating plot.");
     }
   };
 
+  // ⭐ Modified handleDeletePlot to include cooperativeId
   const handleDeletePlot = async (id) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot delete plot.");
+      return;
+    }
     try {
-      await deletePlot(id);
-      toast.success("Plot deleted successfully!");
-      await loadPlots();
+      // Pass the cooperativeId to deletePlot for backend authorization
+      const response = await deletePlot(id, cooperativeId);
+      if (response.success) {
+        toast.success(response.message || "Plot deleted successfully!");
+        await loadPlots();
+      } else {
+        toast.error(response.message || "Failed to delete plot.");
+      }
     } catch (error) {
       console.error("Failed to delete plot:", error);
-      toast.error(
-        `Failed to delete plot: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      toast.error("An unexpected error occurred while deleting plot.");
     }
   };
 
@@ -180,12 +225,9 @@ function Plot() {
             return plot.userId?.names
               ?.toLowerCase()
               .includes(lowerCaseSearchTerm);
-          case "productName":
-            return plot.productId?.productName
-              ?.toLowerCase()
-              .includes(lowerCaseSearchTerm);
-          case "area":
-            return plot.area
+          // ⭐ UPDATED: Use 'size' instead of 'area' for searching
+          case "size":
+            return plot.size
               ?.toString()
               .toLowerCase()
               .includes(lowerCaseSearchTerm);
@@ -198,7 +240,7 @@ function Plot() {
     }
 
     filtered.sort((a, b) => {
-      // Default sort by Member Name
+      // Default sort by Member Name (as before)
       const nameA = a.userId?.names || "";
       const nameB = b.userId?.names || "";
 
@@ -256,7 +298,7 @@ function Plot() {
           <Box mb={3}>
             <Typography variant="body2" color="text.secondary">
               Manage and track land plots, including member associations,
-              product assignments, and area details.
+              and size details for your cooperative.
             </Typography>
           </Box>
 
@@ -276,18 +318,16 @@ function Plot() {
               sx={{ minWidth: 120, flexShrink: 0 }}
             >
               <MenuItem value="member">Member Name</MenuItem>
-              <MenuItem value="productName">Product Name</MenuItem>
-              <MenuItem value="area">Area</MenuItem>
+              {/* ⭐ Removed 'Product Name' and 'Area', added 'Size' */}
+              <MenuItem value="size">Size</MenuItem>
               <MenuItem value="upi">UPI</MenuItem>
             </TextField>
             <TextField
               label={`Search ${
                 searchField === "member"
                   ? "Member Name"
-                  : searchField === "productName"
-                  ? "Product Name"
-                  : searchField === "area"
-                  ? "Area"
+                  : searchField === "size"
+                  ? "Size"
                   : "UPI"
               }`}
               variant="outlined"
@@ -337,25 +377,26 @@ function Plot() {
               >
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                      <StyledTableHeaderCell sx={{ width: "25%" }}>
                         Member
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                      {/* ⭐ REMOVED 'Product Name' column */}
+                      {/* <StyledTableHeaderCell sx={{ width: "20%" }}>
                         Product Name
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        Area
-                      </StyledTableHeaderCell>
+                      </StyledTableHeaderCell> */}
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                        Size
+                      </StyledTableHeaderCell> {/* ⭐ CHANGED 'Area' to 'Size' */}
                       <StyledTableHeaderCell sx={{ width: "20%" }}>
                         UPI
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell
                         align="center"
-                        sx={{ width: "20%" }}
+                        sx={{ width: "30%" }}
                       >
                         Action
                       </StyledTableHeaderCell>
@@ -377,11 +418,12 @@ function Plot() {
                           <StyledTableCell>
                             {plot.userId?.names || "N/A"}
                           </StyledTableCell>
-                          <StyledTableCell>
+                          {/* ⭐ REMOVED Product Name cell */}
+                          {/* <StyledTableCell>
                             {plot.productId?.productName || "N/A"}
-                          </StyledTableCell>
-                          <StyledTableCell>{plot.area}</StyledTableCell>
-                          <StyledTableCell>{plot.upi}</StyledTableCell>
+                          </StyledTableCell> */}
+                          <StyledTableCell>{plot.size || "N/A"}</StyledTableCell> {/* ⭐ CHANGED plot.area to plot.size */}
+                          <StyledTableCell>{plot.upi || "N/A"}</StyledTableCell>
                           <StyledTableCell align="center">
                             <Stack
                               direction="row"
@@ -410,9 +452,9 @@ function Plot() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}> {/* ⭐ Adjusted colspan */}
                           <Typography variant="body1" color="text.secondary">
-                            No plots found.
+                            No plots found for this cooperative.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -444,15 +486,20 @@ function Plot() {
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSave={handleAddPlot}
+        // Pass the cooperativeId to the AddPlotModal for new plot creation
+        cooperativeId={cooperativeId}
       />
       <UpdatePlotModal
         show={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onUpdate={handleUpdatePlot}
         initialData={selectedPlot}
+        // Pass the cooperativeId to the UpdatePlotModal for update authorization
+        cooperativeId={cooperativeId}
       />
 
-      <ToastContainer
+      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
+      {/* <ToastContainer
         position="bottom-right"
         autoClose={3000}
         hideProgressBar={false}
@@ -462,7 +509,7 @@ function Plot() {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-      />
+      /> */}
     </Box>
   );
 }

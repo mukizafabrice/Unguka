@@ -1,8 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  MenuItem,
+  Typography,
+  Box,
+  IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
-function AddFeeModal({ show, onClose, onSubmit, users, seasons, feeTypes }) {
+function AddFeeModal({
+  show,
+  onClose,
+  onSubmit,
+  users,
+  seasons,
+  feeTypes,
+  cooperatives,
+}) {
   const [formData, setFormData] = useState({
+    cooperativeId: "", // Added cooperativeId to form data
     userId: "",
     seasonId: "",
     feeTypeId: "",
@@ -11,22 +36,11 @@ function AddFeeModal({ show, onClose, onSubmit, users, seasons, feeTypes }) {
 
   const [amountToPay, setAmountToPay] = useState(0);
 
-  // Effect to manage body class for scroll prevention when modal is open
-  useEffect(() => {
-    if (show) {
-      document.body.classList.add("modal-open");
-    } else {
-      document.body.classList.remove("modal-open");
-    }
-    return () => {
-      document.body.classList.remove("modal-open");
-    };
-  }, [show]);
-
   // Reset form state and amount to pay when the modal is shown
   useEffect(() => {
     if (show) {
       setFormData({
+        cooperativeId: "", // Reset cooperativeId
         userId: "",
         seasonId: "",
         feeTypeId: "",
@@ -58,9 +72,6 @@ function AddFeeModal({ show, onClose, onSubmit, users, seasons, feeTypes }) {
     }
   }, [formData.feeTypeId, feeTypes]);
 
-  // Do not render if the modal is not visible
-  if (!show) return null;
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -74,6 +85,7 @@ function AddFeeModal({ show, onClose, onSubmit, users, seasons, feeTypes }) {
 
     // Basic form validation
     if (
+      !formData.cooperativeId || // Validate cooperativeId
       !formData.userId ||
       !formData.seasonId ||
       !formData.feeTypeId ||
@@ -82,10 +94,6 @@ function AddFeeModal({ show, onClose, onSubmit, users, seasons, feeTypes }) {
       toast.error("Please fill in all required fields.");
       return;
     }
-    // if (Number(formData.paymentAmount) < 0) {
-    //   toast.error("Payment amount must be greater than zero.");
-    //   return;
-    // }
 
     // Call the onSubmit function from the parent component
     onSubmit({
@@ -95,134 +103,149 @@ function AddFeeModal({ show, onClose, onSubmit, users, seasons, feeTypes }) {
   };
 
   return (
-    <>
-      {/* Modal backdrop to dim the background */}
-      <div className="modal-backdrop fade show"></div>
-      {/* The modal itself */}
-      <div
-        className="modal d-block fade show"
-        tabIndex="-1"
-        role="dialog"
-        style={{ display: "block", paddingRight: "17px" }}
+    <Dialog open={show} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
       >
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title text-dark">Record New Fee</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-                aria-label="Close"
-              ></button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label htmlFor="userId" className="form-label text-dark">
-                    User
-                  </label>
-                  <select
-                    className="form-select"
-                    id="userId"
-                    name="userId"
-                    value={formData.userId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select User</option>
-                    {users &&
-                      users.map((user) => (
-                        <option key={user._id} value={user._id}>
-                          {user.names}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="seasonId" className="form-label text-dark">
-                    Season
-                  </label>
-                  <select
-                    className="form-select"
-                    id="seasonId"
-                    name="seasonId"
-                    value={formData.seasonId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Season</option>
-                    {seasons.map((season) => (
-                      <option key={season._id} value={season._id}>
-                        {season.name} ({season.year})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="feeTypeId" className="form-label text-dark">
-                    Fee Type
-                  </label>
-                  <select
-                    className="form-select"
-                    id="feeTypeId"
-                    name="feeTypeId"
-                    value={formData.feeTypeId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Fee Type</option>
-                    {feeTypes.map((feeType) => (
-                      <option key={feeType._id} value={feeType._id}>
-                        {feeType.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {amountToPay > 0 && (
-                  <div className="mb-3">
-                    <p className="text-dark fw-bold">
-                      Standard Amount: ${amountToPay.toFixed(2)}
-                    </p>
-                  </div>
-                )}
-                <div className="mb-3">
-                  <label
-                    htmlFor="paymentAmount"
-                    className="form-label text-dark"
-                  >
-                    Payment Amount
-                  </label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="paymentAmount"
-                    name="paymentAmount"
-                    value={formData.paymentAmount}
-                    onChange={handleChange}
-                    min="0.0"
-                    step="0.0"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Record Fee
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </>
+        <Typography variant="h6" component="div">
+          Record New Fee
+        </Typography>
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            color: (theme) => theme.palette.grey[500],
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          {/* Cooperative Selection */}
+          <FormControl fullWidth required>
+            <InputLabel id="cooperative-label">Cooperative</InputLabel>
+            <Select
+              labelId="cooperative-label"
+              id="cooperativeId"
+              name="cooperativeId"
+              value={formData.cooperativeId}
+              onChange={handleChange}
+              label="Cooperative"
+            >
+              <MenuItem value="">Select Cooperative</MenuItem>
+              {cooperatives &&
+                cooperatives.map((coop) => (
+                  <MenuItem key={coop._id} value={coop._id}>
+                    {coop.name}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+
+          {/* User Selection */}
+          <FormControl fullWidth required>
+            <InputLabel id="user-label">User</InputLabel>
+            <Select
+              labelId="user-label"
+              id="userId"
+              name="userId"
+              value={formData.userId}
+              onChange={handleChange}
+              label="User"
+            >
+              <MenuItem value="">Select User</MenuItem>
+              {users &&
+                users.map((user) => (
+                  <MenuItem key={user._id} value={user._id}>
+                    {user.names}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+
+          {/* Season Selection */}
+          <FormControl fullWidth required>
+            <InputLabel id="season-label">Season</InputLabel>
+            <Select
+              labelId="season-label"
+              id="seasonId"
+              name="seasonId"
+              value={formData.seasonId}
+              onChange={handleChange}
+              label="Season"
+            >
+              <MenuItem value="">Select Season</MenuItem>
+              {seasons.map((season) => (
+                <MenuItem key={season._id} value={season._id}>
+                  {season.name} ({season.year})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Fee Type Selection */}
+          <FormControl fullWidth required>
+            <InputLabel id="feeType-label">Fee Type</InputLabel>
+            <Select
+              labelId="feeType-label"
+              id="feeTypeId"
+              name="feeTypeId"
+              value={formData.feeTypeId}
+              onChange={handleChange}
+              label="Fee Type"
+            >
+              <MenuItem value="">Select Fee Type</MenuItem>
+              {feeTypes.map((feeType) => (
+                <MenuItem key={feeType._id} value={feeType._id}>
+                  {feeType.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Display Standard Amount if applicable */}
+          {amountToPay > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Standard Amount:{" "}
+              {new Intl.NumberFormat("en-RW", {
+                style: "currency",
+                currency: "RWF",
+              }).format(amountToPay)}
+            </Typography>
+          )}
+
+          {/* Payment Amount Input */}
+          <TextField
+            label="Payment Amount"
+            type="number"
+            id="paymentAmount"
+            name="paymentAmount"
+            value={formData.paymentAmount}
+            onChange={handleChange}
+            fullWidth
+            required
+            inputProps={{ min: "0", step: "0.01" }} // Ensure minimum value is 0 and allows decimals
+          />
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ p: 2 }}>
+        <Button onClick={onClose} variant="outlined" color="secondary">
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit} variant="contained" color="primary">
+          Record Fee
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

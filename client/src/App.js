@@ -3,9 +3,8 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import LoginPage from "./pages/Auth/LoginPage";
-// import { ToastContainer } from "react-toastify";
-// import "react-toastify/dist/ReactToastify.css";
-// ... (other admin/manager/member imports) ...
+import { ToastContainer } from "react-toastify"; // ⭐ CRUCIAL: Import ToastContainer
+import "react-toastify/dist/ReactToastify.css"; //
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
 import "react-toastify/dist/ReactToastify.css";
@@ -48,6 +47,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import SuperDashboard from "./pages/Super/SuperDashboard";
 import Cooperatives from "./pages/Super/Cooperatives";
 import Managers from "./pages/Super/Managers";
+import Analytics from "./pages/Super/Analytics";
 import SuperLayout from "./layouts/SuperLayout";
 
 import "./assets/styles/dashboard.css";
@@ -142,8 +142,20 @@ function App() {
             <Route index element={<SuperDashboard />} />
             <Route path="cooperatives" element={<Cooperatives />} />
             <Route path="managers" element={<Managers />} />
+            <Route path="analytics" element={<Analytics />} />
           </Route>
         </Routes>
+        <ToastContainer
+          position="top-right" // You can change this position (e.g., "bottom-left", "top-center")
+          autoClose={5000} // Toasts will automatically close after 5 seconds
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
       </AuthProvider>
     </BrowserRouter>
   );

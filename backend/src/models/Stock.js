@@ -6,7 +6,12 @@ const stockSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-
+  // ⭐ NEW: Add cooperativeId to link stock to a specific cooperative
+  cooperativeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Cooperative", // Refers to your Cooperative model
+    required: true, // Assuming every stock entry must belong to a cooperative
+  },
   quantity: {
     type: Number,
     required: true,

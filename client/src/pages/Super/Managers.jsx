@@ -93,16 +93,18 @@ const ManagersTable = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetchUsers();
-      if (response) {
-        const managerUsers = response.filter((user) => user.role === "manager");
-        // Ensure a new array reference for React to detect changes
+      const response = await fetchUsers(); // response is now { success: true, data: [...], message: "..." }
+      if (response.success) {
+        // Check for success flag
+        const managerUsers = response.data.filter(
+          (user) => user.role === "manager"
+        ); // Access .data property
         setManagers([...managerUsers]);
         console.log("Managers fetched successfully:", managerUsers);
       } else {
-        setError("Failed to fetch managers data.");
-        toast.error("Failed to load managers. Response was empty or invalid.");
-        console.error("Fetch managers failed: Response was empty or invalid.");
+        setError(response.message);
+        toast.error(`Failed to load managers: ${response.message}`);
+        console.error("Fetch managers failed: ", response.message);
       }
     } catch (err) {
       setError("An unexpected error occurred while fetching managers.");
@@ -115,10 +117,12 @@ const ManagersTable = () => {
   };
 
   const fetchCooperativesList = async () => {
+    console.log("Fetching cooperatives list...");
     try {
-      const response = await getCooperatives();
+      const response = await getCooperatives(); // This also returns { success: true, data: [...] }
       if (response.success) {
         setCooperativesList(response.data);
+        console.log("Cooperative list fetched successfully:", response.data);
       } else {
         console.error("Failed to fetch cooperatives list:", response.message);
         toast.error("Failed to load cooperative list for display.");
@@ -181,11 +185,19 @@ const ManagersTable = () => {
       "Filtered managers state updated. New count:",
       currentFiltered.length
     );
-  }, [searchText, managers, activeStatusFilter, assignmentFilter]); // 'managers' is a dependency here
+  }, [searchText, managers, activeStatusFilter, assignmentFilter]);
 
   // Utility to get cooperative name by ID
   const getCooperativeName = (cooperativeId) => {
+    console.log(
+      `Looking up cooperative ID: ${cooperativeId} in list of ${cooperativesList.length} cooperatives.`
+    );
     const coop = cooperativesList.find((c) => c._id === cooperativeId);
+    if (coop) {
+      console.log(`Cooperative found: ${coop.name}`);
+    } else {
+      console.log(`Cooperative not found for ID: ${cooperativeId}`);
+    }
     return coop ? coop.name : "N/A (Deleted/Unknown)";
   };
 

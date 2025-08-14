@@ -2,22 +2,11 @@ import axiosInstance from "../api/axiosInstance";
 
 const API_BASE_URL = "/fees";
 
-// Fetch all fees (for admin view)
-export const fetchAllFees = async () => {
+export const fetchAllFees = async (cooperativeId) => {
   try {
-    const response = await axiosInstance.get(API_BASE_URL);
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Error fetching all fees:",
-      error.response?.data || error.message
+    const response = await axiosInstance.get(
+      `${API_BASE_URL}/${cooperativeId}`
     );
-    throw error;
-  }
-};
-export const fetchAllFeesById = async (id) => {
-  try {
-    const response = await axiosInstance.get(`${API_BASE_URL}/${id}`);
     return response.data;
   } catch (error) {
     console.error(
@@ -28,7 +17,40 @@ export const fetchAllFeesById = async (id) => {
   }
 };
 
-// Record a new payment
+export const fetchAllFeesById = async (cooperativeId, userId) => {
+  try {
+    const response = await axiosInstance.get(
+      `${API_BASE_URL}/user/${cooperativeId}/${userId}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error fetching all fees by user ID:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
+export const fetchFeesByUserAndSeason = async (
+  cooperativeId,
+  userId,
+  seasonId
+) => {
+  try {
+    const response = await axiosInstance.get(
+      `${API_BASE_URL}/${cooperativeId}/${userId}/${seasonId}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error fetching fees by user and season:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
 export const recordPayment = async (paymentData) => {
   try {
     const response = await axiosInstance.post(API_BASE_URL, paymentData);
@@ -42,7 +64,6 @@ export const recordPayment = async (paymentData) => {
   }
 };
 
-// Update an existing fee record
 export const updateFee = async (id, updateData) => {
   try {
     const response = await axiosInstance.put(
@@ -56,10 +77,11 @@ export const updateFee = async (id, updateData) => {
   }
 };
 
-// Delete a fee record
-export const deleteFee = async (id) => {
+export const deleteFee = async (id, cooperativeId) => {
   try {
-    const response = await axiosInstance.delete(`${API_BASE_URL}/${id}`);
+    const response = await axiosInstance.delete(`${API_BASE_URL}/${id}`, {
+      data: { cooperativeId },
+    });
     return response.data;
   } catch (error) {
     console.error("Error deleting fee:", error.response?.data || error.message);

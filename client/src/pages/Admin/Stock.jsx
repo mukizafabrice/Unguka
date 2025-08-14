@@ -17,14 +17,16 @@ import {
   Pagination,
   useMediaQuery,
   styled,
-  TextField, // Added for search/filter inputs
-  MenuItem, // Added for select dropdowns
-  IconButton, // Added for search icon
+  TextField,
+  MenuItem,
+  IconButton,
 } from "@mui/material";
-import { Search } from "@mui/icons-material"; // Import Search icon
+import { Search } from "@mui/icons-material";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { fetchStock } from "../../services/stockService"; // Ensure this path is correct
+
+import { useAuth } from "../../contexts/AuthContext";
+import { fetchStocks } from "../../services/stockService";
 
 // Styled components for a cleaner look consistent with Loan component
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
@@ -37,68 +39,83 @@ const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
 
 // Styled component for table body cells - Adjusted for responsiveness
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  padding: "8px 16px", // Default padding
+  padding: "8px 16px",
   borderBottom: `1px solid ${theme.palette.divider}`,
   backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.primary,
-  wordWrap: "break-word", // Allow long words to break
-  whiteSpace: "normal", // Ensure text wraps naturally
+  wordWrap: "break-word",
+  whiteSpace: "normal",
   [theme.breakpoints.down("sm")]: {
-    // Apply on small screens
-    padding: "4px 6px", // Reduced padding for mobile
-    fontSize: "0.65rem", // Smaller font size for mobile
+    padding: "4px 6px",
+    fontSize: "0.65rem",
   },
 }));
 
-// Styled component for table header cells - Adjusted for responsiveness and no background
+// Styled component for table header cells - Adjusted for responsiveness and background
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
-  padding: "12px 16px", // Default padding
-  backgroundColor: "transparent", // No background color
-  color: theme.palette.text.primary, // Primary text color for readability
-  fontWeight: 600, // Bolder font weight
-  borderBottom: `2px solid ${theme.palette.divider}`, // Thicker border bottom, matching divider for subtlety
+  padding: "12px 16px",
+  backgroundColor: "#f5f5f5",
+  color: theme.palette.text.primary,
+  fontWeight: 600,
+  borderBottom: `2px solid ${theme.palette.divider}`,
   "&:first-of-type": {
     borderTopLeftRadius: theme.shape.borderRadius,
   },
   "&:last-of-type": {
     borderTopRightRadius: theme.shape.borderRadius,
   },
-  wordWrap: "break-word", // Allow long words to break
-  whiteSpace: "normal", // Ensure text wraps naturally
+  wordWrap: "break-word",
+  whiteSpace: "normal",
   [theme.breakpoints.down("sm")]: {
-    // Apply on small screens
     padding: "6px 6px",
     fontSize: "0.65rem",
   },
 }));
 
 function Stock() {
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
+
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1); // Current page, 1-based
-  const rowsPerPage = 7; // Fixed rows per page
-  const [searchTerm, setSearchTerm] = useState(""); // State for search input
-  const [searchField, setSearchField] = useState("productName"); // State for selected search field
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 7;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchField, setSearchField] = useState("productName");
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to fetch stock data
+  // Function to fetch stock data for the specific cooperative
   const loadStocks = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is not available. Cannot load stocks.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const stockData = await fetchStock();
-      setStocks(stockData || []); // Ensure it's an array, even if empty
+      const response = await fetchStocks(cooperativeId);
+      if (response.success && Array.isArray(response.data)) {
+        setStocks(response.data);
+      } else {
+        console.error("Failed to fetch stocks:", response.message);
+        toast.error(response.message || "Failed to load stocks.");
+        setStocks([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch stocks:", error);
-      toast.error("Failed to load stocks.");
-      setStocks([]); // Reset stocks on error
+      console.error("Failed to fetch stocks (catch block):", error);
+      toast.error("An unexpected error occurred while loading stocks.");
+      setStocks([]);
     } finally {
       setLoading(false);
     }
-  }, []); // Empty dependency array means this function is created once
+  }, [cooperativeId]);
 
   useEffect(() => {
-    loadStocks();
-  }, [loadStocks]); // Reload stocks when loadStocks function changes (which it won't, due to useCallback)
+    if (cooperativeId) {
+      loadStocks();
+    }
+  }, [cooperativeId, loadStocks]);
 
   // Memoized filtered data based on search term and selected field
   const filteredStocks = useMemo(() => {
@@ -117,7 +134,7 @@ function Stock() {
           case "totalPrice":
             return stock.totalPrice?.toString().includes(lowerCaseSearchTerm);
           default:
-            return true; // No filter applied if searchField is invalid
+            return true;
         }
       });
     }
@@ -144,19 +161,15 @@ function Stock() {
 
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
-      {" "}
-      {/* Reduced top padding to 0 */}
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         <StyledCardHeader
           title={<Typography variant="h6">Stocks Dashboard</Typography>}
-          // No actions needed as per original component, but can be added here
+          // Removed Add Stock Button
         />
         <CardContent>
           <Box mb={3}>
-            {" "}
-            {/* Margin bottom for header text */}
             <Typography variant="body2" color="text.secondary">
-              Manage and track current stock levels and updates in real time.
+              View current stock levels for products within your cooperative.
             </Typography>
           </Box>
 
@@ -194,7 +207,7 @@ function Stock() {
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
                 startAdornment: (
-                  <IconButton edge="start">
+                  <IconButton edge="start" disableRipple>
                     <Search />
                   </IconButton>
                 ),
@@ -213,10 +226,8 @@ function Stock() {
                 sx={{ overflowX: "auto", borderRadius: 2, boxShadow: 2 }}
               >
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
-                  {" "}
-                  {/* Fixed table layout to prevent horizontal scroll */}
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
                       <StyledTableHeaderCell sx={{ width: "10%" }}>
                         ID
                       </StyledTableHeaderCell>
@@ -229,6 +240,7 @@ function Stock() {
                       <StyledTableHeaderCell sx={{ width: "35%" }}>
                         Amount
                       </StyledTableHeaderCell>
+                      {/* Removed Action column */}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -243,19 +255,18 @@ function Stock() {
                           </StyledTableCell>
                           <StyledTableCell>{stock.quantity}</StyledTableCell>
                           <StyledTableCell>{stock.totalPrice}</StyledTableCell>
+                          {/* Removed corresponding action cell */}
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
                         <TableCell colSpan={4} align="center">
-                          {" "}
-                          {/* Adjusted colspan */}
                           <Typography
                             variant="subtitle1"
                             color="text.secondary"
                             p={2}
                           >
-                            No stock found.
+                            No stock found for your cooperative.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -264,7 +275,6 @@ function Stock() {
                 </Table>
               </TableContainer>
 
-              {/* Pagination controls at the bottom */}
               {totalPages > 1 && (
                 <Box mt={3} display="flex" justifyContent="center">
                   <Pagination
@@ -283,7 +293,8 @@ function Stock() {
           )}
         </CardContent>
       </Card>
-      <ToastContainer position="bottom-right" autoClose={3000} />
+
+      {/* Removed Add/Update Stock Modals */}
     </Box>
   );
 }

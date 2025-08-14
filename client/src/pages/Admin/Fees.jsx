@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+// Removed ToastContainer and toast import as it's handled globally
+// import { ToastContainer, toast } from "react-toastify";
+// import "react-toastify/dist/ReactToastify.css";
+
+// Using a placeholder toast function if not globally available, or rely on global setup
+// const toast = {
+//   success: (msg) => console.log("Toast Success:", msg),
+//   error: (msg) => console.log("Toast Error:", msg),
+// };
 
 import {
   fetchAllFees,
@@ -11,6 +18,7 @@ import {
 import { fetchUsers } from "../../services/userService";
 import { fetchSeasons } from "../../services/seasonService";
 import { fetchFeeTypes } from "../../services/feeTypeService";
+import { fetchCooperatives } from "../../services/cooperativeService"; // Assuming this service exists
 
 import {
   Box,
@@ -35,7 +43,11 @@ import {
   Pagination,
   CircularProgress,
   MenuItem,
-  Chip, // Added Chip for status display
+  Chip,
+  OutlinedInput, // For multi-select
+  Select, // For multi-select
+  InputLabel,
+  FormControl,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -43,11 +55,22 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import CheckBoxOutlinedIcon from '@mui/icons-material/CheckBoxOutlined'; // Example icon for multi-select
 
 import AddFeeModal from "../../features/modals/AddFeeModal";
 import UpdateFeeModal from "../../features/modals/UpdateFeeModal";
 
-// Styled components consistent with other dashboards
+// Assuming `toast` is globally available or imported in a parent component like App.js
+// If `toast` is not accessible here after removing its import, you'd need to
+// pass it down as a prop or use React Context for it, or re-import it.
+// For this update, we are assuming it's available via a global setup.
+const toast = window.toast || { // Fallback if window.toast isn't set
+  success: (msg) => console.log("Toast Success:", msg),
+  error: (msg) => console.log("Toast Error:", msg),
+  // Add other toast methods as needed if you rely on this fallback
+};
+
+
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -89,12 +112,12 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// Helper function for status chip color
 const getStatusColor = (status) => {
   switch (status) {
-    case "Paid": // Assuming status values are "Paid" or "Pending"
+    case "Paid":
       return "success";
     case "Pending":
+    case "Partially Paid":
       return "warning";
     default:
       return "default";
@@ -106,7 +129,9 @@ function Fees() {
   const [users, setUsers] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [feeTypes, setFeeTypes] = useState([]);
+  const [cooperatives, setCooperatives] = useState([]);
   const [usersMap, setUsersMap] = useState({});
+  const [cooperativesMap, setCooperativesMap] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -114,58 +139,83 @@ function Fees() {
   const [feeToEdit, setFeeToEdit] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Consistent rows per page
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("user"); // Default search field
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter by status
-  const [sortOrder, setSortOrder] = useState("desc"); // Default sort by date, newest first
+  const [searchField, setSearchField] = useState("user");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedCooperativeIds, setSelectedCooperativeIds] = useState([]);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to fetch all necessary data
   const loadFeesData = useCallback(async () => {
     setLoading(true);
     try {
-      const [feesData, usersData, seasonsData, feeTypesData] =
+      const [cooperativesData, usersData, seasonsData, feeTypesData] =
         await Promise.all([
-          fetchAllFees(),
+          fetchCooperatives(),
           fetchUsers(),
           fetchSeasons(),
           fetchFeeTypes(),
         ]);
 
-      setFees(feesData || []);
+      setCooperatives(cooperativesData || []);
       setUsers(usersData || []);
       setSeasons(seasonsData || []);
       setFeeTypes(feeTypesData || []);
 
-      // Build the users map for quick lookup
-      const map = {};
+      const userMap = {};
       (usersData || []).forEach((user) => {
-        map[user._id] = user.names;
+        userMap[user._id] = user.names;
       });
-      setUsersMap(map);
+      setUsersMap(userMap);
+
+      const coopMap = {};
+      (cooperativesData || []).forEach((coop) => {
+        coopMap[coop._id] = coop.name;
+      });
+      setCooperativesMap(coopMap);
+
+      const currentCoopIdsToFetch =
+        selectedCooperativeIds.length > 0
+          ? selectedCooperativeIds
+          : (cooperativesData || []).map((coop) => coop._id);
+
+      let allFees = [];
+      if (currentCoopIdsToFetch.length > 0) {
+        const feesPromises = currentCoopIdsToFetch.map(async (coopId) => {
+          try {
+            return await fetchAllFees(coopId);
+          } catch (err) {
+            console.warn(`Failed to fetch fees for cooperative ${coopId}:`, err);
+            return [];
+          }
+        });
+        const resolvedFees = await Promise.all(feesPromises);
+        allFees = resolvedFees.flat();
+      }
+
+      setFees(allFees);
     } catch (error) {
       console.error("Failed to fetch all data:", error);
       toast.error("Failed to load fees dashboard data.");
-      setFees([]); // Clear data on error
+      setFees([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedCooperativeIds]);
 
   useEffect(() => {
     loadFeesData();
   }, [loadFeesData]);
 
-  // Handler for recording a new payment
   const handleAddFee = async (feeData) => {
     try {
       await recordPayment(feeData);
       setShowAddModal(false);
       toast.success("Fee record added successfully!");
-      await loadFeesData(); // Re-fetch all data to refresh the list
+      await loadFeesData();
     } catch (error) {
       console.error("Error recording fee:", error);
       toast.error(
@@ -176,12 +226,11 @@ function Fees() {
     }
   };
 
-  // Handler for deleting a fee record
-  const handleDeleteFee = async (id) => {
+  const handleDeleteFee = async (id, cooperativeId) => {
     try {
-      await deleteFee(id);
+      await deleteFee(id, cooperativeId);
       toast.success("Fee record deleted successfully!");
-      await loadFeesData(); // Re-fetch all data to refresh the list
+      await loadFeesData();
     } catch (error) {
       console.error("Error deleting fee:", error);
       toast.error(
@@ -192,19 +241,17 @@ function Fees() {
     }
   };
 
-  // Handler to open the update modal with the selected fee's data
   const handleUpdateFee = (fee) => {
     setFeeToEdit(fee);
     setShowUpdateModal(true);
   };
 
-  // Handler for submitting the updated fee
   const handleFeeUpdated = async (id, updatedFeeData) => {
     try {
       await updateFee(id, updatedFeeData);
       toast.success("Fee record updated successfully!");
       setShowUpdateModal(false);
-      await loadFeesData(); // Re-fetch all data to refresh the list
+      await loadFeesData();
     } catch (error) {
       console.error("Error updating fee:", error);
       toast.error(
@@ -215,11 +262,9 @@ function Fees() {
     }
   };
 
-  // Filter and sort fees based on search, filter, and sort order
   const filteredAndSortedFees = useMemo(() => {
     let filtered = fees;
 
-    // Apply search term filter
     if (searchTerm) {
       filtered = filtered.filter((fee) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -237,32 +282,34 @@ function Fees() {
             return fee.feeTypeId?.name
               ?.toLowerCase()
               .includes(lowerCaseSearchTerm);
+          case "cooperative":
+            return (fee.cooperativeId?.name || cooperativesMap[fee.cooperativeId])
+              ?.toLowerCase()
+              .includes(lowerCaseSearchTerm);
           default:
             return true;
         }
       });
     }
 
-    // Apply status filter - Make comparison case-insensitive
     if (statusFilter !== "all") {
       filtered = filtered.filter(
         (fee) => fee.status?.toLowerCase() === statusFilter.toLowerCase()
       );
     }
 
-    // Apply sorting by date (createdAt) - assuming fee records have a createdAt field
     filtered.sort((a, b) => {
       const dateA = new Date(a.createdAt);
       const dateB = new Date(b.createdAt);
       if (sortOrder === "asc") {
-        return dateA.getTime() - dateB.getTime(); // Oldest first
+        return dateA.getTime() - dateB.getTime();
       } else {
-        return dateB.getTime() - dateA.getTime(); // Newest first
+        return dateB.getTime() - dateA.getTime();
       }
     });
 
     return filtered;
-  }, [fees, usersMap, searchTerm, searchField, statusFilter, sortOrder]);
+  }, [fees, usersMap, cooperativesMap, searchTerm, searchField, statusFilter, sortOrder]);
 
   const totalPages = Math.ceil(filteredAndSortedFees.length / rowsPerPage);
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -272,7 +319,6 @@ function Fees() {
     indexOfLastRow
   );
 
-  // Reset page to 1 whenever filters or sorting changes
   useEffect(() => {
     setCurrentPage(1);
   }, [filteredAndSortedFees]);
@@ -283,6 +329,15 @@ function Fees() {
 
   const handleSort = () => {
     setSortOrder((prevSortOrder) => (prevSortOrder === "asc" ? "desc" : "asc"));
+  };
+
+  const handleCooperativeSelectChange = (event) => {
+    const {
+      target: { value },
+    } = event;
+    setSelectedCooperativeIds(
+      typeof value === "string" ? value.split(",") : value
+    );
   };
 
   const formatCurrency = (amount) => {
@@ -323,13 +378,37 @@ function Fees() {
             </Typography>
           </Box>
 
-          {/* Search, Filter, and Sort Section */}
           <Stack
             direction={isMobile ? "column" : "row"}
             spacing={2}
             mb={3}
             alignItems={isMobile ? "stretch" : "center"}
           >
+            <FormControl sx={{ minWidth: 150, flexShrink: 0 }}>
+              <InputLabel id="cooperative-select-label" size="small">Cooperative(s)</InputLabel>
+              <Select
+                labelId="cooperative-select-label"
+                id="cooperative-select-multiple"
+                multiple
+                value={selectedCooperativeIds}
+                onChange={handleCooperativeSelectChange}
+                input={<OutlinedInput label="Cooperative(s)" size="small" />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={cooperativesMap[value] || value} />
+                    ))}
+                  </Box>
+                )}
+              >
+                {cooperatives.map((coop) => (
+                  <MenuItem key={coop._id} value={coop._id}>
+                    {coop.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField
               select
               label="Search By"
@@ -341,6 +420,7 @@ function Fees() {
               <MenuItem value="user">User Name</MenuItem>
               <MenuItem value="season">Season/Year</MenuItem>
               <MenuItem value="feeType">Fee Type</MenuItem>
+              <MenuItem value="cooperative">Cooperative</MenuItem>
             </TextField>
             <TextField
               label={`Search ${
@@ -348,7 +428,9 @@ function Fees() {
                   ? "User Name"
                   : searchField === "season"
                   ? "Season/Year"
-                  : "Fee Type"
+                  : searchField === "feeType"
+                  ? "Fee Type"
+                  : "Cooperative"
               }`}
               variant="outlined"
               size="small"
@@ -375,6 +457,7 @@ function Fees() {
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="Paid">Paid</MenuItem>
               <MenuItem value="Pending">Pending</MenuItem>
+              <MenuItem value="Partially Paid">Partially Paid</MenuItem>
             </TextField>
             <Button
               variant="outlined"
@@ -405,7 +488,7 @@ function Fees() {
                   boxShadow: 2,
                   borderRadius: 2,
                   overflowX: "auto",
-                  flexGrow: 1, // Allows table to take up available height
+                  flexGrow: 1,
                 }}
               >
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
@@ -414,13 +497,16 @@ function Fees() {
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      <StyledTableHeaderCell sx={{ width: "12%" }}>
+                        Cooperative
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "12%" }}>
                         User
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      <StyledTableHeaderCell sx={{ width: "12%" }}>
                         Season
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      <StyledTableHeaderCell sx={{ width: "12%" }}>
                         Fee Type
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "10%" }}>
@@ -432,12 +518,12 @@ function Fees() {
                       <StyledTableHeaderCell sx={{ width: "10%" }}>
                         Remaining
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "8%" }}>
+                      <StyledTableHeaderCell sx={{ width: "7%" }}>
                         Status
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell
                         align="center"
-                        sx={{ width: "12%" }}
+                        sx={{ width: "10%" }}
                       >
                         Action
                       </StyledTableHeaderCell>
@@ -457,11 +543,13 @@ function Fees() {
                             {indexOfFirstRow + index + 1}
                           </StyledTableCell>
                           <StyledTableCell>
+                            {fee.cooperativeId?.name || cooperativesMap[fee.cooperativeId] || "N/A"}
+                          </StyledTableCell>
+                          <StyledTableCell>
                             {fee.userId?.names || usersMap[fee.userId] || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {fee.seasonId?.name || "N/A"} (
-                            {fee.seasonId?.year || "N/A"})
+                            {fee.seasonId?.name || "N/A"} ({fee.seasonId?.year || "N/A"})
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.feeTypeId?.name || "N/A"}
@@ -508,7 +596,7 @@ function Fees() {
                                 aria-label="delete"
                                 color="error"
                                 size="small"
-                                onClick={() => handleDeleteFee(fee._id)}
+                                onClick={() => handleDeleteFee(fee._id, fee.cooperativeId)}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -518,7 +606,7 @@ function Fees() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
                             No fee records found.
                           </Typography>
@@ -555,27 +643,17 @@ function Fees() {
         users={users}
         seasons={seasons}
         feeTypes={feeTypes}
+        cooperatives={cooperatives} // Pass cooperatives for selection
       />
       <UpdateFeeModal
         show={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onSubmit={handleFeeUpdated}
         feeToEdit={feeToEdit}
-        users={users} // Pass users to UpdateModal
-        seasons={seasons} // Pass seasons to UpdateModal
-        feeTypes={feeTypes} // Pass feeTypes to UpdateModal
-      />
-
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
+        users={users}
+        seasons={seasons}
+        feeTypes={feeTypes}
+        cooperatives={cooperatives}
       />
     </Box>
   );

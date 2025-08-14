@@ -20,6 +20,12 @@ const productionSchema = new mongoose.Schema(
       required: true,
     },
 
+    cooperativeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Cooperative",
+      required: true,
+    },
+
     quantity: {
       type: Number,
       required: true,
@@ -49,7 +55,7 @@ const productionSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true } // ✅ Automatically adds createdAt & updatedAt
+  { timestamps: true }
 );
 
 const Production = mongoose.model("Production", productionSchema);

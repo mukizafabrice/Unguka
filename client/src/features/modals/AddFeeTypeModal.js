@@ -1,30 +1,48 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Switch,
+  FormControlLabel,
+  FormGroup,
+  Box,
+  Typography,
+} from "@mui/material";
 
+/**
+ * @typedef {Object} AddFeeTypeModalProps
+ * @property {boolean} show - Controls the visibility of the modal.
+ * @property {function} onClose - Function to call when the modal is closed.
+ * @property {function(Object): void} onSubmit - Function to call when the form is submitted.
+ */
+
+/**
+ * AddFeeTypeModal component for creating a new fee type.
+ * It uses Material-UI components for a consistent design.
+ * @param {AddFeeTypeModalProps} props - The component props.
+ * @returns {JSX.Element | null} The AddFeeTypeModal component.
+ */
 function AddFeeTypeModal({ show, onClose, onSubmit }) {
+  // State to hold the form data
   const [formData, setFormData] = useState({
     name: "",
     amount: "",
     description: "",
-    status: "active",
-    isPerSeason: true,
-    autoApplyOnCreate: true,
+    status: "active", // Default status
+    isPerSeason: true, // Default to true
+    autoApplyOnCreate: true, // Default to true
   });
 
-  // Effect to manage body class for scroll prevention when modal is open
-  useEffect(() => {
-    if (show) {
-      document.body.classList.add("modal-open");
-    } else {
-      document.body.classList.remove("modal-open");
-    }
-    // Cleanup function
-    return () => {
-      document.body.classList.remove("modal-open");
-    };
-  }, [show]);
-
-  // Reset form state when the modal is shown
+  // Reset form state when the modal is opened
   useEffect(() => {
     if (show) {
       setFormData({
@@ -32,169 +50,200 @@ function AddFeeTypeModal({ show, onClose, onSubmit }) {
         amount: "",
         description: "",
         status: "active",
+        isPerSeason: true,
+        autoApplyOnCreate: true,
       });
     }
   }, [show]);
 
-  if (!show) return null;
-
+  /**
+   * Handles changes in form input fields.
+   * @param {Event} e - The event object from the input change.
+   */
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "amount" ? Number(value) : value,
+      // Handle different input types: number for amount, boolean for switches
+      [name]:
+        type === "number"
+          ? Number(value)
+          : type === "checkbox" // For Switch components, use 'checked'
+          ? checked
+          : value,
     }));
   };
 
+  /**
+   * Handles the form submission.
+   * Performs basic validation before calling the onSubmit prop.
+   * @param {Event} e - The event object from the form submission.
+   */
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.amount) {
-      toast.error("Name and Amount are required.");
+    // Basic validation
+    if (!formData.name.trim()) {
+      toast.error("Fee Type Name is required.");
       return;
     }
-    if (formData.amount < 0) {
-      toast.error("Amount cannot be negative.");
+    if (
+      formData.amount === "" ||
+      isNaN(formData.amount) ||
+      formData.amount < 0
+    ) {
+      toast.error("Amount must be a non-negative number.");
       return;
     }
 
+    // Call the onSubmit prop with the form data
     onSubmit(formData);
+    // Modal will close via the parent component's state change after successful submission
   };
 
   return (
-    <>
-      <div className="modal-backdrop fade show"></div>
-      <div
-        className="modal d-block fade show"
-        tabIndex="-1"
-        role="dialog"
-        style={{ display: "block", paddingRight: "17px" }}
-      >
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title text-dark">Add New Fee Type</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-                aria-label="Close"
-              ></button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label htmlFor="name" className="form-label text-dark">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="amount" className="form-label text-dark">
-                    Amount
-                  </label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="amount"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="description" className="form-label text-dark">
-                    Description (Optional)
-                  </label>
-                  <textarea
-                    className="form-control"
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows="3"
-                  ></textarea>
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="status" className="form-label text-dark">
-                    Status
-                  </label>
-                  <select
-                    className="form-select"
-                    id="status"
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label text-dark">Is Per Season?</label>
-                  <select
-                    className="form-select"
-                    name="isPerSeason"
-                    value={formData.isPerSeason}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        isPerSeason: e.target.value === "true",
-                      }))
-                    }
-                  >
-                    <option value="true">Yes (Per Season)</option>
-                    <option value="false">No (One-time/Non-Seasonal)</option>
-                  </select>
-                </div>
+    <Dialog
+      open={show}
+      onClose={onClose}
+      aria-labelledby="add-fee-type-modal-title"
+      PaperProps={{
+        sx: {
+          borderRadius: 2, // Apply rounded corners to the modal paper
+        },
+      }}
+      fullWidth
+      maxWidth="sm" // Adjust maximum width for responsiveness
+    >
+      <DialogTitle id="add-fee-type-modal-title" sx={{ pb: 1.5 }}>
+        <Typography variant="h6" component="span">
+          Add New Fee Type
+        </Typography>
+      </DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers sx={{ pt: 1.5 }}>
+          <Box display="flex" flexDirection="column" gap={2}>
+            {/* Name Input */}
+            <TextField
+              autoFocus // Automatically focus this field when modal opens
+              margin="dense"
+              id="name"
+              name="name"
+              label="Fee Type Name"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              size="small"
+              inputProps={{ maxLength: 100 }} // Limit name length
+            />
 
-                <div className="mb-3">
-                  <label className="form-label text-dark">
-                    Auto Apply to All Members?
-                  </label>
-                  <select
-                    className="form-select"
+            {/* Amount Input */}
+            <TextField
+              margin="dense"
+              id="amount"
+              name="amount"
+              label="Amount"
+              type="number"
+              fullWidth
+              variant="outlined"
+              value={formData.amount}
+              onChange={handleChange}
+              required
+              size="small"
+              inputProps={{ min: "0", step: "0.01" }} // Allow decimal amounts
+              helperText="Enter a non-negative amount (e.g., 5000, 25.50)"
+            />
+
+            {/* Description Textarea */}
+            <TextField
+              margin="dense"
+              id="description"
+              name="description"
+              label="Description (Optional)"
+              multiline
+              rows={3}
+              fullWidth
+              variant="outlined"
+              value={formData.description}
+              onChange={handleChange}
+              size="small"
+              inputProps={{ maxLength: 500 }} // Limit description length
+            />
+
+            {/* Status Select */}
+            <FormControl fullWidth margin="dense" size="small">
+              <InputLabel id="status-label">Status</InputLabel>
+              <Select
+                labelId="status-label"
+                id="status"
+                name="status"
+                value={formData.status}
+                label="Status"
+                onChange={handleChange}
+              >
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="inactive">Inactive</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Is Per Season Switch */}
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.isPerSeason}
+                    onChange={handleChange}
+                    name="isPerSeason"
+                    color="primary"
+                  />
+                }
+                label="Is Per Season?"
+              />
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ ml: 4 }}
+              >
+                If enabled, this fee might be applied on a seasonal basis.
+              </Typography>
+            </FormGroup>
+
+            {/* Auto Apply on Create Switch */}
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.autoApplyOnCreate}
+                    onChange={handleChange}
                     name="autoApplyOnCreate"
-                    value={formData.autoApplyOnCreate}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        autoApplyOnCreate: e.target.value === "true",
-                      }))
-                    }
-                  >
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Fee Type
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </>
+                    color="primary"
+                  />
+                }
+                label="Auto-apply to All Members on Creation?"
+              />
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ ml: 4 }}
+              >
+                If enabled, this fee will automatically be assigned to all
+                existing members when created.
+              </Typography>
+            </FormGroup>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={onClose} variant="outlined" color="secondary">
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" color="primary">
+            Save Fee Type
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }
 

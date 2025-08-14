@@ -1,47 +1,132 @@
 import axiosInstance from "../api/axiosInstance";
 
-export const fetchProductions = async () => {
-  const response = await axiosInstance.get("/productions");
-  return response.data;
+const API_URL = "/productions";
+
+// Helper to handle successful API responses consistently
+const handleResponse = (response) => {
+  return {
+    success: true,
+    data: response.data.data || response.data,
+    message: response.data.message || "Operation successful",
+  };
 };
-export const fetchProduction = async (userId, seasonId) => {
+
+// Helper to handle API errors consistently
+const handleError = (
+  error,
+  defaultMessage = "An unexpected error occurred."
+) => {
+  console.error("Production service call failed:", error);
+  return {
+    success: false,
+    message: error.response?.data?.message || defaultMessage,
+    statusCode: error.response?.status,
+  };
+};
+
+// Get all productions
+// Can accept cooperativeId to filter productions specific to a cooperative (for managers)
+export const fetchAllProductions = async (cooperativeId = null) => {
+  // Renamed from fetchProductions
   try {
-    const response = await axiosInstance.get(`/productions/getProductions`, {
-      params: {
-        userId: userId,
-        seasonId: seasonId,
-      },
-    });
-    return response.data;
+    const params = cooperativeId ? { params: { cooperativeId } } : {};
+    const response = await axiosInstance.get(API_URL, params);
+    return handleResponse(response);
   } catch (error) {
-    console.error("Error fetching productions:", error);
-    throw error;
+    return handleError(error, "Failed to fetch all productions.");
   }
 };
 
-export const fetchProductionsById = async (id) => {
-  const response = await axiosInstance.get(`/productions/${id}`);
-  return response.data;
-};
-
-export const createProduction = async (productionData) => {
-  const response = await axiosInstance.post("/productions", productionData);
-  return response.data;
-};
-export const updateProduction = async (id, data) => {
-  const response = await axiosInstance.put(`/productions/${id}`, data);
-  return response.data;
-};
-
-export const deleteProduction = async (id) => {
+// Get productions by specific userId and seasonId within a cooperative
+export const fetchProductionsByUserSeason = async (
+  userId,
+  seasonId,
+  cooperativeId
+) => {
+  // Renamed from fetchProduction
+  if (!userId || !seasonId || !cooperativeId) {
+    return {
+      success: false,
+      message:
+        "User ID, Season ID, and Cooperative ID are required to fetch productions.",
+    };
+  }
   try {
-    const response = await axiosInstance.delete(`/productions/${id}`);
-    return response.data;
+    const response = await axiosInstance.get(`${API_URL}/by-user-season`, {
+      params: { userId, seasonId, cooperativeId },
+    });
+    return handleResponse(response);
   } catch (error) {
-    console.error(
-      `Error deleting production with ID ${id}:`,
-      error.response?.data || error.message
+    return handleError(
+      error,
+      "Failed to fetch productions by user and season."
     );
-    throw error; // Re-throw the error to be handled by the calling function
+  }
+};
+
+// Get all productions for a specific user (by ID) within a cooperative
+export const fetchProductionsByUserId = async (userId, cooperativeId) => {
+  // Renamed from fetchProductionsById
+  if (!userId || !cooperativeId) {
+    return {
+      success: false,
+      message:
+        "User ID and Cooperative ID are required to fetch productions by user.",
+    };
+  }
+  try {
+    const response = await axiosInstance.get(`${API_URL}/by-user/${userId}`, {
+      params: { cooperativeId },
+    });
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(
+      error,
+      `Failed to fetch productions for user with ID ${userId}.`
+    );
+  }
+};
+
+// Create a new production
+// Requires productionData to include cooperativeId
+export const createProduction = async (productionData) => {
+  try {
+    const response = await axiosInstance.post(
+      `${API_URL}/register`,
+      productionData
+    ); // Matches /register route
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, "Failed to create production.");
+  }
+};
+
+// Update a production by ID
+// Requires data to include cooperativeId for authorization
+export const updateProduction = async (id, data) => {
+  try {
+    const response = await axiosInstance.put(`${API_URL}/${id}`, data);
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, "Failed to update production.");
+  }
+};
+
+// Delete a production by ID
+// Requires cooperativeId to be passed in the request body for authorization
+export const deleteProduction = async (id, cooperativeId) => {
+  if (!cooperativeId) {
+    return {
+      success: false,
+      message: "Cooperative ID is required to delete production.",
+    };
+  }
+  try {
+    const response = await axiosInstance.delete(`${API_URL}/${id}`, {
+      data: { cooperativeId },
+    }); // Pass cooperativeId in data
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, "Failed to delete production.");
   }
 };

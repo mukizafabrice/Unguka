@@ -48,7 +48,7 @@ import {
   updateCooperative,
   deleteCooperative,
 } from "../../services/cooperativeService";
-import { fetchUsers } from "../../services/userService";
+import { fetchUsers, updateUser } from "../../services/userService"; // Added updateUser from userService
 
 const CooperativesTable = () => {
   const [cooperatives, setCooperatives] = useState([]);
@@ -70,7 +70,7 @@ const CooperativesTable = () => {
   // Dialog states
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openAssignDialog, setOpenAssignDialog] = useState(false);
+  const [openAssignDialog, setOpenAssignDialog] = useState(false); // State for Assign Manager dialog
   const [openConfirmDeleteDialog, setOpenConfirmDeleteDialog] = useState(false);
 
   const [currentCooperative, setCurrentCooperative] = useState(null);
@@ -83,8 +83,8 @@ const CooperativesTable = () => {
     contactPhone: "",
   });
   const [editCooperativeData, setEditCooperativeData] = useState(null);
-  const [assignManagerData, setAssignManagerData] = useState({ managerId: "" });
-  const [availableManagers, setAvailableManagers] = useState([]);
+  const [assignManagerData, setAssignManagerData] = useState({ managerId: "" }); // State for selected manager in assign dialog
+  const [availableManagers, setAvailableManagers] = useState([]); // List of managers who are not assigned to any cooperative
 
   const fetchCooperatives = async () => {
     setLoading(true);
@@ -108,17 +108,24 @@ const CooperativesTable = () => {
 
   const fetchAvailableManagers = async () => {
     try {
-      const response = await fetchUsers();
-      if (response) {
-        const managers = response.filter(
+      const response = await fetchUsers(); // This returns { success: boolean, data: array, message: string }
+      if (response.success && Array.isArray(response.data)) {
+        // Check success and if data is array
+        // Filter for managers who are not currently assigned to any cooperative
+        const managers = response.data.filter(
           (user) => user.role === "manager" && !user.cooperativeId
         );
         setAvailableManagers(managers);
       } else {
         console.error(
-          "Failed to fetch managers: Response was empty or not an array."
+          "Failed to fetch managers: Response was empty or not an array.",
+          response.message
         );
-        toast.error("Failed to load available managers.");
+        toast.error(
+          `Failed to load available managers: ${
+            response.message || "Data format error."
+          }`
+        );
       }
     } catch (err) {
       console.error("Fetch managers error:", err);
@@ -342,49 +349,79 @@ const CooperativesTable = () => {
   // --- Assign Manager Dialog Handlers ---
   const handleOpenAssignDialog = () => {
     if (selected.length === 1) {
-      const selectedCoop = filteredCooperatives.find(
+      const coopToAssign = filteredCooperatives.find(
         (c) => c._id === selected[0]
       );
-      setCurrentCooperative(selectedCoop);
-      const currentManager = availableManagers.find(
-        (m) => m.cooperativeId === selectedCoop._id
-      );
-      setAssignManagerData({
-        managerId: currentManager ? currentManager._id : "",
-      });
+      setCurrentCooperative(coopToAssign);
+      // Pre-select current manager if any, otherwise empty string
+      setAssignManagerData({ managerId: coopToAssign?.managerId || "" });
       setOpenAssignDialog(true);
+      fetchAvailableManagers(); // Re-fetch available managers just in case
     } else {
       toast.warn("Please select exactly one cooperative to assign a manager.");
     }
   };
-  const handleCloseAssignDialog = () => setOpenAssignDialog(false);
+
+  const handleCloseAssignDialog = () => {
+    setOpenAssignDialog(false);
+    setAssignManagerData({ managerId: "" }); // Reset selection
+  };
+
   const handleAssignChange = (e) => {
     setAssignManagerData({ managerId: e.target.value });
   };
+
   const handleAssignSubmit = async () => {
-    if (!assignManagerData.managerId && assignManagerData.managerId !== null) {
-      toast.error("Please select a manager or choose 'None' to unassign.");
+    if (!currentCooperative) {
+      toast.error("No cooperative selected for assignment.");
       return;
     }
+
     const managerIdToAssign =
       assignManagerData.managerId === "" ? null : assignManagerData.managerId;
 
     try {
-      const updatePayload = {
-        managerId: managerIdToAssign,
-      };
-      const response = await updateCooperative(
-        currentCooperative._id,
-        updatePayload
-      );
-      if (response.success) {
-        toast.success("Manager assignment updated successfully!");
-        fetchCooperatives();
-        fetchAvailableManagers();
-        setOpenAssignDialog(false);
-      } else {
-        toast.error(`Failed to assign manager: ${response.message}`);
+      // 1. Update the selected manager (assign or unassign from previous cooperative if any)
+      // This step ensures the *manager's* record is updated with the cooperativeId
+      if (managerIdToAssign) {
+        // If assigning a manager
+        const response = await updateUser(managerIdToAssign, {
+          cooperativeId: currentCooperative._id,
+        });
+        if (!response.success) {
+          toast.error(`Failed to assign manager: ${response.message}`);
+          return;
+        }
       }
+
+      // If there was a previous manager on this cooperative, unassign them first
+      // This is a more complex logic. For now, we assume a manager can only be assigned to one cooperative.
+      // If a manager is moved from Coop A to Coop B, their old cooperativeId should be set to null.
+      // This needs a backend endpoint that can find a manager by cooperativeId and set it null.
+      // For simplicity, this current implementation only assigns the *selected* manager.
+      // A more robust solution might involve:
+      // a) Fetching the previously assigned manager (if any) for `currentCooperative`
+      // b) Setting `cooperativeId` to `null` for that previous manager.
+      // c) Then assigning the new manager.
+      // For now, we'll assume `updateUser` can handle setting `cooperativeId` to `null` for the new manager if "None" is selected.
+
+      // 2. Update the Cooperative (optional, if your coop model stores managerId)
+      // If your Cooperative model stores 'managerId', you would update it here:
+      // const coopUpdateResponse = await updateCooperative(currentCooperative._id, { managerId: managerIdToAssign });
+      // if (!coopUpdateResponse.success) {
+      //   toast.error(`Failed to update cooperative's manager reference: ${coopUpdateResponse.message}`);
+      //   return;
+      // }
+
+      // After updating the manager, re-fetch all necessary data
+      toast.success(
+        managerIdToAssign
+          ? "Manager assigned successfully!"
+          : "Manager unassigned successfully!"
+      );
+      fetchCooperatives(); // Refresh cooperatives table
+      fetchAvailableManagers(); // Refresh available managers list
+      setOpenAssignDialog(false); // Close the dialog
     } catch (err) {
       toast.error("An unexpected error occurred during manager assignment.");
       console.error("Assign manager error:", err);

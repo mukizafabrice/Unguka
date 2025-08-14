@@ -11,6 +11,12 @@ const salesSchema = new mongoose.Schema({
     ref: "Season",
     required: true,
   },
+  // ⭐ NEW: Add cooperativeId to link sales to a specific cooperative
+  cooperativeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Cooperative', // Refers to your Cooperative model
+    required: true, // Assuming every sale must belong to a cooperative
+  },
 
   quantity: {
     type: Number,

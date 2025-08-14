@@ -1,12 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Button,
+  Box,
+  Typography,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid, // Import Grid for responsive layout
+} from "@mui/material";
 
-// Assuming you have these service files to fetch data
-import { fetchProduct } from "../../services/productService";
+// Corrected import: fetchProducts from productService
+import { fetchProducts } from "../../services/productService";
 import { fetchSeasons } from "../../services/seasonService";
 
-const AddPurchaseOutModal = ({ show, onClose, onSubmit }) => {
-  // State for the form data
+const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
   const [formData, setFormData] = useState({
     productId: "",
     seasonId: "",
@@ -14,43 +29,69 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit }) => {
     unitPrice: "",
   });
 
-  // States to hold fetched data and loading status
   const [products, setProducts] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Effect to manage the body class for scroll prevention
+  // Effect to load products and seasons when modal opens
   useEffect(() => {
     if (show) {
-      document.body.classList.add("modal-open");
       setLoading(true); // Reset loading state when modal opens
 
       const loadDependencies = async () => {
+        if (!cooperativeId) {
+          toast.error(
+            "Cooperative ID is missing. Cannot load products or seasons."
+          );
+          setLoading(false);
+          return;
+        }
         try {
-          // Fetch products and seasons in parallel for efficiency
-          const [productsData, seasonsData] = await Promise.all([
-            fetchProduct(),
-            fetchSeasons(),
+          // Pass cooperativeId to fetch functions
+          const [productsResponse, seasonsResponse] = await Promise.all([
+            fetchProducts(cooperativeId), // Corrected function name and passed cooperativeId
+            fetchSeasons(cooperativeId), // Assuming fetchSeasons also accepts cooperativeId for scoping
           ]);
-          setProducts(productsData);
-          setSeasons(seasonsData);
+
+          if (
+            productsResponse.success &&
+            Array.isArray(productsResponse.data)
+          ) {
+            setProducts(productsResponse.data);
+          } else {
+            console.error(
+              "Failed to fetch products:",
+              productsResponse.message
+            );
+            toast.error(productsResponse.message || "Failed to load products.");
+            setProducts([]);
+          }
+
+          if (seasonsResponse.success && Array.isArray(seasonsResponse.data)) {
+            setSeasons(seasonsResponse.data);
+          } else {
+            console.error("Failed to fetch seasons:", seasonsResponse.message);
+            toast.error(seasonsResponse.message || "Failed to load seasons.");
+            setSeasons([]);
+          }
           setLoading(false);
         } catch (error) {
-          console.error("Failed to fetch modal dependencies:", error);
-          toast.error("Failed to load products or seasons.");
+          console.error(
+            "Failed to fetch modal dependencies (catch block):",
+            error
+          );
+          toast.error(
+            "An unexpected error occurred while loading products or seasons."
+          );
           setLoading(false);
+          setProducts([]);
+          setSeasons([]);
         }
       };
 
       loadDependencies();
-    } else {
-      document.body.classList.remove("modal-open");
     }
-    // Cleanup function to remove the class when the component unmounts
-    return () => {
-      document.body.classList.remove("modal-open");
-    };
-  }, [show]);
+  }, [show, cooperativeId]); // Depend on show and cooperativeId
 
   // Reset form data when the modal is shown
   useEffect(() => {
@@ -63,9 +104,6 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit }) => {
       });
     }
   }, [show]);
-
-  // If the modal is not visible, return null
-  if (!show) return null;
 
   // Handle changes to form inputs
   const handleChange = (e) => {
@@ -84,179 +122,165 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Ensure a product and season are selected before submitting
-    if (!formData.productId || !formData.seasonId) {
-      toast.error("Please select a product and a season.");
+    // Basic validation
+    if (
+      !formData.productId ||
+      !formData.seasonId ||
+      !formData.quantity ||
+      !formData.unitPrice
+    ) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    if (isNaN(formData.quantity) || formData.quantity <= 0) {
+      toast.error("Quantity must be a positive number.");
+      return;
+    }
+
+    if (isNaN(formData.unitPrice) || formData.unitPrice <= 0) {
+      toast.error("Unit Price must be a positive number.");
       return;
     }
 
     // Calculate the totalPrice before submitting
     const totalPrice = formData.quantity * formData.unitPrice;
 
+    // Call the onSubmit prop with the complete data, including cooperativeId
     onSubmit({
       ...formData,
       totalPrice,
+      cooperativeId, // Ensure cooperativeId is included
     });
   };
 
   return (
-    <>
-      <div className="modal-backdrop fade show"></div>
-      <div
-        className="modal fade show d-block"
-        tabIndex="-1"
-        role="dialog"
-        aria-labelledby="addPurchaseOutModalLabel"
-        aria-hidden="false"
-        style={{ display: "block", paddingRight: "17px" }}
-      >
-        <div
-          className="modal-dialog modal-lg modal-dialog-centered"
-          role="document"
-        >
-          <div className="modal-content">
-            <form onSubmit={handleSubmit}>
-              <div className="modal-header">
-                <h5
-                  className="modal-title text-dark"
-                  id="addPurchaseOutModalLabel"
-                >
-                  Add New Purchase
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={onClose}
-                  aria-label="Close"
+    <Dialog
+      open={show}
+      onClose={onClose}
+      aria-labelledby="add-purchase-out-dialog-title"
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle id="add-purchase-out-dialog-title">
+        <Typography variant="h6" component="span">
+          Add New Purchase
+        </Typography>
+      </DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers>
+          {loading ? (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              height="200px"
+            >
+              <CircularProgress color="primary" />
+              <Typography variant="body1" sx={{ ml: 2 }}>
+                Loading products and seasons...
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {" "}
+              {/* Use Grid for responsive layout */}
+              <Grid item xs={12} sm={6}>
+                {/* Product Dropdown */}
+                <FormControl fullWidth margin="dense" required>
+                  <InputLabel id="productId-label">Product</InputLabel>
+                  <Select
+                    labelId="productId-label"
+                    id="productId"
+                    name="productId"
+                    value={formData.productId}
+                    label="Product"
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Select a product</em>
+                    </MenuItem>
+                    {products.map((product) => (
+                      <MenuItem key={product._id} value={product._id}>
+                        {product.productName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                {/* Season Dropdown */}
+                <FormControl fullWidth margin="dense" required>
+                  <InputLabel id="seasonId-label">Season</InputLabel>
+                  <Select
+                    labelId="seasonId-label"
+                    id="seasonId"
+                    name="seasonId"
+                    value={formData.seasonId}
+                    label="Season"
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Select a season</em>
+                    </MenuItem>
+                    {seasons.map((season) => (
+                      <MenuItem key={season._id} value={season._id}>
+                        {season.name} ({season.year})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                {/* Quantity Input */}
+                <TextField
+                  margin="dense"
+                  id="quantity"
+                  label="Quantity"
+                  type="number"
+                  name="quantity"
+                  fullWidth
+                  variant="outlined"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                  inputProps={{ min: "1", step: "0.01" }} // Allow decimals for quantity if needed
+                  required
                 />
-              </div>
-              <div className="modal-body row">
-                {loading ? (
-                  <div className="col-12 text-center text-dark my-4">
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                    <p className="mt-2">Loading products and seasons...</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Product Dropdown */}
-                    <div className="col-md-6 mb-3">
-                      <label
-                        htmlFor="productId"
-                        className="form-label text-dark"
-                      >
-                        Product
-                      </label>
-                      <select
-                        name="productId"
-                        id="productId"
-                        className="form-control"
-                        value={formData.productId}
-                        onChange={handleChange}
-                        required
-                      >
-                        <option value="" disabled>
-                          Select a product
-                        </option>
-                        {products.map((product) => (
-                          <option key={product._id} value={product._id}>
-                            {product.productName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Season Dropdown */}
-                    <div className="col-md-6 mb-3">
-                      <label
-                        htmlFor="seasonId"
-                        className="form-label text-dark"
-                      >
-                        Season
-                      </label>
-                      <select
-                        name="seasonId"
-                        id="seasonId"
-                        className="form-control"
-                        value={formData.seasonId}
-                        onChange={handleChange}
-                        required
-                      >
-                        <option value="" disabled>
-                          Select a season
-                        </option>
-                        {seasons.map((season) => (
-                          <option key={season._id} value={season._id}>
-                            {season.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Quantity Input */}
-                    <div className="col-md-6 mb-3">
-                      <label
-                        htmlFor="quantity"
-                        className="form-label text-dark"
-                      >
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        name="quantity"
-                        id="quantity"
-                        className="form-control"
-                        value={formData.quantity}
-                        onChange={handleChange}
-                        min="1"
-                        required
-                      />
-                    </div>
-
-                    {/* Unit Price Input */}
-                    <div className="col-md-6 mb-3">
-                      <label
-                        htmlFor="unitPrice"
-                        className="form-label text-dark"
-                      >
-                        Unit Price
-                      </label>
-                      <input
-                        type="number"
-                        name="unitPrice"
-                        id="unitPrice"
-                        className="form-control"
-                        value={formData.unitPrice}
-                        onChange={handleChange}
-                        min="0"
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={loading}
-                >
-                  Add Purchase
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                {/* Unit Price Input */}
+                <TextField
+                  margin="dense"
+                  id="unitPrice"
+                  label="Unit Price"
+                  type="number"
+                  name="unitPrice"
+                  fullWidth
+                  variant="outlined"
+                  value={formData.unitPrice}
+                  onChange={handleChange}
+                  inputProps={{ min: "0", step: "0.01" }}
+                  required
+                />
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="secondary" variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={loading}
+          >
+            Add Purchase
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

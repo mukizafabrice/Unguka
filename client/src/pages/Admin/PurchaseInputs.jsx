@@ -2,12 +2,15 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// ⭐ NEW: Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
 import {
   fetchPurchaseInputs,
-  createPurchaseInputs,
-  updatePurchaseInputs,
-  deletePurchaseInputs,
-} from "../../services/purchaseInputsService";
+  createPurchaseInput, // ⭐ Corrected to singular as per service file
+  updatePurchaseInput, // ⭐ Corrected to singular as per service file
+  deletePurchaseInput, // ⭐ Corrected to singular as per service file
+} from "../../services/purchaseInputService"; // ⭐ Corrected service import path/name
 
 import {
   Box,
@@ -30,9 +33,9 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Chip, // Added Chip for status display
+  CircularProgress,
+  MenuItem,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -68,7 +71,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "transparent",
+  backgroundColor: "#f5f5f5", // ⭐ Corrected to match ManagersTable.jsx design
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -88,12 +91,10 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 
 // Helper function for status chip color
 const getStatusColor = (status) => {
-  switch (
-    status?.toLowerCase() // Ensure case-insensitivity
-  ) {
+  switch (status?.toLowerCase()) {
     case "paid":
       return "success";
-    case "pending": // Assuming 'pending' status for unpaid items
+    case "loan": // ⭐ Changed from 'pending' to 'loan' to match PurchaseInput model enum
       return "warning";
     default:
       return "default";
@@ -101,19 +102,23 @@ const getStatusColor = (status) => {
 };
 
 function PurchaseInputs() {
+  // ⭐ Get user and cooperativeId from AuthContext
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+
   const [purchaseInputs, setPurchaseInputs] = useState([]);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedPurchaseInput, setSelectedPurchaseInput] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Changed to 7 for consistency with other dashboards
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("member"); // Default search field
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter by status
-  const [sortOrder, setSortOrder] = useState("desc"); // Default sort by date, newest first
+  const [searchField, setSearchField] = useState("member");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("desc");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -124,30 +129,64 @@ function PurchaseInputs() {
     }).format(amount);
   };
 
+  // ⭐ Modified loadPurchaseInputs to fetch purchases for the specific cooperativeId
   const loadPurchaseInputs = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error(
+        "Cooperative ID is not available. Cannot load purchase inputs."
+      );
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await fetchPurchaseInputs();
-      setPurchaseInputs(data || []);
+      // Pass the cooperativeId to fetchPurchaseInputs
+      const response = await fetchPurchaseInputs(cooperativeId);
+      if (response.success && Array.isArray(response.data)) {
+        // Ensure response structure is handled
+        setPurchaseInputs(response.data);
+      } else {
+        console.error("Failed to fetch purchase inputs:", response.message);
+        toast.error(response.message || "Failed to load purchases.");
+        setPurchaseInputs([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch purchase inputs:", error);
-      toast.error("Failed to load purchases.");
+      console.error("Failed to fetch purchase inputs (catch block):", error);
+      toast.error("An unexpected error occurred while loading purchases.");
       setPurchaseInputs([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]); // Add cooperativeId to dependencies
 
   useEffect(() => {
-    loadPurchaseInputs();
-  }, [loadPurchaseInputs]);
+    // Only load purchases if cooperativeId is available
+    if (cooperativeId) {
+      loadPurchaseInputs();
+    }
+  }, [cooperativeId, loadPurchaseInputs]); // Depend on cooperativeId and loadPurchaseInputs
 
+  // ⭐ Modified handleAddPurchaseInput to include cooperativeId
   const handleAddPurchaseInput = async (newPurchaseInputData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot add purchase.");
+      return;
+    }
     try {
-      await createPurchaseInputs(newPurchaseInputData);
-      toast.success("Purchase added successfully!");
-      await loadPurchaseInputs();
-      setShowAddModal(false);
+      // Add the cooperativeId to the data before sending
+      const dataToSend = {
+        ...newPurchaseInputData,
+        cooperativeId: cooperativeId,
+      };
+      const response = await createPurchaseInput(dataToSend); // ⭐ Corrected service call
+      if (response.success) {
+        toast.success(response.message || "Purchase added successfully!");
+        await loadPurchaseInputs();
+        setShowAddModal(false);
+      } else {
+        toast.error(response.message || "Failed to add purchase.");
+      }
     } catch (error) {
       console.error("Failed to add purchase:", error);
       toast.error(
@@ -163,18 +202,28 @@ function PurchaseInputs() {
     setShowUpdateModal(true);
   };
 
+  // ⭐ Modified handleUpdatePurchaseInput to include cooperativeId
   const handleUpdatePurchaseInput = async (updatedPurchaseInputData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot update purchase.");
+      return;
+    }
     try {
-      // Assuming updatedPurchaseInputData already contains _id for update operation
       const { _id, ...dataToUpdate } = updatedPurchaseInputData;
-      await updatePurchaseInputs(
+      // Add the cooperativeId to the data before sending for update
+      const dataToSend = { ...dataToUpdate, cooperativeId: cooperativeId };
+      const response = await updatePurchaseInput(
         _id, // Pass the extracted _id
-        dataToUpdate
-      );
-      toast.success("Purchase updated successfully!");
-      await loadPurchaseInputs();
-      setShowUpdateModal(false);
-      setSelectedPurchaseInput(null);
+        dataToSend // Pass the data with cooperativeId
+      ); // ⭐ Corrected service call
+      if (response.success) {
+        toast.success(response.message || "Purchase updated successfully!");
+        await loadPurchaseInputs();
+        setShowUpdateModal(false);
+        setSelectedPurchaseInput(null);
+      } else {
+        toast.error(response.message || "Failed to update purchase.");
+      }
     } catch (error) {
       console.error("Failed to update purchase:", error);
       toast.error(
@@ -185,18 +234,35 @@ function PurchaseInputs() {
     }
   };
 
+  // ⭐ Modified handleDeletePurchaseInput to include cooperativeId
   const handleDeletePurchaseInput = async (id) => {
-    try {
-      await deletePurchaseInputs(id);
-      toast.success("Purchase deleted successfully!");
-      await loadPurchaseInputs();
-    } catch (error) {
-      console.error("Failed to delete purchase:", error);
-      toast.error(
-        `Failed to delete purchase: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot delete purchase.");
+      return;
+    }
+    // Using window.confirm for simplicity, consider a custom MUI dialog for better UX
+    if (
+      window.confirm(
+        "Are you sure you want to delete this purchase? This action cannot be undone."
+      )
+    ) {
+      try {
+        // Pass the cooperativeId to deletePurchaseInput for backend authorization
+        const response = await deletePurchaseInput(id, cooperativeId); // ⭐ Corrected service call
+        if (response.success) {
+          toast.success(response.message || "Purchase deleted successfully!");
+          await loadPurchaseInputs();
+        } else {
+          toast.error(response.message || "Failed to delete purchase.");
+        }
+      } catch (error) {
+        console.error("Failed to delete purchase:", error);
+        toast.error(
+          `Failed to delete purchase: ${
+            error.response?.data?.message || error.message
+          }`
+        );
+      }
     }
   };
 
@@ -364,7 +430,8 @@ function PurchaseInputs() {
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="paid">Paid</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="loan">Loan</MenuItem>{" "}
+              {/* ⭐ Changed from 'pending' to 'loan' */}
             </TextField>
             <Button
               variant="outlined"
@@ -401,8 +468,6 @@ function PurchaseInputs() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
@@ -414,7 +479,7 @@ function PurchaseInputs() {
               >
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
@@ -488,7 +553,7 @@ function PurchaseInputs() {
                           <StyledTableCell
                             sx={{
                               color:
-                                purchaseInput.remainingAmount > 0
+                                purchaseInput.amountRemaining > 0
                                   ? "error.main"
                                   : "success.main",
                               fontWeight: "bold",
@@ -544,7 +609,7 @@ function PurchaseInputs() {
                       <TableRow>
                         <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
-                            No Purchases found.
+                            No Purchases found for this cooperative.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -581,6 +646,7 @@ function PurchaseInputs() {
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddPurchaseInput}
+        cooperativeId={cooperativeId} // ⭐ Pass cooperativeId to AddPurchaseInputModal
       />
 
       <UpdatePurchaseInputModal
@@ -591,18 +657,7 @@ function PurchaseInputs() {
         }}
         onSubmit={handleUpdatePurchaseInput}
         initialData={selectedPurchaseInput}
-      />
-
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
+        cooperativeId={cooperativeId} // ⭐ Pass cooperativeId to UpdatePurchaseInputModal
       />
     </Box>
   );

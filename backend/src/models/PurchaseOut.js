@@ -4,12 +4,17 @@ const purchaseOutSchema = new mongoose.Schema({
   productId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Product",
-    required: [true, "Product Id is required"],
+    required: [true, "Product ID is required"],
   },
   seasonId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Season",
-    required: [true, "Season Id is required"],
+    required: [true, "Season ID is required"],
+  },
+  cooperativeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Cooperative',
+    required: [true, "Cooperative ID is required"],
   },
   quantity: {
     type: Number,
@@ -29,6 +34,9 @@ const purchaseOutSchema = new mongoose.Schema({
   },
 });
 
-const PurchaseOut = mongoose.model("Purchase", purchaseOutSchema);
+// The index has been removed as per your request.
+// purchaseOutSchema.index({ productId: 1, seasonId: 1, cooperativeId: 1 });
+
+const PurchaseOut = mongoose.model("PurchaseOut", purchaseOutSchema);
 
 export default PurchaseOut;

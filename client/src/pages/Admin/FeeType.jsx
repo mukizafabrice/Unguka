@@ -2,12 +2,15 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
 import {
   fetchFeeTypes,
   createFeeType,
   updateFeeType,
   deleteFeeType,
-} from "../../services/feeTypeService";
+} from "../../services/feeTypeService"; // Import from the updated service file
 
 import {
   Box,
@@ -32,7 +35,7 @@ import {
   Pagination,
   CircularProgress,
   MenuItem,
-  Chip, // Added Chip for status display
+  Chip, // For status display
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -40,9 +43,10 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import ClearIcon from "@mui/icons-material/Clear"; // Import ClearIcon
 
-import AddFeeTypeModal from "../../features/modals/AddFeeTypeModal";
-import UpdateFeeTypeModal from "../../features/modals/UpdateFeeTypeModal";
+import AddFeeTypeModal from "../../features/modals/AddFeeTypeModal"; // Path assuming it's in a 'modals' subfolder
+import UpdateFeeTypeModal from "../../features/modals/UpdateFeeTypeModal"; // Path assuming it's in a 'modals' subfolder
 
 // Styled components consistent with other dashboards
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
@@ -68,7 +72,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "transparent",
+  backgroundColor: "#f5f5f5", // Explicit background for header
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -86,7 +90,7 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// Helper function for status chip color (assuming 'Active' and 'Inactive' statuses)
+// Helper function for status chip color
 const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
     case "active":
@@ -98,104 +102,179 @@ const getStatusColor = (status) => {
   }
 };
 
-function FeeType() {
+function FeeTypeManagement() {
+  // Get user and cooperativeId from AuthContext
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+
   const [feeTypes, setFeeTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [feeTypeToEdit, setFeeTypeToEdit] = useState(null);
+  const [selectedFeeType, setSelectedFeeType] = useState(null); // Changed name from feeTypeToEdit
 
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("name"); // Default search field
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter by status (e.g., 'active', 'inactive', 'all')
-  const [sortOrder, setSortOrder] = useState("asc"); // Default sort by name ascending
+  const [searchField, setSearchField] = useState("name");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isPerSeasonFilter, setIsPerSeasonFilter] = useState("all"); // 'all', 'true', 'false'
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to fetch fee types from the backend
+  // Function to load fee types data from the backend, filtered by cooperativeId
   const loadFeeTypes = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is not available. Cannot load fee types.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const feeTypesData = await fetchFeeTypes();
-      setFeeTypes(feeTypesData || []);
+      // Pass cooperativeId to fetchFeeTypes
+      const response = await fetchFeeTypes(cooperativeId);
+      if (response.success && Array.isArray(response.data)) {
+        setFeeTypes(response.data);
+      } else {
+        console.error("Failed to fetch fee types:", response.message);
+        toast.error(response.message || "Failed to load fee types.");
+        setFeeTypes([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch fee types:", error);
-      toast.error("Failed to load fee types.");
+      console.error("Failed to fetch fee types (catch block):", error);
+      toast.error("An unexpected error occurred while loading fee types.");
       setFeeTypes([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]);
 
-  // Initial data load on component mount
   useEffect(() => {
-    loadFeeTypes();
-  }, [loadFeeTypes]);
+    if (cooperativeId) { // Only load if cooperativeId is available
+      loadFeeTypes();
+    }
+  }, [cooperativeId, loadFeeTypes]);
 
   // Handler for adding a new fee type
-  const handleAddFeeType = async (feeTypeData) => {
+  const handleAddFeeType = async (newFeeTypeData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot add fee type.");
+      return;
+    }
     try {
-      await createFeeType(feeTypeData);
-      setShowAddModal(false);
-      toast.success("Fee Type added successfully!");
-      await loadFeeTypes(); // Re-fetch all fee types to refresh the list
+      // Add cooperativeId to the data before sending
+      const dataToSend = { ...newFeeTypeData, cooperativeId };
+      const response = await createFeeType(dataToSend);
+      if (response.success) {
+        toast.success(response.message || "Fee type added successfully!");
+        setShowAddModal(false);
+        await loadFeeTypes();
+      } else {
+        toast.error(response.message || "Failed to add fee type.");
+      }
     } catch (error) {
-      console.error("Error adding fee type:", error);
-      toast.error(
-        `Failed to add fee type: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      console.error("Failed to add fee type:", error);
+      toast.error("An unexpected error occurred while adding fee type.");
+    }
+  };
+
+  const handleOpenUpdateModal = (feeType) => {
+    setSelectedFeeType(feeType); // Set selectedFeeType for the modal
+    setShowUpdateModal(true);
+  };
+
+  // Handler for updating a fee type
+  const handleUpdateFeeType = async (updatedFeeTypeData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot update fee type.");
+      return;
+    }
+    try {
+      const { _id, ...dataToUpdate } = updatedFeeTypeData;
+      // Add cooperativeId to the data before sending
+      const dataToSend = { ...dataToUpdate, cooperativeId };
+      const response = await updateFeeType(_id, dataToSend);
+      if (response.success) {
+        toast.success(response.message || "Fee type updated successfully!");
+        setShowUpdateModal(false);
+        setSelectedFeeType(null); // Clear selected fee type
+        await loadFeeTypes();
+      } else {
+        toast.error(response.message || "Failed to update fee type.");
+      }
+    } catch (error) {
+      console.error("Failed to update fee type:", error);
+      toast.error("An unexpected error occurred while updating fee type.");
     }
   };
 
   // Handler for deleting a fee type
   const handleDeleteFeeType = async (id) => {
-    try {
-      await deleteFeeType(id);
-      toast.success("Fee Type deleted successfully!");
-      await loadFeeTypes(); // Re-fetch all fee types to refresh the list
-    } catch (error) {
-      console.error("Error deleting fee type:", error);
-      toast.error(
-        `Failed to delete fee type: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot delete fee type.");
+      return;
     }
+
+    // Using toast for confirmation as window.confirm is not recommended in iframes.
+    // For a more robust solution, implement a custom Material-UI confirmation dialog.
+    toast.warn(
+      (
+        <div>
+          Are you sure you want to delete this fee type?
+          <br />
+          This action cannot be undone.
+          <br />
+          <Button
+            size="small"
+            variant="contained"
+            color="secondary"
+            onClick={async () => {
+              try {
+                // Close the toast after confirming
+                toast.dismiss();
+                // Pass cooperativeId to deleteFeeType for backend authorization
+                const response = await deleteFeeType(id, cooperativeId);
+                if (response.success) {
+                  toast.success(response.message || "Fee type deleted successfully!");
+                  await loadFeeTypes();
+                } else {
+                  toast.error(response.message || "Failed to delete fee type.");
+                }
+              } catch (error) {
+                console.error("Failed to delete fee type:", error);
+                toast.error("An unexpected error occurred while deleting fee type.");
+              }
+            }}
+            sx={{ mt: 1, mr: 1 }}
+          >
+            Yes, Delete
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => toast.dismiss()} // Dismiss the toast if cancel
+            sx={{ mt: 1 }}
+          >
+            Cancel
+          </Button>
+        </div>
+      ),
+      {
+        autoClose: false, // Keep toast open until user interacts
+        closeOnClick: false,
+        draggable: false,
+      }
+    );
   };
 
-  // Handler to open the update modal with the selected fee type's data
-  const handleUpdateFeeType = (feeType) => {
-    setFeeTypeToEdit(feeType);
-    setShowUpdateModal(true);
-  };
-
-  // Handler for submitting the updated fee type
-  const handleFeeTypeUpdated = async (id, updatedFeeTypeData) => {
-    try {
-      await updateFeeType(id, updatedFeeTypeData);
-      toast.success("Fee Type updated successfully!");
-      setShowUpdateModal(false);
-      await loadFeeTypes(); // Re-fetch all fee types to refresh the list
-    } catch (error) {
-      console.error("Error updating fee type:", error);
-      toast.error(
-        `Failed to update fee type: ${
-          error.response?.data?.message || error.message
-        }`
-      );
-    }
-  };
-
-  // Filter and sort fee types based on searchTerm, searchField, statusFilter, and sortOrder
+  // Filter and sort fee types based on search, status filter, and sort order
   const filteredAndSortedFeeTypes = useMemo(() => {
     let filtered = feeTypes;
 
-    // Apply search term filter
+    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter((feeType) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -205,9 +284,7 @@ function FeeType() {
           case "amount":
             return feeType.amount?.toString().includes(lowerCaseSearchTerm);
           case "description":
-            return feeType.description
-              ?.toLowerCase()
-              .includes(lowerCaseSearchTerm);
+            return feeType.description?.toLowerCase().includes(lowerCaseSearchTerm);
           case "status":
             return feeType.status?.toLowerCase().includes(lowerCaseSearchTerm);
           default:
@@ -219,12 +296,19 @@ function FeeType() {
     // Apply status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter(
-        (feeType) =>
-          feeType.status?.toLowerCase() === statusFilter.toLowerCase()
+        (feeType) => feeType.status?.toLowerCase() === statusFilter.toLowerCase()
       );
     }
 
-    // Apply sorting
+    // Apply isPerSeason filter
+    if (isPerSeasonFilter !== "all") {
+        const isPerSeasonBool = isPerSeasonFilter === 'true';
+        filtered = filtered.filter(
+            (feeType) => feeType.isPerSeason === isPerSeasonBool
+        );
+    }
+
+    // Apply sorting by name or amount
     filtered.sort((a, b) => {
       let comparison = 0;
       if (searchField === "name") {
@@ -232,17 +316,18 @@ function FeeType() {
         const nameB = b.name || "";
         comparison = nameA.localeCompare(nameB);
       } else if (searchField === "amount") {
-        comparison = (a.amount || 0) - (b.amount || 0);
-      } else if (searchField === "status") {
-        const statusA = a.status || "";
-        const statusB = b.status || "";
-        comparison = statusA.localeCompare(statusB);
+        comparison = (a.amount || 0) - (b.amount || 0); // Numerical sort for amount
+      } else {
+        // Default sort by name if search field is not name/amount
+        const nameA = a.name || "";
+        const nameB = b.name || "";
+        comparison = nameA.localeCompare(nameB);
       }
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
     return filtered;
-  }, [feeTypes, searchTerm, searchField, statusFilter, sortOrder]);
+  }, [feeTypes, searchTerm, searchField, statusFilter, isPerSeasonFilter, sortOrder]);
 
   const totalPages = Math.ceil(filteredAndSortedFeeTypes.length / rowsPerPage);
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -257,19 +342,28 @@ function FeeType() {
     setCurrentPage(1);
   }, [filteredAndSortedFeeTypes]);
 
-  const handlePageChange = useCallback((event, pageNumber) => {
-    setCurrentPage(pageNumber);
+  const handlePageChange = useCallback((event, newPage) => {
+    setCurrentPage(newPage);
   }, []);
 
   const handleSort = () => {
     setSortOrder((prevSortOrder) => (prevSortOrder === "asc" ? "desc" : "asc"));
   };
 
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSearchField('name');
+    setStatusFilter('all');
+    setIsPerSeasonFilter('all');
+    setSortOrder('asc');
+    setCurrentPage(1);
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
       currency: "RWF",
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   return (
@@ -291,176 +385,161 @@ function FeeType() {
         <CardContent
           sx={{
             maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflowY: "auto",
+            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
         >
-          <Box mb={3}>
+          <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
-              Manage and track different types of fees, including their names,
-              amounts, descriptions, and statuses.
+              Manage different types of fees, including their amounts, whether they are per season, and if they auto-apply.
             </Typography>
           </Box>
 
           {/* Search, Filter, and Sort Section */}
-          <Stack
-            direction={isMobile ? "column" : "row"}
-            spacing={2}
-            mb={3}
-            alignItems={isMobile ? "stretch" : "center"}
-          >
-            <TextField
-              select
-              label="Search By"
-              size="small"
-              value={searchField}
-              onChange={(e) => setSearchField(e.target.value)}
-              sx={{ minWidth: 120, flexShrink: 0 }}
-            >
-              <MenuItem value="name">Name</MenuItem>
-              <MenuItem value="amount">Amount</MenuItem>
-              <MenuItem value="description">Description</MenuItem>
-              <MenuItem value="status">Status</MenuItem>
-            </TextField>
-            <TextField
-              label={`Search ${
-                searchField === "name"
-                  ? "Name"
-                  : searchField === "amount"
-                  ? "Amount"
-                  : searchField === "description"
-                  ? "Description"
-                  : "Status"
-              }`}
-              variant="outlined"
-              size="small"
-              fullWidth={isMobile}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <TextField
-              select
-              label="Status Filter"
-              size="small"
-              fullWidth={isMobile}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              sx={{ minWidth: isMobile ? "100%" : 180 }}
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="inactive">Inactive</MenuItem>
-            </TextField>
-            <Button
-              variant="outlined"
-              size="medium"
-              onClick={handleSort}
-              startIcon={
-                sortOrder === "asc" ? (
-                  <ArrowUpwardIcon />
-                ) : (
-                  <ArrowDownwardIcon />
-                )
-              }
-              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-            >
-              Sort by{" "}
-              {searchField === "name"
-                ? "Name"
-                : searchField === "amount"
-                ? "Amount"
-                : "Status"}{" "}
-              {sortOrder === "asc" ? "(Asc)" : "(Desc)"}
-            </Button>
-          </Stack>
+          <Paper sx={{ mb: 3, p: { xs: 1.5, sm: 2 }, display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 }, borderRadius: '8px', boxShadow: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}>
+              {/* Search Bar */}
+              <TextField
+                variant="outlined"
+                size="small"
+                placeholder="Search fee types..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{
+                  width: { xs: '100%', sm: '300px', md: '350px' },
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '25px',
+                    '& fieldset': { borderColor: '#e0e0e0' },
+                    '&:hover fieldset': { borderColor: '#bdbdbd' },
+                    '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: '2px' },
+                  },
+                  '& .MuiInputBase-input': { padding: '8px 12px' },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: '#757575' }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {/* Filter and Sort Buttons */}
+              <Stack
+                direction={isMobile ? "column" : "row"}
+                spacing={2}
+                alignItems={isMobile ? "stretch" : "center"}
+              >
+                <TextField
+                  select
+                  label="Search By"
+                  size="small"
+                  value={searchField}
+                  onChange={(e) => setSearchField(e.target.value)}
+                  sx={{ minWidth: 120, flexShrink: 0 }}
+                >
+                  <MenuItem value="name">Name</MenuItem>
+                  <MenuItem value="amount">Amount</MenuItem>
+                  <MenuItem value="description">Description</MenuItem>
+                  <MenuItem value="status">Status</MenuItem>
+                </TextField>
+                <TextField
+                  select
+                  label="Status Filter"
+                  size="small"
+                  fullWidth={isMobile}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  sx={{ minWidth: isMobile ? "100%" : 120 }}
+                >
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="inactive">Inactive</MenuItem>
+                </TextField>
+                <TextField
+                  select
+                  label="Per Season Filter"
+                  size="small"
+                  fullWidth={isMobile}
+                  value={isPerSeasonFilter}
+                  onChange={(e) => setIsPerSeasonFilter(e.target.value)}
+                  sx={{ minWidth: isMobile ? "100%" : 120 }}
+                >
+                  <MenuItem value="all">All Types</MenuItem>
+                  <MenuItem value="true">Per Season</MenuItem>
+                  <MenuItem value="false">Not Per Season</MenuItem>
+                </TextField>
+                <Button
+                  variant="outlined"
+                  size="medium"
+                  onClick={handleSort}
+                  startIcon={
+                    sortOrder === "asc" ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />
+                  }
+                  sx={{ minWidth: { xs: "100%", sm: "auto" } }}
+                >
+                  Sort by {searchField === "amount" ? "Amount" : "Name"} {sortOrder === "asc" ? "(Asc)" : "(Desc)"}
+                </Button>
+                {(searchTerm || statusFilter !== 'all' || isPerSeasonFilter !== 'all' || sortOrder !== 'asc' ) && (
+                  <Button
+                    variant="outlined"
+                    onClick={handleClearFilters}
+                    startIcon={<ClearIcon />}
+                    size="small"
+                    sx={{ ml: { xs: 0, md: 'auto' }, mt: { xs: 1, md: 0 } }}
+                  >
+                    Clear Filters
+                  </Button>
+                )}
+              </Stack>
+            </Box>
+          </Paper>
 
           {loading ? (
-            <Box display="flex" justifyContent="center" my={5}>
+            <Box display="flex" justifyContent="center" my={5} sx={{ flexGrow: 1 }}>
               <CircularProgress color="primary" />
             </Box>
           ) : (
-            <>
+            <Box sx={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
               <TableContainer
                 component={Paper}
-                sx={{
-                  boxShadow: 2,
-                  borderRadius: 2,
-                  overflowX: "auto",
-                  flexGrow: 1, // Allows table to take up available height
-                }}
+                sx={{ overflowX: "auto", borderRadius: 2, boxShadow: 2, flexGrow: 1 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 800 }}>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                      <StyledTableHeaderCell sx={{ width: "5%" }}>
-                        ID
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>
-                        Name
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        Amount
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "30%" }}>
-                        Description
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        Status
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        align="center"
-                        sx={{ width: "20%" }}
-                      >
-                        Action
-                      </StyledTableHeaderCell>
+                    <TableRow>
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>ID</StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>Name</StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>Amount</StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "25%" }}>Description</StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>Status</StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>Per Season</StyledTableHeaderCell>
+                      <StyledTableHeaderCell align="center" sx={{ width: "15%" }}>Action</StyledTableHeaderCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {currentRows.length > 0 ? (
                       currentRows.map((feeType, index) => (
-                        <TableRow
-                          hover
-                          key={feeType._id || index}
-                          sx={{
-                            "&:last-child td, &:last-child th": { border: 0 },
-                          }}
-                        >
-                          <StyledTableCell component="th" scope="row">
-                            {indexOfFirstRow + index + 1}
-                          </StyledTableCell>
-                          <StyledTableCell>{feeType.name}</StyledTableCell>
-                          <StyledTableCell>
-                            {formatCurrency(feeType.amount)}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {feeType.description || "N/A"}
-                          </StyledTableCell>
+                        <TableRow hover key={feeType._id}>
+                          <StyledTableCell>{(currentPage - 1) * rowsPerPage + index + 1}</StyledTableCell>
+                          <StyledTableCell>{feeType.name || "N/A"}</StyledTableCell>
+                          <StyledTableCell>{formatCurrency(feeType.amount)}</StyledTableCell>
+                          <StyledTableCell sx={{ whiteSpace: 'normal' }}>{feeType.description || "N/A"}</StyledTableCell>
                           <StyledTableCell>
                             <Chip
-                              label={feeType.status}
+                              label={feeType.status || "N/A"}
                               size="small"
                               color={getStatusColor(feeType.status)}
                             />
                           </StyledTableCell>
+                          <StyledTableCell>{feeType.isPerSeason ? "Yes" : "No"}</StyledTableCell>
                           <StyledTableCell align="center">
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              justifyContent="center"
-                            >
+                            <Stack direction="row" spacing={1} justifyContent="center">
                               <IconButton
                                 aria-label="update"
                                 color="primary"
                                 size="small"
-                                onClick={() => handleUpdateFeeType(feeType)}
+                                onClick={() => handleOpenUpdateModal(feeType)}
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
@@ -478,9 +557,9 @@ function FeeType() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
-                            No fee types found.
+                            No fee types found for this cooperative.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -488,22 +567,22 @@ function FeeType() {
                   </TableBody>
                 </Table>
               </TableContainer>
+            </Box>
+          )}
 
-              {totalPages > 1 && (
-                <Box mt={3} display="flex" justifyContent="center">
-                  <Pagination
-                    count={totalPages}
-                    page={currentPage}
-                    onChange={handlePageChange}
-                    color="primary"
-                    showFirstButton
-                    showLastButton
-                    siblingCount={isMobile ? 0 : 1}
-                    boundaryCount={isMobile ? 0 : 1}
-                  />
-                </Box>
-              )}
-            </>
+          {totalPages > 1 && (
+            <Box mt={3} display="flex" justifyContent="center" sx={{ flexShrink: 0 }}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                showFirstButton
+                showLastButton
+                siblingCount={isMobile ? 0 : 1}
+                boundaryCount={isMobile ? 0 : 1}
+              />
+            </Box>
           )}
         </CardContent>
       </Card>
@@ -516,8 +595,8 @@ function FeeType() {
       <UpdateFeeTypeModal
         show={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleFeeTypeUpdated}
-        feeTypeToEdit={feeTypeToEdit}
+        onSubmit={handleUpdateFeeType}
+        initialData={selectedFeeType}
       />
 
       <ToastContainer
@@ -535,4 +614,4 @@ function FeeType() {
   );
 }
 
-export default FeeType;
+export default FeeTypeManagement;

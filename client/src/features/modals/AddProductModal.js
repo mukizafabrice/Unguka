@@ -1,94 +1,99 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Button,
+  Box,
+  Typography,
+} from "@mui/material"; // ⭐ Imported Material-UI components
 
 function AddProductModal({ show, onClose, onSubmit }) {
   const [productName, setProductName] = useState("");
 
-  useEffect(() => {
-    if (show) {
-      document.body.classList.add("modal-open");
-    } else {
-      document.body.classList.remove("modal-open");
-    }
-    return () => {
-      document.body.classList.remove("modal-open");
-    };
-  }, [show]);
+  // ⭐ No longer manipulating document.body classes with Material-UI Dialog
+  // useEffect(() => {
+  //   if (show) {
+  //     document.body.classList.add("modal-open");
+  //   } else {
+  //     document.body.classList.remove("modal-open");
+  //   }
+  //   return () => {
+  //     document.body.classList.remove("modal-open");
+  //   };
+  // }, [show]);
 
   useEffect(() => {
+    // Reset product name when modal is shown
     if (show) {
       setProductName("");
     }
   }, [show]);
 
-  if (!show) return null;
-
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!productName) {
-      toast.error("Please fill in all required fields.");
+    if (!productName.trim()) {
+      // ⭐ Added .trim() for better validation
+      toast.error("Product Name is required.");
       return;
     }
 
     onSubmit({ productName });
-
-    setProductName("");
+    // Note: setProductName('') is typically handled by parent component
+    // after successful submission and modal close, but can be here too.
+    // For now, it remains as per original logic.
+    setProductName(""); // Reset input after submission attempt
   };
 
+  // ⭐ Replaced plain HTML modal structure with Material-UI Dialog
   return (
-    <>
-      <div className="modal-backdrop fade show"></div>
-      <div
-        className="modal d-block fade show"
-        tabIndex="-1"
-        role="dialog"
-        style={{ display: "block", paddingRight: "17px" }}
-      >
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title text-dark">Add New Product</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-                aria-label="Close"
-              ></button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label htmlFor="productName" className="form-label text-dark">
-                    Product Name
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="productName"
-                    value={productName}
-                    onChange={(e) => setProductName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Product
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </>
+    <Dialog
+      open={show}
+      onClose={onClose}
+      aria-labelledby="add-product-dialog-title"
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle id="add-product-dialog-title">
+        <Typography variant="h6" component="span">
+          Add New Product
+        </Typography>
+      </DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers>
+          {" "}
+          {/* Added dividers for visual separation */}
+          <Box mb={2}>
+            {" "}
+            {/* Added Box for spacing */}
+            <TextField
+              autoFocus // Focus on this field when modal opens
+              margin="dense"
+              id="productName"
+              label="Product Name"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              required // HTML5 required attribute
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="secondary" variant="outlined">
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" color="primary">
+            Save Product
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }
 

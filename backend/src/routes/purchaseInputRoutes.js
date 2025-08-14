@@ -1,3 +1,4 @@
+// src/routes/purchaseInputRoutes.js
 import express from "express";
 import {
   createPurchaseInput,
@@ -7,12 +8,49 @@ import {
   deletePurchaseInput,
 } from "../controllers/purchaseInputController.js";
 
+import { protect } from "../middleware/authMiddleware.js";
+import { authorizeRoles } from "../middleware/roleMiddleware.js";
+import { checkCooperativeAccess } from "../middleware/coopAccessMiddleware.js";
+
 const router = express.Router();
 
-router.post("/", createPurchaseInput);
-router.get("/", getAllPurchaseInputs);
-router.get("/:id", getPurchaseInputById);
-router.put("/:id", updatePurchaseInput);
-router.delete("/:id", deletePurchaseInput);
+router.post(
+  "/register",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  checkCooperativeAccess("body"),
+  createPurchaseInput
+);
+
+router.get(
+  "/",
+  protect,
+  authorizeRoles(["superadmin", "manager", "member"]),
+  getAllPurchaseInputs
+);
+
+router.get(
+  "/:id",
+  protect,
+  authorizeRoles(["superadmin", "manager", "member"]),
+  checkCooperativeAccess("query"),
+  getPurchaseInputById
+);
+
+router.put(
+  "/:id",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  checkCooperativeAccess("body"),
+  updatePurchaseInput
+);
+
+router.delete(
+  "/:id",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  checkCooperativeAccess("body"),
+  deletePurchaseInput
+);
 
 export default router;

@@ -1,22 +1,74 @@
-import axiosInstance from "../api/axiosInstance";
+import axiosInstance from "../api/axiosInstance"; // Ensure this path is correct
 
-export const fetchProduct = async () => {
-  const response = await axiosInstance.get("/products");
-  return response.data;
+const API_URL = "/products"; // Base URL for product endpoints
+
+// Helper to handle successful API responses consistently
+const handleResponse = (response) => {
+  return {
+    success: true,
+    data: response.data,
+    message: response.data.message || "Operation successful",
+  };
 };
 
+// Helper to handle API errors consistently
+const handleError = (
+  error,
+  defaultMessage = "An unexpected error occurred."
+) => {
+  console.error("Product service call failed:", error);
+  return {
+    success: false,
+    message: error.response?.data?.message || defaultMessage,
+    statusCode: error.response?.status,
+  };
+};
+
+// --- Product Management Functions ---
+
+// Get all products
+// Can accept a cooperativeId to filter products specific to a cooperative
+export const fetchProducts = async (cooperativeId = null) => {
+  try {
+    const params = cooperativeId ? { params: { cooperativeId } } : {};
+    const response = await axiosInstance.get(API_URL, params);
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, "Failed to fetch products.");
+  }
+};
+
+// Create a new product
 export const createProduct = async (productData) => {
-  const response = await axiosInstance.post("/products", productData);
-  return response.data;
-};
-export const updateProduct = async (id, data) => {
-  const response = await axiosInstance.put(`/products/${id}`, data);
-  return response.data;
-};
-
-export const deleteProduct = async (id) => {
-  const response = await axiosInstance.delete(`/products/${id}`);
-  return response.data;
+  try {
+    const response = await axiosInstance.post(API_URL, productData);
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, "Failed to create product.");
+  }
 };
 
-//
+// Update a product by ID
+export const updateProduct = async (id, productData) => {
+  try {
+    const response = await axiosInstance.put(`${API_URL}/${id}`, productData);
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, "Failed to update product.");
+  }
+};
+
+// Delete a product by ID
+export const deleteProduct = async (id, cooperativeId) => {
+  // cooperativeId needed for backend check
+  try {
+    // For DELETE, if your backend requires cooperativeId in body, pass it
+    // If your backend expects it as query param for delete, adjust here.
+    const response = await axiosInstance.delete(`${API_URL}/${id}`, {
+      data: { cooperativeId },
+    });
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, "Failed to delete product.");
+  }
+};

@@ -1,25 +1,42 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  MenuItem,
+  Typography,
+  Box,
+  IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
-function UpdateFeeModal({ show, onClose, onSubmit, feeToEdit }) {
+function UpdateFeeModal({
+  show,
+  onClose,
+  onSubmit,
+  feeToEdit,
+  users,
+  seasons,
+  feeTypes,
+  cooperatives,
+}) {
   const [formData, setFormData] = useState({
     _id: "",
     amountOwed: "",
     amountPaid: "",
     status: "",
+    // Add cooperativeId here for consistency, though it's disabled for editing
+    cooperativeId: "",
   });
 
-  useEffect(() => {
-    if (show) {
-      document.body.classList.add("modal-open");
-    } else {
-      document.body.classList.remove("modal-open");
-    }
-    return () => {
-      document.body.classList.remove("modal-open");
-    };
-  }, [show]);
-
+  // Populate form data when modal is shown or feeToEdit changes
   useEffect(() => {
     if (show && feeToEdit) {
       setFormData({
@@ -27,10 +44,12 @@ function UpdateFeeModal({ show, onClose, onSubmit, feeToEdit }) {
         amountOwed: feeToEdit.amountOwed,
         amountPaid: feeToEdit.amountPaid,
         status: feeToEdit.status,
+        cooperativeId: feeToEdit.cooperativeId?._id || feeToEdit.cooperativeId, // Ensure we get the ID
       });
     }
   }, [show, feeToEdit]);
 
+  // If the modal is not visible or there's no fee to edit, don't render
   if (!show || !feeToEdit) return null;
 
   const handleChange = (e) => {
@@ -57,122 +76,154 @@ function UpdateFeeModal({ show, onClose, onSubmit, feeToEdit }) {
       amountOwed: Number(formData.amountOwed),
       amountPaid: Number(formData.amountPaid),
       status: formData.status,
+      // Pass the cooperativeId back, even though it's not editable, for the update service
+      cooperativeId: formData.cooperativeId,
     });
   };
 
+  // Helper to get names from IDs
+  const getUserName = (userId) => {
+    const user = users.find((u) => u._id === userId);
+    return user ? user.names : "N/A";
+  };
+
+  const getSeasonName = (seasonId) => {
+    const season = seasons.find((s) => s._id === seasonId);
+    return season ? `${season.name} (${season.year})` : "N/A";
+  };
+
+  const getFeeTypeName = (feeTypeId) => {
+    const feeType = feeTypes.find((ft) => ft._id === feeTypeId);
+    return feeType ? feeType.name : "N/A";
+  };
+
+  const getCooperativeName = (cooperativeId) => {
+    const cooperative = cooperatives.find((c) => c._id === cooperativeId);
+    return cooperative ? cooperative.name : "N/A";
+  };
+
   return (
-    <>
-      <div className="modal-backdrop fade show"></div>
-      <div
-        className="modal d-block fade show"
-        tabIndex="-1"
-        role="dialog"
-        style={{ display: "block", paddingRight: "17px" }}
+    <Dialog open={show} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
       >
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title text-dark">Update Fee Record</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-                aria-label="Close"
-              ></button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label text-dark">User:</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={feeToEdit.userId?.name || "N/A"}
-                    disabled
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label text-dark">Season:</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={feeToEdit.seasonId?.name || "N/A"}
-                    disabled
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label text-dark">Fee Type:</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={feeToEdit.feeTypeId?.name || "N/A"}
-                    disabled
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="amountOwed" className="form-label text-dark">
-                    Amount Owed
-                  </label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="amountOwed"
-                    name="amountOwed"
-                    value={formData.amountOwed}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="amountPaid" className="form-label text-dark">
-                    Amount Paid
-                  </label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="amountPaid"
-                    name="amountPaid"
-                    value={formData.amountPaid}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="status" className="form-label text-dark">
-                    Status
-                  </label>
-                  <select
-                    className="form-select"
-                    id="status"
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                  >
-                    <option value="paid">Paid</option>
-                    <option value="partial">Partial</option>
-                    <option value="unpaid">Unpaid</option>
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </>
+        <Typography variant="h6" component="div">
+          Update Fee Record
+        </Typography>
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            color: (theme) => theme.palette.grey[500],
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Box
+          component="form"
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          {/* Display Cooperative Name (Disabled) */}
+          <TextField
+            label="Cooperative"
+            value={getCooperativeName(
+              feeToEdit.cooperativeId?._id || feeToEdit.cooperativeId
+            )}
+            fullWidth
+            disabled
+            variant="outlined"
+          />
+
+          {/* Display User Name (Disabled) */}
+          <TextField
+            label="User"
+            value={getUserName(feeToEdit.userId?._id || feeToEdit.userId)}
+            fullWidth
+            disabled
+            variant="outlined"
+          />
+
+          {/* Display Season Name (Disabled) */}
+          <TextField
+            label="Season"
+            value={getSeasonName(feeToEdit.seasonId?._id || feeToEdit.seasonId)}
+            fullWidth
+            disabled
+            variant="outlined"
+          />
+
+          {/* Display Fee Type Name (Disabled) */}
+          <TextField
+            label="Fee Type"
+            value={getFeeTypeName(
+              feeToEdit.feeTypeId?._id || feeToEdit.feeTypeId
+            )}
+            fullWidth
+            disabled
+            variant="outlined"
+          />
+
+          {/* Amount Owed Input */}
+          <TextField
+            label="Amount Owed"
+            type="number"
+            id="amountOwed"
+            name="amountOwed"
+            value={formData.amountOwed}
+            onChange={handleChange}
+            fullWidth
+            required
+            inputProps={{ min: "0", step: "0.01" }}
+            variant="outlined"
+          />
+
+          {/* Amount Paid Input */}
+          <TextField
+            label="Amount Paid"
+            type="number"
+            id="amountPaid"
+            name="amountPaid"
+            value={formData.amountPaid}
+            onChange={handleChange}
+            fullWidth
+            required
+            inputProps={{ min: "0", step: "0.01" }}
+            variant="outlined"
+          />
+
+          {/* Status Selection */}
+          <FormControl fullWidth required variant="outlined">
+            <InputLabel id="status-label">Status</InputLabel>
+            <Select
+              labelId="status-label"
+              id="status"
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              label="Status"
+            >
+              <MenuItem value="Paid">Paid</MenuItem>
+              <MenuItem value="Partially Paid">Partially Paid</MenuItem>
+              <MenuItem value="Pending">Pending</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ p: 2 }}>
+        <Button onClick={onClose} variant="outlined" color="secondary">
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit} variant="contained" color="primary">
+          Save Changes
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

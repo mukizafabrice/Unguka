@@ -52,7 +52,7 @@ function SuperNav({ isHide }) {
 
         <li>
           <NavLink
-            to="/superadmin/dashboard/analytics"
+            to="/super/dashboard/analytics"
             className={({ isActive }) =>
               `sidebar-link ${isActive ? "active" : ""}`
             }

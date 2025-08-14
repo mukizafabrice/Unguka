@@ -1,180 +1,241 @@
 import React, { useEffect, useState } from "react";
-import { fetchUsers } from "../../services/userService"; // Assuming you have this service
-import { fetchProduct } from "../../services/productService"; // Assuming you have this service
+import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Button,
+  Box,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress, // For loading states in dropdowns
+  Alert, // For displaying load errors
+} from "@mui/material"; // ⭐ Imported Material-UI components
 
-const AddPlotModal = ({ show, onClose, onSave }) => {
+// ⭐ Import from updated service files
+import { fetchUsers } from "../../services/userService"; // Now expected to be a named export
+import { fetchProducts } from "../../services/productService"; // Corrected to fetchProducts (plural)
+
+// Pass cooperativeId as a prop to correctly filter members and products
+const AddPlotModal = ({ show, onClose, onSave, cooperativeId }) => {
   const [users, setUsers] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState([]); // Will still fetch, but not used in UI
+
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false); // For product dropdown
+  const [dataLoadError, setDataLoadError] = useState(null);
 
   const [formData, setFormData] = useState({
     userId: "",
-    productId: "",
-    area: "",
+    // productId: "", // ⭐ REMOVED productId as per Plot model update
+    size: "", // ⭐ CHANGED area to size as per Plot model update
     upi: "",
   });
 
+  // Fetch dropdown data (users and products)
   useEffect(() => {
-    const loadData = async () => {
+    const loadDropdownData = async () => {
+      if (!cooperativeId) {
+        setDataLoadError("Cooperative ID is missing, cannot load members.");
+        setLoadingUsers(false);
+        setLoadingProducts(false);
+        return;
+      }
+      setLoadingUsers(true);
+      setLoadingProducts(true);
+      setDataLoadError(null); // Reset error on new load attempt
+
       try {
-        const [usersData, productsData] = await Promise.all([
-          fetchUsers(),
-          fetchProduct(),
-        ]);
-        setUsers(usersData);
-        setProducts(productsData);
+        // Fetch all users and then filter by cooperativeId and role 'member'
+        const usersResponse = await fetchUsers(); // This fetches all users
+        if (usersResponse.success && Array.isArray(usersResponse.data.data)) {
+          // Adjust based on your userService response structure
+          // Filter users by cooperativeId and role "member" to show relevant members
+          const filteredMembers = usersResponse.data.data.filter(
+            (user) =>
+              String(user.cooperativeId) === String(cooperativeId) &&
+              user.role === "member"
+          );
+          setUsers(filteredMembers);
+        } else {
+          setDataLoadError(usersResponse.message || "Failed to load members.");
+        }
       } catch (err) {
-        console.error("Failed to load dropdown data for add plot modal:", err);
+        console.error("Failed to load users for add plot modal:", err);
+        setDataLoadError("Failed to load members for dropdown.");
+      } finally {
+        setLoadingUsers(false);
+      }
+
+      // Products are no longer directly associated with a plot,
+      // but if you have other uses for them, you can keep fetching.
+      // For this modal, the dropdown for products is removed.
+      try {
+        const productsResponse = await fetchProducts(cooperativeId);
+        if (productsResponse.success && Array.isArray(productsResponse.data)) {
+          setProducts(productsResponse.data); // Store products if needed elsewhere
+        } else {
+          // You might not need to show an error for products if the dropdown is gone
+          console.warn(
+            "Failed to load products for add plot modal:",
+            productsResponse.message
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Failed to load products for add plot modal (catch block):",
+          err
+        );
+      } finally {
+        setLoadingProducts(false);
       }
     };
 
     if (show) {
-      loadData();
+      loadDropdownData();
       // Reset form data when modal opens
       setFormData({
         userId: "",
-        productId: "",
-        area: "",
+        size: "",
         upi: "",
       });
-      document.body.classList.add("modal-open");
-    } else {
-      document.body.classList.remove("modal-open");
     }
-    return () => {
-      document.body.classList.remove("modal-open");
-    };
-  }, [show]);
+  }, [show, cooperativeId]); // Depend on show and cooperativeId
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+
+    // ⭐ Basic form validation
+    if (
+      !formData.userId ||
+      !String(formData.size).trim() ||
+      !formData.upi.trim()
+    ) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+    // Ensure size is a valid positive number
+    const parsedSize = parseFloat(formData.size);
+    if (isNaN(parsedSize) || parsedSize <= 0) {
+      toast.error("Size must be a positive number.");
+      return;
+    }
+
+    onSave(formData); // Pass data to parent component
+    // onClose() is typically called by the parent after onSubmit confirms success.
+    // For this example, we keep it here for immediate modal closure.
     onClose();
   };
 
-  if (!show) {
-    return null;
-  }
-
+  // ⭐ Replaced plain HTML modal structure with Material-UI Dialog
   return (
-    <>
-      <div className="modal-backdrop fade show"></div>
-      <div
-        className="modal fade show"
-        tabIndex="-1"
-        role="dialog"
-        aria-labelledby="addPlotModalLabel"
-        aria-hidden="false"
-        style={{ display: "block", paddingRight: "17px" }}
-      >
-        <div className="modal-dialog modal-dialog-centered" role="document">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title text-dark" id="addPlotModalLabel">
-                Add New Plot
-              </h5>
-              <button
-                type="button"
-                className="btn-close"
-                aria-label="Close"
-                onClick={onClose}
-              ></button>
-            </div>
-            <div className="modal-body">
-              <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="userId" className="form-label text-dark">
-                    User (Member)
-                  </label>
-                  <select
-                    id="userId"
-                    name="userId"
-                    className="form-select"
-                    value={formData.userId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select User</option>
-                    {users.map((user) => (
-                      <option key={user._id} value={user._id}>
-                        {user.names}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+    <Dialog
+      open={show}
+      onClose={onClose}
+      aria-labelledby="add-plot-dialog-title"
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle id="add-plot-dialog-title">
+        <Typography variant="h6" component="span">
+          Add New Plot
+        </Typography>
+      </DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers>
+          {dataLoadError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {dataLoadError}
+            </Alert>
+          )}
 
-                <div className="mb-3">
-                  <label htmlFor="productId" className="form-label text-dark">
-                    Product
-                  </label>
-                  <select
-                    id="productId"
-                    name="productId"
-                    className="form-select"
-                    value={formData.productId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Product</option>
-                    {products.map((product) => (
-                      <option key={product._id} value={product._id}>
-                        {product.productName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          {/* User (Member) Dropdown */}
+          <FormControl fullWidth margin="dense" sx={{ mb: 2 }} required>
+            <InputLabel id="user-select-label">User (Member)</InputLabel>
+            <Select
+              labelId="user-select-label"
+              id="userId"
+              name="userId"
+              value={formData.userId}
+              label="User (Member)"
+              onChange={handleChange}
+              disabled={loadingUsers || dataLoadError} // Disable while loading or on error
+            >
+              {loadingUsers ? (
+                <MenuItem disabled>
+                  <CircularProgress size={20} sx={{ mr: 1 }} /> Loading
+                  members...
+                </MenuItem>
+              ) : users.length > 0 ? (
+                [
+                  <MenuItem key="select-user-placeholder" value="">
+                    Select User
+                  </MenuItem>,
+                  ...users.map((user) => (
+                    <MenuItem key={user._id} value={user._id}>
+                      {user.names}
+                    </MenuItem>
+                  )),
+                ]
+              ) : (
+                <MenuItem disabled>
+                  No members found for this cooperative.
+                </MenuItem>
+              )}
+            </Select>
+          </FormControl>
 
-                <div className="mb-3">
-                  <label htmlFor="area" className="form-label text-dark">
-                    Area (e.g., in sq. meters)
-                  </label>
-                  <input
-                    type="number"
-                    id="area"
-                    className="form-control"
-                    name="area"
-                    value={formData.area}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
+          {/* ⭐ REMOVED Product Dropdown as productId is removed from Plot model */}
+          {/* Size Input Field (formerly Area) */}
+          <TextField
+            autoFocus // Focus on this field when modal opens
+            margin="dense"
+            id="size" // ⭐ CHANGED id from area to size
+            label="Size (e.g., in sq. meters)"
+            type="number"
+            fullWidth
+            variant="outlined"
+            name="size" // ⭐ CHANGED name from area to size
+            value={formData.size}
+            onChange={handleChange}
+            required
+            inputProps={{ min: "0.01", step: "0.01" }} // Ensure positive decimal values
+            sx={{ mb: 2 }}
+          />
 
-                <div className="mb-3">
-                  <label htmlFor="upi" className="form-label text-dark">
-                    UPI (Unique Plot Identifier)
-                  </label>
-                  <input
-                    type="text"
-                    id="upi"
-                    className="form-control"
-                    name="upi"
-                    value={formData.upi}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="modal-footer px-0 pb-0">
-                  {" "}
-                  {/* Adjusted padding for footer */}
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={onClose}
-                  >
-                    Close
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Save Plot
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+          {/* UPI Input Field */}
+          <TextField
+            margin="dense"
+            id="upi"
+            label="UPI (Unique Plot Identifier)"
+            type="text"
+            fullWidth
+            variant="outlined"
+            name="upi"
+            value={formData.upi}
+            onChange={handleChange}
+            required
+            sx={{ mb: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="secondary" variant="outlined">
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" color="primary">
+            Save Plot
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

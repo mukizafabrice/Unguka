@@ -2,11 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// ⭐ NEW: Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
 import {
   fetchSeasons,
-  createSeasons,
-  updateSeasons,
-  deleteSeasons,
+  createSeason, // ⭐ Corrected from createSeasons (singular)
+  updateSeason, // ⭐ Corrected from updateSeasons (singular)
+  deleteSeason, // ⭐ Corrected from deleteSeasons (singular)
 } from "../../services/seasonService";
 
 import {
@@ -68,7 +71,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "transparent",
+  backgroundColor: "#f5f5f5", // ⭐ Set background color for header cells
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -86,70 +89,94 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// Helper function for status chip color (assuming season status like 'active' or 'closed')
+// Helper function for status chip color (assuming season status like 'active' or 'inactive')
 const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
     case "active":
       return "success";
-    case "closed": // Or 'inactive', 'archived' depending on your backend data
+    case "inactive": // ⭐ Changed from 'closed' to 'inactive' to match model enum
       return "error";
-    case "pending": // If there's a pending status
-      return "info";
-    default:
+    default: // For any other status, or 'pending' if applicable
       return "default";
   }
 };
 
 function Season() {
+  // ⭐ Get user and cooperativeId from AuthContext
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+
   const [seasons, setSeasons] = useState([]);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Consistent rows per page
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("name"); // Default search field
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter by season status
-  const [sortOrder, setSortOrder] = useState("asc"); // Default sort by name ascending
+  const [searchField, setSearchField] = useState("name");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to load seasons data from the backend
+  // Function to load seasons data from the backend, filtered by cooperativeId
   const loadSeasons = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is not available. Cannot load seasons.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const seasonsData = await fetchSeasons();
-      setSeasons(seasonsData || []); // Ensure data is an array
+      // ⭐ Pass cooperativeId to fetchSeasons
+      const response = await fetchSeasons(cooperativeId);
+      if (response.success && Array.isArray(response.data)) {
+        setSeasons(response.data);
+      } else {
+        console.error("Failed to fetch seasons:", response.message);
+        toast.error(response.message || "Failed to load seasons.");
+        setSeasons([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch seasons:", error);
-      toast.error("Failed to load seasons.");
-      setSeasons([]); // Reset seasons on error
+      console.error("Failed to fetch seasons (catch block):", error);
+      toast.error("An unexpected error occurred while loading seasons.");
+      setSeasons([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]); // Depend on cooperativeId
 
   useEffect(() => {
-    loadSeasons();
-  }, [loadSeasons]);
+    if (cooperativeId) {
+      // Only load if cooperativeId is available
+      loadSeasons();
+    }
+  }, [cooperativeId, loadSeasons]);
 
   // Handler for adding a new season
   const handleAddSeason = async (newSeasonData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot add season.");
+      return;
+    }
     try {
-      await createSeasons(newSeasonData);
-      toast.success("Season added successfully!");
-      await loadSeasons(); // Re-fetch all seasons to refresh the list
-      setShowAddModal(false);
+      // ⭐ Add cooperativeId to the data before sending
+      const dataToSend = { ...newSeasonData, cooperativeId };
+      const response = await createSeason(dataToSend); // ⭐ Corrected service call
+      if (response.success) {
+        toast.success(response.message || "Season added successfully!");
+        setShowAddModal(false);
+        await loadSeasons();
+      } else {
+        toast.error(response.message || "Failed to add season.");
+      }
     } catch (error) {
       console.error("Failed to add season:", error);
-      toast.error(
-        `Failed to add season: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      toast.error("An unexpected error occurred while adding season.");
     }
   };
 
@@ -160,35 +187,53 @@ function Season() {
 
   // Handler for updating a season
   const handleUpdateSeason = async (seasonId, updatedSeasonData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot update season.");
+      return;
+    }
     try {
-      await updateSeasons(seasonId, updatedSeasonData);
-      toast.success("Season updated successfully!");
-      await loadSeasons();
-      setShowUpdateModal(false);
-      setSelectedSeason(null); // Clear selected season after update
+      // ⭐ Add cooperativeId to the data before sending
+      const dataToSend = { ...updatedSeasonData, cooperativeId };
+      const response = await updateSeason(seasonId, dataToSend); // ⭐ Corrected service call
+      if (response.success) {
+        toast.success(response.message || "Season updated successfully!");
+        setShowUpdateModal(false);
+        setSelectedSeason(null);
+        await loadSeasons();
+      } else {
+        toast.error(response.message || "Failed to update season.");
+      }
     } catch (error) {
       console.error("Failed to update season:", error);
-      toast.error(
-        `Failed to update season: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      toast.error("An unexpected error occurred while updating season.");
     }
   };
 
   // Handler for deleting a season
   const handleDeleteSeason = async (id) => {
-    try {
-      await deleteSeasons(id);
-      toast.success("Season deleted successfully!");
-      await loadSeasons();
-    } catch (error) {
-      console.error("Failed to delete season:", error);
-      toast.error(
-        `Failed to delete season: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot delete season.");
+      return;
+    }
+    // ⭐ Use a confirmation dialog instead of window.confirm for consistency
+    if (
+      window.confirm(
+        "Are you sure you want to delete this season? This action cannot be undone."
+      )
+    ) {
+      try {
+        // ⭐ Pass cooperativeId to deleteSeason for backend authorization
+        const response = await deleteSeason(id, cooperativeId); // ⭐ Corrected service call
+        if (response.success) {
+          toast.success(response.message || "Season deleted successfully!");
+          await loadSeasons();
+        } else {
+          toast.error(response.message || "Failed to delete season.");
+        }
+      } catch (error) {
+        console.error("Failed to delete season:", error);
+        toast.error("An unexpected error occurred while deleting season.");
+      }
     }
   };
 
@@ -289,7 +334,7 @@ function Season() {
           <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
               Manage and track different agricultural seasons, including their
-              names, years, and statuses.
+              names, years, and statuses for your cooperative.
             </Typography>
           </Box>
 
@@ -345,9 +390,8 @@ function Season() {
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="closed">Closed</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>{" "}
-              {/* Example status */}
+              <MenuItem value="inactive">Inactive</MenuItem>{" "}
+              {/* ⭐ Changed from 'closed' to 'inactive' */}
             </TextField>
             <Button
               variant="outlined"
@@ -385,8 +429,6 @@ function Season() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
@@ -398,7 +440,7 @@ function Season() {
               >
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
@@ -507,18 +549,20 @@ function Season() {
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddSeason}
+        cooperativeId={cooperativeId} // ⭐ Pass cooperativeId to AddSeasonModal
       />
 
       {/* Update Season Modal Component */}
       <UpdateSeasonModal
         show={showUpdateModal}
-        season={selectedSeason} // Prop name 'season' passed to the modal
+        season={selectedSeason}
         onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdateSeason} // Handler for saving updates from the modal
+        onSubmit={handleUpdateSeason}
+        cooperativeId={cooperativeId} // ⭐ Pass cooperativeId to UpdateSeasonModal
       />
 
-      {/* ToastContainer for displaying success/error notifications */}
-      <ToastContainer
+      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
+      {/* <ToastContainer
         position="bottom-right"
         autoClose={3000}
         hideProgressBar={false}
@@ -528,7 +572,7 @@ function Season() {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-      />
+      /> */}
     </Box>
   );
 }

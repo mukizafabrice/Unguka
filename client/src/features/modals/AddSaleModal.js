@@ -1,8 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { fetchStock } from "../../services/stockService";
+import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Button,
+  Box,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
+  Alert,
+  Grid // Added Grid for responsive layout
+} from "@mui/material";
+
+// ⭐ NEW: Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
+// ⭐ CORRECTED: Import fetchStocks (plural) and fetchSeasons
+import { fetchStocks } from "../../services/stockService";
 import { fetchSeasons } from "../../services/seasonService";
 
-const AddSaleModal = ({ show, onClose, onSubmit }) => {
+const AddSaleModal = ({ show, onClose, onSubmit, cooperativeId }) => { // ⭐ Pass cooperativeId prop
   const [formData, setFormData] = useState({
     stockId: "",
     seasonId: "",
@@ -17,11 +40,10 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
   const [stocks, setStocks] = useState([]);
   const [seasons, setSeasons] = useState([]);
 
-  const [loadingStocks, setLoadingStocks] = useState(false); // Renamed from loadingProducts for clarity
+  const [loadingStocks, setLoadingStocks] = useState(false);
   const [loadingSeasons, setLoadingSeasons] = useState(false);
 
-  // Error states for data fetching
-  const [stocksError, setStocksError] = useState(null); // Renamed from productsError for clarity
+  const [stocksError, setStocksError] = useState(null);
   const [seasonsError, setSeasonsError] = useState(null);
   const [totalAmount, setTotalAmount] = useState(0);
 
@@ -32,83 +54,75 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
     setTotalAmount(quantity * unitPrice);
   }, [formData.quantity, formData.unitPrice]);
 
-  // Effect to manage body class for scroll prevention
-  useEffect(() => {
-    if (show) {
-      document.body.classList.add("modal-open");
-    } else {
-      document.body.classList.remove("modal-open");
-    }
-    // Cleanup function for when component unmounts or show changes
-    return () => {
-      document.body.classList.remove("modal-open");
-    };
-  }, [show]);
+  // ⭐ Removed useEffect for body class manipulation. Material-UI Dialog handles this.
 
-  // Fetch stocks for dropdown
+  // Fetch stocks and seasons for dropdowns, scoped by cooperativeId
   useEffect(() => {
-    if (show) {
-      // Only fetch when modal is shown
-      const getStocks = async () => {
-        setLoadingStocks(true);
-        setStocksError(null);
-        try {
-          const response = await fetchStock();
-          if (response && Array.isArray(response.data || response)) {
-            setStocks(response.data || response);
-          } else {
-            console.warn(
-              "Stock data is not an array or missing 'data' property:",
-              response
-            );
-            setStocks([]);
-            setStocksError("Stock data format incorrect or empty.");
-          }
-        } catch (error) {
-          console.error("Failed to fetch stocks for modal:", error);
-          setStocksError(
-            "Failed to load products from stock. Please check your connection."
+    if (!show || !cooperativeId) { // Only fetch when modal is shown AND cooperativeId is available
+      setLoadingStocks(false);
+      setLoadingSeasons(false);
+      return;
+    }
+
+    const getStocks = async () => {
+      setLoadingStocks(true);
+      setStocksError(null);
+      try {
+        // ⭐ Pass cooperativeId to fetchStocks
+        const response = await fetchStocks(cooperativeId);
+        if (response.success && Array.isArray(response.data)) { // Check success and if data is array
+          setStocks(response.data);
+        } else {
+          console.warn(
+            "Stock data is not an array or missing 'data' property:",
+            response
           );
           setStocks([]);
-        } finally {
-          setLoadingStocks(false);
+          setStocksError(response.message || "Stock data format incorrect or empty.");
         }
-      };
-      getStocks();
-    }
-  }, [show]);
+      } catch (error) {
+        console.error("Failed to fetch stocks for modal:", error);
+        setStocksError(
+          "Failed to load products from stock. Please check your connection."
+        );
+        setStocks([]);
+      } finally {
+        setLoadingStocks(false);
+      }
+    };
 
-  useEffect(() => {
-    if (show) {
-      const getSeasons = async () => {
-        setLoadingSeasons(true);
-        setSeasonsError(null);
-        try {
-          const response = await fetchSeasons();
-          if (response && Array.isArray(response.data || response)) {
-            setSeasons(response.data || response);
-          } else {
-            console.warn(
-              "Season data is not an array or missing 'data' property:",
-              response
-            );
-            setSeasons([]);
-            setSeasonsError("Season data format incorrect or empty.");
-          }
-        } catch (error) {
-          console.error("Failed to fetch seasons for modal:", error);
-          setSeasonsError(
-            "Failed to load seasons. Please check your connection."
+    const getSeasons = async () => {
+      setLoadingSeasons(true);
+      setSeasonsError(null);
+      try {
+        // ⭐ Pass cooperativeId to fetchSeasons
+        const response = await fetchSeasons(cooperativeId);
+        if (response.success && Array.isArray(response.data)) { // Check success and if data is array
+          setSeasons(response.data);
+        } else {
+          console.warn(
+            "Season data is not an array or missing 'data' property:",
+            response
           );
           setSeasons([]);
-        } finally {
-          setLoadingSeasons(false);
+          setSeasonsError(response.message || "Season data format incorrect or empty.");
         }
-      };
-      getSeasons();
-    }
-  }, [show]);
+      } catch (error) {
+        console.error("Failed to fetch seasons for modal:", error);
+        setSeasonsError(
+          "Failed to load seasons. Please check your connection."
+        );
+        setSeasons([]);
+      } finally {
+        setLoadingSeasons(false);
+      }
+    };
 
+    getStocks();
+    getSeasons();
+  }, [show, cooperativeId]); // Depend on show and cooperativeId
+
+  // Reset form data when modal is shown
   useEffect(() => {
     if (show) {
       setFormData({
@@ -126,7 +140,6 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
     }
   }, [show]);
 
-  if (!show) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -135,265 +148,264 @@ const AddSaleModal = ({ show, onClose, onSubmit }) => {
       [name]: value,
     }));
   };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
       currency: "RWF",
     }).format(amount);
   };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Basic validation
+    if (!formData.stockId || !formData.seasonId || !formData.quantity || !formData.unitPrice || !formData.buyer || !formData.phoneNumber) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+    if (parseFloat(formData.quantity) <= 0) {
+      toast.error("Quantity must be a positive number.");
+      return;
+    }
+    if (parseFloat(formData.unitPrice) <= 0) {
+      toast.error("Unit Price must be a positive number.");
+      return;
+    }
 
     const dataToSubmit = {
       ...formData,
       quantity: Number(formData.quantity),
+      unitPrice: Number(formData.unitPrice),
+      totalPrice: totalAmount, // ⭐ Include totalPrice in submission
     };
-    onSubmit(dataToSubmit);
+    onSubmit(dataToSubmit); // Parent component will handle cooperativeId
+    // onClose(); // Let parent handle closing after successful submission via toast logic
   };
 
   return (
-    <>
-      <div className="modal-backdrop fade show"></div>
-      <div
-        className="modal fade show d-block"
-        tabIndex="-1"
-        role="dialog"
-        aria-labelledby="addSaleModalLabel"
-        aria-hidden="false"
-        style={{ display: "block", paddingRight: "17px" }}
-      >
-        <div
-          className="modal-dialog modal-lg modal-dialog-centered"
-          role="document"
-        >
-          <div className="modal-content">
-            <form onSubmit={handleSubmit}>
-              <div className="modal-header">
-                <h5 className="modal-title text-dark" id="addSaleModalLabel">
-                  Add New Sale
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={onClose}
-                  aria-label="Close"
-                />
-              </div>
+    <Dialog open={show} onClose={onClose} aria-labelledby="add-sale-modal-label" maxWidth="md" fullWidth>
+      <DialogTitle id="add-sale-modal-label">
+        <Typography variant="h6">Add New Sale</Typography>
+      </DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers>
+          <Grid container spacing={2}>
+            {(stocksError || seasonsError) && (
+              <Grid item xs={12}>
+                <Alert severity="error">
+                  {stocksError && <Typography variant="body2">{stocksError}</Typography>}
+                  {seasonsError && <Typography variant="body2">{seasonsError}</Typography>}
+                </Alert>
+              </Grid>
+            )}
 
-              <div className="modal-body row">
-                {(stocksError || seasonsError) && (
-                  <div className="col-12 mb-3">
-                    <div className="alert alert-danger" role="alert">
-                      {stocksError && <p className="mb-1">{stocksError}</p>}
-                      {seasonsError && <p className="mb-0">{seasonsError}</p>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Product Dropdown */}
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="stockId" className="form-label text-dark">
-                    Product
-                  </label>
-                  {loadingStocks ? (
-                    <div className="text-center">
-                      <div
-                        className="spinner-border spinner-border-sm text-primary"
-                        role="status"
-                      >
-                        <span className="visually-hidden">
-                          Loading products...
-                        </span>
-                      </div>
-                      <small className="ms-2 text-muted">
-                        Loading products...
-                      </small>
-                    </div>
-                  ) : (
-                    <>
-                      <select
-                        name="stockId"
-                        id="stockId"
-                        className="form-select"
-                        value={formData.stockId}
-                        onChange={handleChange}
-                        required
-                        disabled={stocksError || stocks.length === 0}
-                      >
-                        <option value="">Select a product</option>
-                        {stocks.map((stock) => (
-                          <option key={stock._id} value={stock._id}>
-                            {stock.productId?.productName ||
-                              `Stock ID: ${stock._id}`}
-                          </option>
-                        ))}
-                      </select>
-                      {stocks.length === 0 && !stocksError && (
-                        <small className="text-muted mt-1 d-block">
-                          No products available in stock. Please add products to
-                          stock first.
-                        </small>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="seasonId" className="form-label text-dark">
-                    Season
-                  </label>
-                  {loadingSeasons ? (
-                    <div className="text-center">
-                      <div
-                        className="spinner-border spinner-border-sm text-primary"
-                        role="status"
-                      >
-                        <span className="visually-hidden">
-                          Loading seasons...
-                        </span>
-                      </div>
-                      <small className="ms-2 text-muted">
-                        Loading seasons...
-                      </small>
-                    </div>
-                  ) : (
-                    <>
-                      <select
-                        name="seasonId"
-                        id="seasonId"
-                        className="form-select"
-                        value={formData.seasonId}
-                        onChange={handleChange}
-                        required
-                        disabled={seasonsError || seasons.length === 0}
-                      >
-                        <option value="">Select a season</option>
-                        {seasons.map((season) => (
-                          <option key={season._id} value={season._id}>
-                            {season.name + "" + season.year}
-                          </option>
-                        ))}
-                      </select>
-                      {seasons.length === 0 && !seasonsError && (
-                        <small className="text-muted mt-1 d-block">
-                          No seasons available. Please add seasons first.
-                        </small>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Quantity */}
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="quantity" className="form-label text-dark">
-                    Quantity (kg)
-                  </label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    id="quantity"
-                    className="form-control"
-                    value={formData.quantity}
-                    onChange={handleChange}
-                    min="1"
-                    required
-                  />
-                </div>
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="unitPrice" className="form-label text-dark">
-                    Unit Price (rwf)
-                  </label>
-                  <input
-                    type="number"
-                    name="unitPrice"
-                    id="unitPrice"
-                    className="form-control"
-                    value={formData.unitPrice}
-                    onChange={handleChange}
-                    min="1"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="totalAmount" className="form-label text-dark">
-                    Total Amount (rwf)
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={formatCurrency(`${totalAmount}`)}
-                    readOnly
-                  />
-                </div>
-                {/* Buyer */}
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="buyer" className="form-label text-dark">
-                    Buyer Name
-                  </label>
-                  <input
-                    type="text"
-                    name="buyer"
-                    id="buyer"
-                    className="form-control"
-                    value={formData.buyer}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                {/* Phone Number */}
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="phoneNumber" className="form-label text-dark">
-                    Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    name="phoneNumber"
-                    id="phoneNumber"
-                    className="form-control"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    placeholder="e.g., 0781234567 or +250781234567"
-                    required
-                  />
-                </div>
-
-                {/* Payment Type */}
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="paymentType" className="form-label text-dark">
-                    Payment Type
-                  </label>
-                  <select
-                    name="paymentType"
-                    id="paymentType"
-                    className="form-select"
-                    value={formData.paymentType}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="loan">Loan</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button type="submit" className="btn btn-primary">
-                  Add Sale
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
+            {/* Product Dropdown */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth margin="dense" required>
+                <InputLabel id="stock-select-label">Product from Stock</InputLabel>
+                <Select
+                  labelId="stock-select-label"
+                  id="stockId"
+                  name="stockId"
+                  value={formData.stockId}
+                  label="Product from Stock"
+                  onChange={handleChange}
+                  disabled={loadingStocks || stocksError || stocks.length === 0}
                 >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </>
+                  {loadingStocks ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={20} sx={{ mr: 1 }} /> Loading products...
+                    </MenuItem>
+                  ) : stocks.length > 0 ? (
+                    [
+                      <MenuItem key="select-stock-placeholder" value="">Select a product</MenuItem>,
+                      ...stocks.map((stock) => (
+                        <MenuItem key={stock._id} value={stock._id}>
+                          {stock.productId?.productName || `Stock ID: ${stock._id}`} (Qty: {stock.quantity})
+                        </MenuItem>
+                      ))
+                    ]
+                  ) : (
+                    <MenuItem disabled>No products available in stock.</MenuItem>
+                  )}
+                </Select>
+                {stocks.length === 0 && !loadingStocks && !stocksError && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    No products available. Please add products to stock first.
+                  </Typography>
+                )}
+              </FormControl>
+            </Grid>
+
+            {/* Season Dropdown */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth margin="dense" required>
+                <InputLabel id="season-select-label">Season</InputLabel>
+                <Select
+                  labelId="season-select-label"
+                  id="seasonId"
+                  name="seasonId"
+                  value={formData.seasonId}
+                  label="Season"
+                  onChange={handleChange}
+                  disabled={loadingSeasons || seasonsError || seasons.length === 0}
+                >
+                  {loadingSeasons ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={20} sx={{ mr: 1 }} /> Loading seasons...
+                    </MenuItem>
+                  ) : seasons.length > 0 ? (
+                    [
+                      <MenuItem key="select-season-placeholder" value="">Select a season</MenuItem>,
+                      ...seasons.map((season) => (
+                        <MenuItem key={season._id} value={season._id}>
+                          {season.name} {season.year}
+                        </MenuItem>
+                      ))
+                    ]
+                  ) : (
+                    <MenuItem disabled>No seasons available.</MenuItem>
+                  )}
+                </Select>
+                {seasons.length === 0 && !loadingSeasons && !seasonsError && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    No seasons available. Please add seasons first.
+                  </Typography>
+                )}
+              </FormControl>
+            </Grid>
+
+            {/* Quantity */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                margin="dense"
+                id="quantity"
+                name="quantity"
+                label="Quantity (kg)"
+                type="number"
+                fullWidth
+                variant="outlined"
+                value={formData.quantity}
+                onChange={handleChange}
+                inputProps={{ min: "1", step: "1" }}
+                required
+              />
+            </Grid>
+
+            {/* Unit Price */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                margin="dense"
+                id="unitPrice"
+                name="unitPrice"
+                label="Unit Price (RWF)"
+                type="number"
+                fullWidth
+                variant="outlined"
+                value={formData.unitPrice}
+                onChange={handleChange}
+                inputProps={{ min: "1", step: "1" }}
+                required
+              />
+            </Grid>
+
+            {/* Total Amount */}
+            <Grid item xs={12}>
+              <TextField
+                margin="dense"
+                id="totalAmount"
+                label="Total Amount (RWF)"
+                type="text"
+                fullWidth
+                variant="outlined"
+                value={formatCurrency(totalAmount)}
+                InputProps={{
+                  readOnly: true,
+                }}
+              />
+            </Grid>
+
+            {/* Buyer Name */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                margin="dense"
+                id="buyer"
+                name="buyer"
+                label="Buyer Name"
+                type="text"
+                fullWidth
+                variant="outlined"
+                value={formData.buyer}
+                onChange={handleChange}
+                required
+              />
+            </Grid>
+
+            {/* Phone Number */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                margin="dense"
+                id="phoneNumber"
+                name="phoneNumber"
+                label="Phone Number"
+                type="tel"
+                fullWidth
+                variant="outlined"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                placeholder="e.g., 0781234567 or +250781234567"
+                required
+              />
+            </Grid>
+
+            {/* Payment Type */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth margin="dense" required>
+                <InputLabel id="paymentType-select-label">Payment Type</InputLabel>
+                <Select
+                  labelId="paymentType-select-label"
+                  id="paymentType"
+                  name="paymentType"
+                  value={formData.paymentType}
+                  label="Payment Type"
+                  onChange={handleChange}
+                >
+                  <MenuItem value="cash">Cash</MenuItem>
+                  <MenuItem value="loan">Loan</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Status (default to unpaid, can be changed if needed) */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth margin="dense" required>
+                <InputLabel id="status-select-label">Status</InputLabel>
+                <Select
+                  labelId="status-select-label"
+                  id="status"
+                  name="status"
+                  value={formData.status}
+                  label="Status"
+                  onChange={handleChange}
+                >
+                  <MenuItem value="unpaid">Unpaid</MenuItem>
+                  <MenuItem value="paid">Paid</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="secondary" variant="outlined">
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" color="primary">
+            Add Sale
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

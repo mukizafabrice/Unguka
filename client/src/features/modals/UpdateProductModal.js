@@ -1,16 +1,31 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Button,
+  Box,
+  Typography,
+} from "@mui/material"; // Imported Material-UI components
 
 function UpdateProductModal({ show, onClose, onSubmit, productData }) {
   const [form, setForm] = useState({ productName: "" });
 
   useEffect(() => {
-    if (productData) {
+    // Populate form with productData when modal is shown or productData changes
+    if (show && productData) {
       setForm({
         productName: productData.productName || "",
-        _id: productData._id,
+        _id: productData._id, // Keep the _id for update operation
       });
+    } else if (!show) {
+      // Reset form when modal closes
+      setForm({ productName: "" });
     }
-  }, [productData]);
+  }, [show, productData]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -18,58 +33,56 @@ function UpdateProductModal({ show, onClose, onSubmit, productData }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(form);
+
+    if (!form.productName.trim()) {
+      toast.error("Product Name is required.");
+      return;
+    }
+
+    onSubmit(form); // Pass the entire form object including _id
   };
 
-  if (!show) return null;
-
   return (
-    <div
-      className="modal fade show d-block"
-      tabIndex="-1"
-      role="dialog"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+    <Dialog
+      open={show}
+      onClose={onClose}
+      aria-labelledby="update-product-dialog-title"
+      maxWidth="sm"
+      fullWidth
     >
-      <div className="modal-dialog modal-dialog-centered" role="document">
-        <div className="modal-content text-dark">
-          <div className="modal-header">
-            <h5 className="modal-title">Update Product</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-            ></button>
-          </div>
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body">
-              <div className="mb-3">
-                <label className="form-label">Product Name</label>
-                <input
-                  type="text"
-                  name="productName"
-                  value={form.productName}
-                  onChange={handleChange}
-                  className="form-control"
-                  required
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="submit" className="btn btn-primary">
-                Save Changes
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={onClose}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+      <DialogTitle id="update-product-dialog-title">
+        <Typography variant="h6" component="span">
+          Update Product
+        </Typography>
+      </DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers>
+          <Box mb={2}>
+            <TextField
+              autoFocus // Focus on this field when modal opens
+              margin="dense"
+              id="productName"
+              label="Product Name"
+              type="text"
+              name="productName" // Make sure name matches state key
+              fullWidth
+              variant="outlined"
+              value={form.productName}
+              onChange={handleChange}
+              required
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="secondary" variant="outlined">
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" color="primary">
+            Save Changes
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }
 

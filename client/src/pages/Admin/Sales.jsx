@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify"; // Keep toast for individual notifications
 import "react-toastify/dist/ReactToastify.css";
 
+// ⭐ NEW: Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
 import {
-  fetchSales,
-  deleteSales,
-  updateSales,
-  createSales,
-} from "../../services/salesService";
+  fetchAllSales, // ⭐ CORRECTED: Renamed from fetchSales to fetchAllSales
+  deleteSale, // ⭐ CORRECTED: Renamed from deleteSales to deleteSale
+  updateSale, // ⭐ CORRECTED: Renamed from updateSales to updateSale
+  createSale, // ⭐ CORRECTED: Renamed from createSales to createSale
+} from "../../services/salesService"; // Ensure named imports match the service file
 
 import {
   Box,
@@ -68,7 +71,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "transparent",
+  backgroundColor: "#f5f5f5", // ⭐ Adjusted for solid background in header
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -99,6 +102,10 @@ const getStatusColor = (status) => {
 };
 
 function Sales() {
+  // ⭐ Get user and cooperativeId from AuthContext
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState(null);
@@ -106,7 +113,7 @@ function Sales() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Changed from itemsPerPage to rowsPerPage for consistency
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("product"); // Default search field
@@ -115,24 +122,43 @@ function Sales() {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  // ⭐ Modified loadSales to fetch sales for the specific cooperativeId
   const loadSales = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error(
+        "Manager's cooperative ID is not available. Cannot load sales."
+      );
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const salesData = await fetchSales();
-      // Adjust this based on your actual API response structure
-      setSales(salesData.data || salesData || []);
+      // Pass the cooperativeId to fetchAllSales
+      const response = await fetchAllSales(cooperativeId);
+      if (response.success && Array.isArray(response.data)) {
+        // Adjust this based on your actual API response structure
+        setSales(response.data);
+      } else {
+        console.error("Failed to fetch sales:", response.message);
+        toast.error(response.message || "Failed to load sales.");
+        setSales([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch sales:", error);
-      toast.error("Failed to load sales.");
+      console.error("Failed to fetch sales (catch block):", error);
+      toast.error("An unexpected error occurred while loading sales.");
       setSales([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]); // Add cooperativeId to dependencies
 
   useEffect(() => {
-    loadSales();
-  }, [loadSales]);
+    // Only load sales if cooperativeId is available
+    if (cooperativeId) {
+      loadSales();
+    }
+  }, [cooperativeId, loadSales]); // Depend on cooperativeId and loadSales
 
   // Filter and sort sales based on searchTerm, searchField, statusFilter, and sortOrder
   const filteredAndSortedSales = useMemo(() => {
@@ -144,10 +170,12 @@ function Sales() {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
         switch (searchField) {
           case "product":
+            // Access productName through stockId and then productId
             return sale.stockId?.productId?.productName
               ?.toLowerCase()
               .includes(lowerCaseSearchTerm);
           case "season":
+            // Access season name and year through seasonId
             return (
               sale.seasonId?.name
                 ?.toLowerCase()
@@ -204,16 +232,30 @@ function Sales() {
     setShowAddModal(true);
   };
 
+  // ⭐ Modified handleAddSale to include cooperativeId
   const handleAddSale = async (newSaleData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot add sale.");
+      return;
+    }
     try {
-      await createSales(newSaleData);
-      toast.success("Sale added successfully!");
-      await loadSales();
-      setShowAddModal(false);
+      // Add the cooperativeId to the sale data before sending
+      const dataToSend = { ...newSaleData, cooperativeId: cooperativeId };
+      const response = await createSale(dataToSend); // ⭐ CORRECTED: use createSale
+      if (response.success) {
+        toast.success(response.message || "Sale added successfully!");
+        await loadSales();
+        setShowAddModal(false);
+      } else {
+        console.error("Failed to add new sale:", response.message);
+        toast.error(response.message || "Failed to add sale.");
+      }
     } catch (error) {
-      console.error("Failed to add new sale:", error);
+      console.error("Failed to add new sale (catch block):", error);
       toast.error(
-        `Failed to add sale: ${error.response?.data?.message || error.message}`
+        `Failed to add sale: ${
+          error.message || "An unexpected error occurred."
+        }`
       );
     }
   };
@@ -223,38 +265,61 @@ function Sales() {
     setShowUpdateModal(true);
   };
 
+  // ⭐ Modified handleUpdateSale to include cooperativeId
   const handleUpdateSale = async (saleId, updatedSaleData) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot update sale.");
+      return;
+    }
     try {
-      await updateSales(saleId, updatedSaleData);
-      toast.success("Sale updated successfully!");
-      await loadSales();
-      setShowUpdateModal(false);
-      setSelectedSale(null);
+      // Add the cooperativeId to the update data before sending
+      const dataToSend = { ...updatedSaleData, cooperativeId: cooperativeId };
+      const response = await updateSale(saleId, dataToSend); // ⭐ CORRECTED: use updateSale
+      if (response.success) {
+        toast.success(response.message || "Sale updated successfully!");
+        await loadSales();
+        setShowUpdateModal(false);
+        setSelectedSale(null);
+      } else {
+        console.error("Failed to update sale:", response.message);
+        toast.error(response.message || "Failed to update sale.");
+      }
     } catch (error) {
-      console.error("Failed to update sale:", error);
+      console.error("Failed to update sale (catch block):", error);
       toast.error(
         `Failed to update sale: ${
-          error.response?.data?.message || error.message
+          error.message || "An unexpected error occurred."
         }`
       );
     }
   };
 
+  // ⭐ Modified handleDeleteSale to include cooperativeId
   const handleDeleteSale = async (id) => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot delete sale.");
+      return;
+    }
     try {
-      await deleteSales(id);
-      toast.success("Sale deleted successfully!");
-      await loadSales();
+      // Pass the cooperativeId to deleteSale for backend authorization
+      const response = await deleteSale(id, cooperativeId); // ⭐ CORRECTED: use deleteSale
+      if (response.success) {
+        toast.success(response.message || "Sale deleted successfully!");
+        await loadSales();
 
-      // Adjust current page if the last item on a page was deleted
-      if (currentSales.length === 1 && currentPage > 1) {
-        setCurrentPage((prevPage) => prevPage - 1);
+        // Adjust current page if the last item on a page was deleted
+        if (currentSales.length === 1 && currentPage > 1) {
+          setCurrentPage((prevPage) => prevPage - 1);
+        }
+      } else {
+        console.error("Failed to delete sale:", response.message);
+        toast.error(response.message || "Failed to delete sale.");
       }
     } catch (error) {
-      console.error("Failed to delete sale:", error);
+      console.error("Failed to delete sale (catch block):", error);
       toast.error(
         `Failed to delete sale: ${
-          error.response?.data?.message || error.message
+          error.message || "An unexpected error occurred."
         }`
       );
     }
@@ -392,7 +457,7 @@ function Sales() {
               >
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
@@ -505,7 +570,7 @@ function Sales() {
                       <TableRow>
                         <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
-                            No sales found.
+                            No sales found for this cooperative.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -539,14 +604,16 @@ function Sales() {
         sale={selectedSale}
         onClose={() => setShowUpdateModal(false)}
         onSubmit={handleUpdateSale}
+        // ⭐ Pass cooperativeId to the modal if it needs to fetch related data (e.g., stocks, seasons)
+        cooperativeId={cooperativeId}
       />
       <AddSaleModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddSale}
+        // ⭐ Pass cooperativeId to the modal for new sale creation
+        cooperativeId={cooperativeId}
       />
-
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );
 }

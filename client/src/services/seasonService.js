@@ -1,56 +1,89 @@
+// src/services/seasonService.js
 import axiosInstance from "../api/axiosInstance";
 
-export const fetchSeasons = async () => {
-  const response = await axiosInstance.get("/seasons");
-  return response.data;
+const API_URL = "/seasons";
+
+const handleResponse = (response) => {
+  return {
+    success: true,
+    data: response.data.data || response.data,
+    message: response.data.message || "Operation successful",
+  };
 };
 
-export const createSeasons = async (seasonData) => {
+const handleError = (
+  error,
+  defaultMessage = "An unexpected error occurred."
+) => {
+  console.error("Season service call failed:", error);
+  return {
+    success: false,
+    message: error.response?.data?.message || defaultMessage,
+    statusCode: error.response?.status,
+  };
+};
+
+export const fetchSeasons = async (cooperativeId = null) => {
   try {
-    const response = await axiosInstance.post("/seasons", seasonData);
-    return response.data;
+    const params = cooperativeId ? { params: { cooperativeId } } : {};
+    const response = await axiosInstance.get(API_URL, params);
+    return handleResponse(response);
   } catch (error) {
-    console.error(
-      "Error creating season:",
-      error.response?.data || error.message
-    );
-    throw error;
+    return handleError(error, "Failed to fetch seasons.");
   }
 };
 
-export const updateSeasons = async (id, seasonData) => {
+export const fetchSeasonById = async (id, cooperativeId) => {
+  if (!cooperativeId) {
+    return {
+      success: false,
+      message: "Cooperative ID is required to fetch season details.",
+    };
+  }
   try {
-    const response = await axiosInstance.put(`/seasons/${id}`, seasonData);
-    return response.data;
+    const response = await axiosInstance.get(`${API_URL}/${id}`, {
+      params: { cooperativeId },
+    });
+    return handleResponse(response);
   } catch (error) {
-    console.error(
-      `Error updating season with ID ${id}:`,
-      error.response?.data || error.message
-    );
-    throw error;
+    return handleError(error, `Failed to fetch season with ID ${id}.`);
   }
 };
-export const deleteSeasons = async (id) => {
+
+export const createSeason = async (seasonData) => {
   try {
-    const response = await axiosInstance.delete(`/seasons/${id}`);
-    return response.data;
-  } catch (error) {
-    console.error(
-      `Error deleting season with ID ${id}:`,
-      error.response?.data || error.message
+    const response = await axiosInstance.post(
+      `${API_URL}/register`,
+      seasonData
     );
-    throw error;
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, "Failed to create season.");
   }
 };
-export const getSeasonById = async (id) => {
+
+export const updateSeason = async (id, seasonData) => {
   try {
-    const response = await axiosInstance.get(`/seasons/${id}`);
-    return response.data;
+    const response = await axiosInstance.put(`${API_URL}/${id}`, seasonData);
+    return handleResponse(response);
   } catch (error) {
-    console.error(
-      `Error fetching season with ID ${id}:`,
-      error.response?.data || error.message
-    );
-    throw error;
+    return handleError(error, "Failed to update season.");
+  }
+};
+
+export const deleteSeason = async (id, cooperativeId) => {
+  if (!cooperativeId) {
+    return {
+      success: false,
+      message: "Cooperative ID is required to delete season.",
+    };
+  }
+  try {
+    const response = await axiosInstance.delete(`${API_URL}/${id}`, {
+      data: { cooperativeId },
+    });
+    return handleResponse(response);
+  } catch (error) {
+    return handleError(error, `Failed to delete season with ID ${id}.`);
   }
 };

@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import { fetchProduct } from "../../services/productService";
+// ⭐ Import useAuth to get the current user's cooperativeId
+import { useAuth } from "../../contexts/AuthContext";
+
+import {
+  fetchProducts, // ⭐ CORRECTED: Changed from fetchProduct to fetchProducts
+} from "../../services/productService"; // Only fetching is needed for members
 
 import {
   Box,
@@ -23,9 +28,9 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Button, // Added Button for sort control
+  CircularProgress,
+  MenuItem,
+  Button,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
@@ -47,7 +52,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   color: theme.palette.text.primary,
   wordWrap: 'break-word',
   whiteSpace: 'normal',
-  [theme.breakpoints.down('sm')]: {
+  [theme.breakpoints.down("sm")]: {
     padding: "4px 6px",
     fontSize: "0.65rem",
   },
@@ -55,7 +60,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: 'transparent',
+  backgroundColor: "#f5f5f5", // Explicit background for header
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -67,15 +72,19 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
   wordWrap: 'break-word',
   whiteSpace: 'normal',
-  [theme.breakpoints.down('sm')]: {
+  [theme.breakpoints.down("sm")]: {
     padding: "6px 6px",
     fontSize: "0.65rem",
   },
 }));
 
 function Product() {
+  // ⭐ Get user and cooperativeId from AuthContext
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the member belongs to
+
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 7; // Consistent rows per page
 
@@ -85,27 +94,43 @@ function Product() {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to fetch products from the backend
+  // ⭐ Modified loadProducts to fetch products for the specific cooperativeId
   const loadProducts = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error("Member's cooperative ID is not available. Cannot load products.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const productsData = await fetchProduct();
-      setProducts(productsData || []); // Ensure data is an array
+      // Pass the cooperativeId to fetchProducts
+      const response = await fetchProducts(cooperativeId);
+      if (response.success && Array.isArray(response.data)) {
+        setProducts(response.data);
+      } else {
+        console.error("Failed to fetch products:", response.message);
+        toast.error(response.message || "Failed to load products.");
+        setProducts([]);
+      }
     } catch (error) {
-      console.error("Failed to fetch products:", error);
-      toast.error("Failed to load products.");
-      setProducts([]); // Reset products on error
+      console.error("Failed to fetch products (catch block):", error);
+      toast.error("An unexpected error occurred while loading products.");
+      setProducts([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]); // Add cooperativeId to dependencies
 
-  // Initial data load on component mount
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    // Only load products if cooperativeId is available
+    if (cooperativeId) {
+      loadProducts();
+    }
+  }, [cooperativeId, loadProducts]); // Depend on cooperativeId and loadProducts
 
-  // Filter and sort products based on search and sort order
+  // No add/update/delete handlers for member view
+
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = products;
 
@@ -167,7 +192,7 @@ function Product() {
         >
           <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
-              Here is a list of products available in the cooperative.
+              Here is a list of products available in your cooperative.
             </Typography>
           </Box>
 
@@ -229,7 +254,7 @@ function Product() {
               >
                 <Table size="small" sx={{ tableLayout: 'fixed' }}>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
                       <StyledTableHeaderCell sx={{ width: '10%' }}>ID</StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: '90%' }}>Product Name</StyledTableHeaderCell>
                     </TableRow>
@@ -248,7 +273,7 @@ function Product() {
                       <TableRow>
                         <TableCell colSpan={2} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
-                            No products found.
+                            No products found for this cooperative.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -276,7 +301,12 @@ function Product() {
         </CardContent>
       </Card>
 
-      <ToastContainer
+      {/* ⭐ Removed AddProductModal and UpdateProductModal as members cannot add/update */}
+      {/* <AddProductModal /> */}
+      {/* <UpdateProductModal /> */}
+
+      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
+      {/* <ToastContainer
         position="bottom-right"
         autoClose={3000}
         hideProgressBar={false}
@@ -286,7 +316,7 @@ function Product() {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-      />
+      /> */}
     </Box>
   );
 }

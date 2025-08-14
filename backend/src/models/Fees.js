@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const feesSchema = new mongoose.Schema(
   {
+    // ⭐ NEW: Add cooperativeId to link fees to a specific cooperative
+    cooperativeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Cooperative', // Refers to your Cooperative model
+      required: true, // Every fee entry must belong to a cooperative
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -33,15 +39,35 @@ feesSchema.virtual("remainingAmount").get(function () {
   return this.amountOwed - this.amountPaid;
 });
 
-// Index for seasonal fees
+// ⭐ UPDATED: Add a pre-save hook to automatically update status
+feesSchema.pre("save", function (next) {
+  if (this.isModified("amountPaid") || this.isModified("amountOwed")) {
+    const remaining = this.amountOwed - this.amountPaid;
+
+    if (remaining <= 0) {
+      this.status = "paid";
+      this.paidAt = this.paidAt || new Date(); // Set paidAt if not already set
+    } else if (this.amountPaid > 0 && remaining > 0) {
+      this.status = "partial";
+      this.paidAt = undefined; // Clear paidAt if it moves from paid to partial
+    } else {
+      this.status = "unpaid";
+      this.paidAt = undefined; // Clear paidAt if it moves from partial/paid to unpaid
+    }
+  }
+  next();
+});
+
+
+// ⭐ UPDATED: Index for seasonal fees now includes cooperativeId
 feesSchema.index(
-  { userId: 1, seasonId: 1, feeTypeId: 1 },
+  { cooperativeId: 1, userId: 1, seasonId: 1, feeTypeId: 1 },
   { unique: true, partialFilterExpression: { seasonId: { $exists: true } } }
 );
 
-// Index for non-seasonal fees
+// ⭐ UPDATED: Index for non-seasonal fees now includes cooperativeId
 feesSchema.index(
-  { userId: 1, feeTypeId: 1 },
+  { cooperativeId: 1, userId: 1, feeTypeId: 1 },
   { unique: true, partialFilterExpression: { seasonId: { $exists: false } } }
 );
 
