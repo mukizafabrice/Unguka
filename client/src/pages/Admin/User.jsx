@@ -29,9 +29,9 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Chip, // Added Chip for status display
+  CircularProgress,
+  MenuItem,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -85,7 +85,7 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// Helper function for status chip color (assuming user roles might have a visual status)
+// Helper function for status chip color
 const getRoleColor = (role) => {
   switch (role?.toLowerCase()) {
     case "admin":
@@ -101,30 +101,38 @@ const getRoleColor = (role) => {
 
 function User() {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true); // Changed default to true
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Consistent rows per page
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("names"); // Default search field
-  const [roleFilter, setRoleFilter] = useState("all"); // Filter by user role
-  const [sortOrder, setSortOrder] = useState("asc"); // Default sort by name ascending
+  const [searchField, setSearchField] = useState("names");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const usersData = await fetchUsers();
-      setUsers(usersData || []);
+      const response = await fetchUsers();
+
+      // Check if the response is a valid object with a 'data' property
+      if (response && Array.isArray(response.data)) {
+        setUsers(response.data);
+      } else {
+        console.error("API returned invalid data format:", response);
+        setUsers([]);
+        toast.error("Received invalid data from the server.");
+      }
     } catch (error) {
       console.error("Failed to fetch users:", error);
       toast.error("Failed to load users. Please try again.");
-      setUsers([]); // Ensure users are reset on error
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -139,7 +147,7 @@ function User() {
       await createUser(newUserData);
       toast.success("User added successfully!");
       setShowAddModal(false);
-      await loadUsers(); // Await loadUsers to ensure data is fresh
+      await loadUsers();
     } catch (error) {
       console.error("Failed to add user:", error);
       const errorMessage =
@@ -150,13 +158,12 @@ function User() {
   };
 
   const handleUserUpdated = async (id, updatedUserData) => {
-    // Added id and updatedUserData params
     try {
-      await updateUser(id, updatedUserData); // Call updateUser service
+      await updateUser(id, updatedUserData);
       toast.success("User updated successfully!");
       setShowUpdateModal(false);
-      await loadUsers(); // Await loadUsers to ensure data is fresh
-      setUserToEdit(null); // Clear selected user
+      await loadUsers();
+      setUserToEdit(null);
     } catch (error) {
       console.error("Failed to update user:", error);
       const errorMessage =
@@ -170,7 +177,7 @@ function User() {
     try {
       await deleteUser(id);
       toast.success("User deleted successfully!");
-      await loadUsers(); // Await loadUsers to ensure data is fresh
+      await loadUsers();
     } catch (error) {
       console.error("Failed to delete user:", error);
       toast.error("Failed to delete user. Please try again.");
@@ -184,9 +191,21 @@ function User() {
 
   // Filter and sort users based on search, role filter, and sort order
   const filteredAndSortedUsers = useMemo(() => {
+    // Failsafe: return an empty array if `users` is not an array
+    if (!Array.isArray(users)) {
+      return [];
+    }
+
     let filtered = users;
 
-    // Apply search filter
+    // Apply role filter first
+    if (roleFilter !== "all") {
+      filtered = filtered.filter(
+        (user) => user.role?.toLowerCase() === roleFilter.toLowerCase()
+      );
+    }
+
+    // Then, apply search term filter
     if (searchTerm) {
       filtered = filtered.filter((user) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -205,22 +224,15 @@ function User() {
       });
     }
 
-    // Apply role filter
-    if (roleFilter !== "all") {
-      filtered = filtered.filter(
-        (user) => user.role?.toLowerCase() === roleFilter.toLowerCase()
-      );
-    }
-
-    // Apply sorting by names
-    filtered.sort((a, b) => {
+    // Finally, apply sorting to a copy of the filtered array
+    const sorted = filtered.slice().sort((a, b) => {
       const nameA = a.names || "";
       const nameB = b.names || "";
       const comparison = nameA.localeCompare(nameB);
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
-    return filtered;
+    return sorted;
   }, [users, searchTerm, searchField, roleFilter, sortOrder]);
 
   const totalPages = Math.ceil(filteredAndSortedUsers.length / rowsPerPage);
@@ -231,7 +243,6 @@ function User() {
     indexOfLastRow
   );
 
-  // Reset page to 1 whenever filters or sorting changes
   useEffect(() => {
     setCurrentPage(1);
   }, [filteredAndSortedUsers]);
@@ -263,7 +274,7 @@ function User() {
         <CardContent
           sx={{
             maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflow: "hidden", // Hide overflow on CardContent itself
+            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
@@ -368,8 +379,6 @@ function User() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
@@ -503,8 +512,6 @@ function User() {
         onSubmit={handleUserUpdated}
         userData={userToEdit}
       />
-
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );
 }

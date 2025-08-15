@@ -116,7 +116,10 @@ const Dashboard = () => {
           height: "80vh",
         }}
       >
-        <CircularProgress size={50} sx={{ color: theme.palette.primary.main }} />
+        <CircularProgress
+          size={50}
+          sx={{ color: theme.palette.primary.main }}
+        />
         <Typography variant="h6" sx={{ mt: 2 }}>
           Loading dashboard data...
         </Typography>
@@ -143,7 +146,9 @@ const Dashboard = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ p: { xs: 2, sm: 4 }, bgcolor: theme.palette.background.default }}>
+      <Box
+        sx={{ p: { xs: 2, sm: 4 }, bgcolor: theme.palette.background.default }}
+      >
         <Typography
           variant="h4"
           gutterBottom
@@ -162,13 +167,21 @@ const Dashboard = () => {
             {
               title: "Total Users",
               value: stats.totalUsers,
-              icon: <PeopleIcon sx={{ fontSize: 50, color: theme.palette.primary.main }} />,
+              icon: (
+                <PeopleIcon
+                  sx={{ fontSize: 50, color: theme.palette.primary.main }}
+                />
+              ),
               borderColor: theme.palette.primary.main,
             },
             {
               title: "Total Cooperatives",
               value: stats.totalCooperatives,
-              icon: <BusinessIcon sx={{ fontSize: 50, color: theme.palette.secondary.main }} />,
+              icon: (
+                <BusinessIcon
+                  sx={{ fontSize: 50, color: theme.palette.secondary.main }}
+                />
+              ),
               borderColor: theme.palette.secondary.main,
             },
           ].map((card, i) => (
@@ -182,7 +195,10 @@ const Dashboard = () => {
                   borderLeft: `6px solid ${card.borderColor}`,
                   boxShadow: "0px 8px 24px rgba(0,0,0,0.05)",
                   transition: "all 0.3s ease",
-                  "&:hover": { transform: "translateY(-4px)", boxShadow: "0px 12px 30px rgba(0,0,0,0.08)" },
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                    boxShadow: "0px 12px 30px rgba(0,0,0,0.08)",
+                  },
                 }}
               >
                 {card.icon}
@@ -202,7 +218,14 @@ const Dashboard = () => {
         {/* Charts */}
         <Grid container spacing={3} sx={{ mt: 4 }}>
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: 400, display: "flex", flexDirection: "column" }}>
+            <Paper
+              sx={{
+                p: 3,
+                height: 400,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <Typography variant="h6" sx={{ mb: 2 }}>
                 User Growth
               </Typography>
@@ -226,7 +249,14 @@ const Dashboard = () => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: 400, display: "flex", flexDirection: "column" }}>
+            <Paper
+              sx={{
+                p: 3,
+                height: 400,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Cooperative Growth
               </Typography>

@@ -7,10 +7,10 @@ import { useAuth } from "../../contexts/AuthContext";
 
 import {
   fetchPurchaseInputs,
-  createPurchaseInput, // ⭐ Corrected to singular as per service file
-  updatePurchaseInput, // ⭐ Corrected to singular as per service file
-  deletePurchaseInput, // ⭐ Corrected to singular as per service file
-} from "../../services/purchaseInputService"; // ⭐ Corrected service import path/name
+  createPurchaseInput,
+  updatePurchaseInput,
+  deletePurchaseInput,
+} from "../../services/purchaseInputsService";
 
 import {
   Box,

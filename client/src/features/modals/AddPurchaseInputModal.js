@@ -17,7 +17,7 @@ import { styled } from "@mui/system"; // Import styled for custom components
 // ⭐ Updated import paths to ensure consistency.
 // Assuming these service functions can accept a cooperativeId to filter results.
 import { fetchSeasons } from "../../services/seasonService";
-import { fetchProduct } from "../../services/productService";
+import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 
 // Styled components for consistent modal header
@@ -70,7 +70,7 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit, coopera
         // ⭐ Pass cooperativeId to fetch functions for multi-cooperative filtering
         const [usersResponse, productsResponse, seasonsResponse] = await Promise.all([
           fetchUsers(cooperativeId), // Assuming fetchUsers can filter by cooperativeId
-          fetchProduct(cooperativeId), // Assuming fetchProduct can filter by cooperativeId
+          fetchProducts(cooperativeId), // Assuming fetchProduct can filter by cooperativeId
           fetchSeasons(cooperativeId), // Assuming fetchSeasons can filter by cooperativeId
         ]);
 

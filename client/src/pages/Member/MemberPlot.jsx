@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "react-toastify"; // Keep toast for error messages
 import "react-toastify/dist/ReactToastify.css";
-
 // ⭐ Import useAuth to get the current user's ID and cooperative ID
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -32,7 +31,7 @@ import {
   Button,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import ArrowUpwardIcon from "@mui.icons-material/ArrowUpward";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
 // Styled components consistent with other dashboards

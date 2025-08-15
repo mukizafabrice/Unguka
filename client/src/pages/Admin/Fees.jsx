@@ -18,7 +18,7 @@ import {
 import { fetchUsers } from "../../services/userService";
 import { fetchSeasons } from "../../services/seasonService";
 import { fetchFeeTypes } from "../../services/feeTypeService";
-import { fetchCooperatives } from "../../services/cooperativeService"; // Assuming this service exists
+import { getCooperatives } from "../../services/cooperativeService"; // Assuming this service exists
 
 import {
   Box,
@@ -154,7 +154,7 @@ function Fees() {
     try {
       const [cooperativesData, usersData, seasonsData, feeTypesData] =
         await Promise.all([
-          fetchCooperatives(),
+          getCooperatives(),
           fetchUsers(),
           fetchSeasons(),
           fetchFeeTypes(),

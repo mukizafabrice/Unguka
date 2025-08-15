@@ -9,10 +9,10 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import StatCard from "../../components/StatCard";
-import { fetchSales } from "../../services/salesService";
-import { fetchProductions } from "../../services/productionService";
+import { fetchAllSales } from "../../services/salesService";
+import { fetchAllProductions } from "../../services/productionService";
 import { fetchCash } from "../../services/cashService";
-import { fetchProduct } from "../../services/productService";
+import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 
 function AdminDashboard() {
@@ -22,7 +22,7 @@ function AdminDashboard() {
   useEffect(() => {
     const countSales = async () => {
       try {
-        const response = await fetchSales();
+        const response = await fetchAllSales();
 
         setCountSales(response.data.length);
       } catch (error) {
@@ -55,7 +55,7 @@ function AdminDashboard() {
   useEffect(() => {
     const fetchProductCount = async () => {
       try {
-        const response = await fetchProduct();
+        const response = await fetchProducts();
         setCountProducts(response.length);
       } catch (error) {
         console.error("Failed to fetch low stock count:", error);
@@ -64,15 +64,18 @@ function AdminDashboard() {
     fetchProductCount();
   }, []);
   //Fetch money
-  const [cash, setCash] = useState(0);
+  // ⭐ FIX: Initialize cash as an object with a default amount
+  const [cash, setCash] = useState({ amount: 0 });
   useEffect(() => {
     const loadCash = async () => {
       try {
         const cashData = await fetchCash();
-        setCash(cashData.cash);
+        // ⭐ OPTIONAL: Use optional chaining to prevent errors if cashData is null
+        setCash(cashData || { amount: 0 });
         console.log("Cash data:", cashData);
       } catch (error) {
-        console.error("Failed to fetch low stock count:", error);
+        console.error("Failed to fetch cash:", error);
+        setCash({ amount: 0 }); // Fallback to a default value on error
       }
     };
 
@@ -84,7 +87,7 @@ function AdminDashboard() {
   useEffect(() => {
     const loadSales = async () => {
       try {
-        const salesData = await fetchSales();
+        const salesData = await fetchAllSales();
         setRecentSales(salesData.data);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
@@ -98,10 +101,10 @@ function AdminDashboard() {
   useEffect(() => {
     const loadProductions = async () => {
       try {
-        const productionsData = await fetchProductions();
+        const productionsData = await fetchAllProductions();
         setRecentProductions(productionsData);
       } catch (error) {
-        console.error("Failed to fetch sales:", error);
+        console.error("Failed to fetch productions:", error);
       }
     };
 
@@ -120,6 +123,7 @@ function AdminDashboard() {
             <div className="col-lg-3 col-md-4 col-sm-6 mb-3">
               <StatCard
                 title="CASH IN HAND"
+                // ⭐ CORRECTED: The value is now safely accessed
                 value={`${cash.amount} rwf`}
                 color="black"
                 icon={Wallet}
@@ -181,7 +185,7 @@ function AdminDashboard() {
                               : "N/A"}
                           </td>
                           <td>
-                            {sale.quantity}
+                            {sale.quantity != null ? sale.quantity : "N/A"}
                             <span className="fw-bold">kg</span>
                           </td>
                           <td>
@@ -238,16 +242,16 @@ function AdminDashboard() {
                             <span className="fw-bold">kg</span>
                           </td>
                           {/* <td>
-                          <span
-                            className={`badge ${
-                              prod.status === "Completed"
-                                ? "bg-success"
-                                : "bg-warning"
-                            }`}
-                          >
-                            {prod.status}
-                          </span>
-                        </td> */}
+                              <span
+                                className={`badge ${
+                                  prod.status === "Completed"
+                                    ? "bg-success"
+                                    : "bg-warning"
+                                }`}
+                              >
+                                {prod.status}
+                              </span>
+                            </td> */}
                           <td>
                             {prod.createdAt
                               ? new Date(prod.createdAt).toLocaleDateString()

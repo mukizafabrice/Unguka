@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import { fetchPurchaseInputsById } from "../../services/purchaseInputsService";
+import { fetchPurchaseInputById } from "../../services/purchaseInputsService";
 
 import {
   Box,
@@ -112,7 +112,7 @@ function PurchaseInputs() {
       const user = JSON.parse(localStorage.getItem("user"));
       const userId = user?.id;
       if (userId) {
-        const data = await fetchPurchaseInputsById(userId);
+        const data = await fetchPurchaseInputById(userId);
         setPurchaseInputs(data || []); // Ensure data is an array
       } else {
         console.warn(

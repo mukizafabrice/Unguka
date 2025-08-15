@@ -9,9 +9,9 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import StatCard from "../../components/StatCard";
-import { fetchPurchaseInputsById } from "../../services/purchaseInputsService";
-import { fetchProductionsById } from "../../services/productionService";
-import { fetchProduct } from "../../services/productService";
+import { fetchPurchaseInputById } from "../../services/purchaseInputsService";
+import { fetchProductionsByUserId } from "../../services/productionService";
+import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 
 function MemberDashboard() {
@@ -21,7 +21,7 @@ function MemberDashboard() {
   useEffect(() => {
     const countSales = async () => {
       try {
-        const response = await fetchPurchaseInputsById();
+        const response = await fetchPurchaseInputById();
 
         setCountSales(response.data.length);
       } catch (error) {
@@ -54,7 +54,7 @@ function MemberDashboard() {
   useEffect(() => {
     const fetchProductCount = async () => {
       try {
-        const response = await fetchProduct();
+        const response = await fetchProducts();
         setCountProducts(response.length);
       } catch (error) {
         console.error("Failed to fetch low stock count:", error);
@@ -70,7 +70,7 @@ function MemberDashboard() {
       try {
         const user = JSON.parse(localStorage.getItem("user"));
         const userId = user?.id;
-        const purchasesData = await fetchPurchaseInputsById(userId);
+        const purchasesData = await fetchPurchaseInputById(userId);
         setRecentPurchases(purchasesData);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
@@ -86,7 +86,7 @@ function MemberDashboard() {
       try {
         const user = JSON.parse(localStorage.getItem("user"));
         const userId = user?.id;
-        const productionsData = await fetchProductionsById(userId);
+        const productionsData = await fetchProductionsByUserId(userId);
         setRecentProductions(productionsData);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
