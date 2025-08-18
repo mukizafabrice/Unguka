@@ -24,12 +24,9 @@ export const registerProduct = async (req, res) => {
 
     if (existingProduct) {
       // Return a specific error message if the product name already exists in this cooperative
-      return res
-        .status(400)
-        .json({
-          message:
-            "A product with this name already exists in this cooperative.",
-        });
+      return res.status(400).json({
+        message: "A product with this name already exists in this cooperative.",
+      });
     }
 
     // Create a new product instance with the provided details
@@ -54,42 +51,66 @@ export const registerProduct = async (req, res) => {
     }
     // Handle MongoDB duplicate key error (code 11000), which occurs if the compound unique index is violated
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "A product with this name already exists for this cooperative.",
-        });
+      return res.status(400).json({
+        message:
+          "A product with this name already exists for this cooperative.",
+      });
     }
     // Catch any other unexpected errors
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// // Get all products
+// export const getAllProducts = async (req, res) => {
+
+//   const { cooperativeId } = req.query;
+//   let query = {};
+
+//   // If a cooperativeId is provided, add it to the query filter
+//   if (cooperativeId) {
+//     query.cooperativeId = cooperativeId;
+//   }
+
+//   try {
+//     // Find products based on the constructed query, sorted by creation date
+//     const products = await Product.find(query).sort({ createdAt: -1 });
+//     // Respond with a 200 OK status and the fetched product data
+//     res
+//       .status(200)
+//       .json({
+//         success: true,
+//         data: products,
+//         message: "Products fetched successfully",
+//       });
+//   } catch (error) {
+//     console.error("Error fetching products:", error);
+//     res.status(500).json({ success: false, message: "Internal server error" });
+//   }
+// };
+
 // Get all products
 export const getAllProducts = async (req, res) => {
-  // Allow filtering products by cooperativeId from the query parameters.
-  // This enables managers/members to fetch products specific to their cooperative,
-  // while superadmins can fetch all products by omitting cooperativeId.
   const { cooperativeId } = req.query;
   let query = {};
 
-  // If a cooperativeId is provided, add it to the query filter
+  // Filter by cooperativeId if provided
   if (cooperativeId) {
     query.cooperativeId = cooperativeId;
+  } else {
+    return res.status(400).json({
+      success: false,
+      message: "cooperativeId is required to fetch products.",
+    });
   }
 
   try {
-    // Find products based on the constructed query, sorted by creation date
     const products = await Product.find(query).sort({ createdAt: -1 });
-    // Respond with a 200 OK status and the fetched product data
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: products,
-        message: "Products fetched successfully",
-      });
+    res.status(200).json({
+      success: true,
+      data: products,
+      message: "Products fetched successfully",
+    });
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -124,13 +145,11 @@ export const getProductById = async (req, res) => {
     }
 
     // Respond with the fetched product data
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: product,
-        message: "Product fetched successfully",
-      });
+    res.status(200).json({
+      success: true,
+      data: product,
+      message: "Product fetched successfully",
+    });
   } catch (error) {
     console.error("Error fetching product:", error);
     // Handle cases where the provided ID format is invalid (e.g., not a valid MongoDB ObjectId)
@@ -184,12 +203,10 @@ export const updateProduct = async (req, res) => {
     // Handle duplicate key error (code 11000) for the compound unique index,
     // which occurs if the updated productName already exists within the same cooperative.
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Another product with this name already exists in this cooperative.",
-        });
+      return res.status(400).json({
+        message:
+          "Another product with this name already exists in this cooperative.",
+      });
     }
     res.status(500).json({ message: "Internal server error" });
   }
@@ -202,11 +219,9 @@ export const deleteProduct = async (req, res) => {
 
   // Validate that both product ID and cooperativeId are provided
   if (!id || !cooperativeId) {
-    return res
-      .status(400)
-      .json({
-        message: "Product ID and Cooperative ID are required for deletion",
-      });
+    return res.status(400).json({
+      message: "Product ID and Cooperative ID are required for deletion",
+    });
   }
 
   try {

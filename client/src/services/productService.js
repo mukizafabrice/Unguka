@@ -28,13 +28,28 @@ const handleError = (
 
 // Get all products
 // Can accept a cooperativeId to filter products specific to a cooperative
-export const fetchProducts = async (cooperativeId = null) => {
+// export const fetchProducts = async (cooperativeId = null) => {
+//   try {
+//     const params = cooperativeId ? { params: { cooperativeId } } : {};
+//     const response = await axiosInstance.get(API_URL, params);
+//     return handleResponse(response);
+//   } catch (error) {
+//     return handleError(error, "Failed to fetch products.");
+//   }
+// };
+
+// productService.js
+export const fetchProducts = async (cooperativeId) => {
   try {
-    const params = cooperativeId ? { params: { cooperativeId } } : {};
-    const response = await axiosInstance.get(API_URL, params);
-    return handleResponse(response);
+    const response = await axiosInstance.get(
+      `/products?cooperativeId=${cooperativeId}`
+    );
+    return { success: true, data: response.data.data };
   } catch (error) {
-    return handleError(error, "Failed to fetch products.");
+    return {
+      success: false,
+      message: error.response?.data?.message || "Failed to fetch products",
+    };
   }
 };
 

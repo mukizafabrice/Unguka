@@ -1,17 +1,18 @@
 import LoanTransaction from "../models/LoanTransaction.js";
-import Loan from "../models/Loan.js";
-import PurchaseInput from "../models/PurchaseInput.js";
+
 
 export const getAllLoanTransactions = async (req, res) => {
+  const { cooperativeId } = req.user; // Get cooperativeId from the authenticated user
+
   try {
-    const transactions = await LoanTransaction.find()
+    const transactions = await LoanTransaction.find({ cooperativeId })
       .populate({
         path: "loanId",
         select: "amountOwed status purchaseInputId userId",
         populate: [
-          { path: "userId", select: "names" }, // First nested population
+          { path: "userId", select: "names" },
           {
-            path: "purchaseInputId", // Second nested population
+            path: "purchaseInputId",
             select: "userId seasonId productId",
             populate: [
               { path: "userId", select: "names" },
@@ -35,11 +36,13 @@ export const getAllLoanTransactions = async (req, res) => {
 
 export const getAllLoanTransactionsByUserId = async (req, res) => {
   const { userId } = req.params;
+  const { cooperativeId } = req.user; // Get cooperativeId from the authenticated user
+
   try {
-    const transactions = await LoanTransaction.find()
+    const transactions = await LoanTransaction.find({ cooperativeId })
       .populate({
         path: "loanId",
-        // This is the key change: the `match` clause filters the loans.
+        // The match clause is now correctly filtering on the populated field.
         match: { userId: userId },
         select: "amountOwed status purchaseInputId userId",
         populate: [
@@ -57,8 +60,6 @@ export const getAllLoanTransactionsByUserId = async (req, res) => {
       })
       .sort({ transactionDate: -1 });
 
-    // After population, transactions that didn't match the userId will have a null `loanId`.
-    // You need to filter these out.
     const filteredTransactions = transactions.filter(
       (transaction) => transaction.loanId !== null
     );

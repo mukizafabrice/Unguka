@@ -19,14 +19,14 @@ import { toast } from "react-toastify";
 
 // Import named exports from services
 import { fetchUsers } from "../../services/userService";
-import { fetchProducts } from "../../services/productService"; // Corrected from fetchProduct
+import { fetchProducts } from "../../services/productService";
 import { fetchSeasons } from "../../services/seasonService";
 
-const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тнР Added cooperativeId prop
+const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => {
   const [members, setMembers] = useState([]);
   const [products, setProducts] = useState([]);
   const [seasons, setSeasons] = useState([]);
-  const [loadingDropdowns, setLoadingDropdowns] = useState(true); // Loading state for dropdowns
+  const [loadingDropdowns, setLoadingDropdowns] = useState(true);
   const [productions, setProductions] = useState([
     {
       userId: "",
@@ -54,24 +54,30 @@ const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тн
   // Function to load dropdown data (members, products, seasons)
   const loadDropdownData = useCallback(async () => {
     if (!cooperativeId) {
-      console.warn("Cooperative ID is not available for fetching dropdown data.");
+      console.warn(
+        "Cooperative ID is not available for fetching dropdown data."
+      );
       return;
     }
 
     setLoadingDropdowns(true);
     try {
       // тнР Pass cooperativeId to fetch functions
-      const [membersResponse, productsResponse, seasonsResponse] = await Promise.all([
-        fetchUsers(), // Assuming fetchUsers can filter by cooperativeId or you filter it client-side
-        fetchProducts(cooperativeId),
-        fetchSeasons(cooperativeId),
-      ]);
+      const [membersResponse, productsResponse, seasonsResponse] =
+        await Promise.all([
+          fetchUsers(), // Assuming fetchUsers can filter by cooperativeId or you filter it client-side
+          fetchProducts(cooperativeId),
+          fetchSeasons(cooperativeId),
+        ]);
 
       if (membersResponse.success && Array.isArray(membersResponse.data)) {
         // Filter members by cooperativeId on the client-side if fetchUsers gets all
         const filteredMembers = membersResponse.data.filter(
-          (user) => user.cooperativeId === cooperativeId && user.role === 'member' // Assuming you only want 'member' role
+          (user) =>
+            String(user.cooperativeId?._id || user.cooperativeId) ===
+              String(cooperativeId) && user.role === "member"
         );
+
         setMembers(filteredMembers);
       } else {
         console.error("Failed to fetch members:", membersResponse.message);
@@ -161,7 +167,7 @@ const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тн
     // Also remove errors associated with the removed production
     setErrors((prev) => {
       const newErrors = { ...prev };
-      Object.keys(newErrors).forEach(key => {
+      Object.keys(newErrors).forEach((key) => {
         if (key.endsWith(`-${index}`)) {
           delete newErrors[key];
         }
@@ -187,12 +193,22 @@ const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тн
         tempErrors[`seasonId-${index}`] = "Season is required.";
         isValid = false;
       }
-      if (parseFloat(prod.quantity) <= 0 || !Number.isInteger(parseFloat(prod.quantity))) {
-        tempErrors[`quantity-${index}`] = "Quantity must be a positive integer.";
+      // Quantity validation: must be a positive integer
+      const parsedQuantity = parseFloat(prod.quantity);
+      if (
+        isNaN(parsedQuantity) ||
+        parsedQuantity <= 0 ||
+        !Number.isInteger(parsedQuantity)
+      ) {
+        tempErrors[`quantity-${index}`] =
+          "Quantity must be a positive integer.";
         isValid = false;
       }
-      if (parseFloat(prod.unitPrice) <= 0) {
-        tempErrors[`unitPrice-${index}`] = "Unit price must be a positive number.";
+      // Unit Price validation: must be a positive number
+      const parsedUnitPrice = parseFloat(prod.unitPrice);
+      if (isNaN(parsedUnitPrice) || parsedUnitPrice <= 0) {
+        tempErrors[`unitPrice-${index}`] =
+          "Unit price must be a positive number.";
         isValid = false;
       }
     });
@@ -201,11 +217,45 @@ const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тн
     return isValid;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
+    // Made it async
     e.preventDefault();
     if (validate()) {
-      onSave(productions); // onSave expects an array of production objects
-      // onClose(); // onClose will be called by parent component after successful save
+      const productionsToSave = productions.map((prod) => ({
+        ...prod,
+        cooperativeId: cooperativeId, // Add the cooperativeId here
+      }));
+
+      console.log("Submitting individual productions:", productionsToSave);
+
+      // Iterate and call onSave for each production individually
+      let allSuccess = true;
+      for (const production of productionsToSave) {
+        try {
+          // Assuming onSave handles the API call for a single production object
+          await onSave(production);
+          // Removed: toast.success(`Production for ${production.userId} saved successfully!`);
+        } catch (error) {
+          allSuccess = false;
+          console.error("Error saving one production:", production, error);
+          toast.error(
+            `Failed to save production for ${production.userId}: ${
+              error.message || "Unknown error"
+            }`
+          );
+          // You might choose to break here or continue trying to save other productions
+        }
+      }
+
+      // If all (or at least some) were successful, you might want to close the modal
+      if (allSuccess) {
+        onClose();
+        toast.success("All productions saved successfully!"); // You can add a single success toast here if needed
+      } else {
+        // If some failed, you already have specific error toasts.
+        // Removed the redundant general info toast here.
+        // toast.info("Some productions could not be saved. Please check console for details.");
+      }
     } else {
       toast.error("Please fill in all required fields and correct errors.");
     }
@@ -213,33 +263,68 @@ const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тн
 
   return (
     // тнР Replaced plain HTML modal structure with Material-UI Dialog
-    <Dialog open={show} onClose={onClose} aria-labelledby="add-production-dialog-title" maxWidth="md" fullWidth>
+    <Dialog
+      open={show}
+      onClose={onClose}
+      aria-labelledby="add-production-dialog-title"
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle id="add-production-dialog-title">
-        <Typography variant="h6" component="span">Add New Productions</Typography>
+        <Typography variant="h6" component="span">
+          Add New Productions
+        </Typography>
       </DialogTitle>
       <form onSubmit={handleSubmit}>
-        <DialogContent dividers sx={{ maxHeight: '60vh', overflowY: 'auto' }}> {/* Added max height and scroll */}
+        <DialogContent dividers sx={{ maxHeight: "60vh", overflowY: "auto" }}>
+          {" "}
+          {/* Added max height and scroll */}
           {loadingDropdowns ? (
-            <Box display="flex" justifyContent="center" alignItems="center" height="200px">
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              height="200px"
+            >
               <Typography>Loading data...</Typography>
             </Box>
           ) : (
             productions.map((production, index) => (
-              <Box key={index} sx={{ border: "1px solid #e0e0e0", p: 2, mb: 3, borderRadius: "8px", position: 'relative' }}>
-                <Typography variant="subtitle1" sx={{ color: "text.primary", fontWeight: 'bold', mb: 1 }}>Production #{index + 1}</Typography>
+              <Box
+                key={index}
+                sx={{
+                  border: "1px solid #e0e0e0",
+                  p: 2,
+                  mb: 3,
+                  borderRadius: "8px",
+                  position: "relative",
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: "text.primary", fontWeight: "bold", mb: 1 }}
+                >
+                  Production #{index + 1}
+                </Typography>
                 {productions.length > 1 && (
                   <IconButton
                     aria-label="remove production"
                     color="error"
                     size="small"
                     onClick={() => handleRemoveProduction(index)}
-                    sx={{ position: 'absolute', top: 8, right: 8 }}
+                    sx={{ position: "absolute", top: 8, right: 8 }}
                   >
                     <RemoveIcon />
                   </IconButton>
                 )}
-                
-                <FormControl fullWidth margin="dense" sx={{ mb: 2 }} required error={!!errors[`userId-${index}`]}>
+
+                <FormControl
+                  fullWidth
+                  margin="dense"
+                  sx={{ mb: 2 }}
+                  required
+                  error={!!errors[`userId-${index}`]}
+                >
                   <InputLabel id={`member-label-${index}`}>Member</InputLabel>
                   <Select
                     labelId={`member-label-${index}`}
@@ -256,10 +341,16 @@ const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тн
                       </MenuItem>
                     ))}
                   </Select>
-                  {errors[`userId-${index}`] && <Typography variant="caption" color="error">{errors[`userId-${index}`]}</Typography>}
+                  {errors[`userId-${index}`]}
                 </FormControl>
 
-                <FormControl fullWidth margin="dense" sx={{ mb: 2 }} required error={!!errors[`productId-${index}`]}>
+                <FormControl
+                  fullWidth
+                  margin="dense"
+                  sx={{ mb: 2 }}
+                  required
+                  error={!!errors[`productId-${index}`]}
+                >
                   <InputLabel id={`product-label-${index}`}>Product</InputLabel>
                   <Select
                     labelId={`product-label-${index}`}
@@ -276,10 +367,16 @@ const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тн
                       </MenuItem>
                     ))}
                   </Select>
-                  {errors[`productId-${index}`] && <Typography variant="caption" color="error">{errors[`productId-${index}`]}</Typography>}
+                  {errors[`productId-${index}`]}
                 </FormControl>
 
-                <FormControl fullWidth margin="dense" sx={{ mb: 2 }} required error={!!errors[`seasonId-${index}`]}>
+                <FormControl
+                  fullWidth
+                  margin="dense"
+                  sx={{ mb: 2 }}
+                  required
+                  error={!!errors[`seasonId-${index}`]}
+                >
                   <InputLabel id={`season-label-${index}`}>Season</InputLabel>
                   <Select
                     labelId={`season-label-${index}`}
@@ -296,7 +393,7 @@ const AddProductionModal = ({ show, onClose, onSave, cooperativeId }) => { // тн
                       </MenuItem>
                     ))}
                   </Select>
-                  {errors[`seasonId-${index}`] && <Typography variant="caption" color="error">{errors[`seasonId-${index}`]}</Typography>}
+                  {errors[`seasonId-${index}`]}
                 </FormControl>
 
                 <TextField

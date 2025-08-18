@@ -1,110 +1,225 @@
-import React, { useState, useEffect } from "react";
-
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Typography,
+  Box,
+  MenuItem,
+  CircularProgress,
+} from "@mui/material";
+import PropTypes from "prop-types";
+import { fetchUsers } from "../../services/userService"; // Assuming this service exists
+import { fetchSeasons } from "../../services/seasonService"; // Assuming this service exists
+import { useAuth } from "../../contexts/AuthContext";
 const UpdateLoanModal = ({ show, loan, onClose, onSubmit }) => {
-  const [quantity, setQuantity] = useState("");
-  const [amountOwed, setAmountOwed] = useState("");
-  const [error, setError] = useState("");
+  const [formData, setFormData] = useState({
+    userId: "",
+    seasonId: "",
+    amountOwed: "",
+    interest: "",
+  });
 
+  const [users, setUsers] = useState([]);
+  const [seasons, setSeasons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
+  // Fetch users and seasons when the modal is shown
+  useEffect(() => {
+    const fetchModalData = async () => {
+      setLoading(true);
+      try {
+        const [usersResponse, seasonsResponse] = await Promise.all([
+          fetchUsers(),
+          fetchSeasons(cooperativeId),
+        ]);
+
+        const userData = usersResponse.data || [];
+        if (Array.isArray(userData)) {
+          setUsers(userData);
+        } else {
+          console.error("User data is not an array:", usersResponse);
+          setUsers([]);
+        }
+
+        const seasonData = seasonsResponse.data || [];
+        if (Array.isArray(seasonData)) {
+          setSeasons(seasonData);
+        } else {
+          console.error("Season data is not an array:", seasonsResponse);
+          setSeasons([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
+        setError("Failed to load members or seasons.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (show) {
+      fetchModalData();
+    }
+  }, [show]);
+
+  // Populate form data when the loan prop changes
   useEffect(() => {
     if (loan) {
-      setQuantity(loan.purchaseInputId.quantity);
-      setAmountOwed(loan.amountOwed);
+      setFormData({
+        userId: loan.userId?._id || "",
+        seasonId: loan.seasonId?._id || "",
+        amountOwed: loan.amountOwed || "",
+        interest: loan.interest || "",
+      });
+      setError("");
     }
   }, [loan]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!quantity || quantity <= 0) {
-      setError("Please enter a valid quantity.");
-      return;
-    }
-    if (amountOwed === null || amountOwed < 0) {
-      setError("Amount owed must be a positive number.");
-      return;
-    }
-    setError("");
-    onSubmit(loan._id, { quantity, amountOwed });
-  };
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    const typedValue =
+      name === "quantity" || name === "amountOwed" || name === "interest"
+        ? Number(value)
+        : value;
 
-  if (!show || !loan) {
-    return null;
-  }
+    setFormData((prev) => ({
+      ...prev,
+      [name]: typedValue,
+    }));
+  }, []);
+
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      // Client-side validation
+      if (formData.amountOwed === "" || formData.amountOwed < 0) {
+        setError("Amount owed must be a positive number.");
+        return;
+      }
+
+      setError("");
+      onSubmit(loan._id, formData);
+    },
+    [formData, loan, onSubmit]
+  );
 
   return (
-    <div
-      className={`modal fade ${show ? "show" : ""}`}
-      style={{ display: show ? "block" : "none" }}
-      tabIndex="-1"
-      role="dialog"
-    >
-      <div className="modal-dialog modal-dialog-centered" role="document">
-        <div className="modal-content bg-dark text-white">
-          <div className="modal-header">
-            <h5 className="modal-title">
-              Update Loan for {loan.purchaseInputId?.userId?.names || "N/A"}
-            </h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-            ></button>
-          </div>
-          <div className="modal-body">
+    <Dialog open={show} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Update Loan for {loan?.userId?.names || "N/A"}</DialogTitle>
+      <DialogContent dividers>
+        {loading ? (
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            py={4}
+          >
+            <CircularProgress />
+            <Typography variant="body1" sx={{ ml: 2 }}>
+              Loading data...
+            </Typography>
+          </Box>
+        ) : (
+          <form onSubmit={handleSubmit}>
             {error && (
-              <div className="alert alert-danger" role="alert">
-                {error}
-              </div>
+              <Box mb={2}>
+                <Typography color="error">{error}</Typography>
+              </Box>
             )}
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label htmlFor="quantity" className="form-label">
-                  Quantity
-                </label>
-                <input
-                  type="number"
-                  id="quantity"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="form-control"
-                  min="1"
-                  required
-                  readOnly
-                />
-              </div>
-              <div className="mb-3">
-                <label htmlFor="amountOwed" className="form-label">
-                  Amount Owed
-                </label>
-                <input
-                  type="number"
-                  id="amountOwed"
-                  value={amountOwed}
-                  onChange={(e) => setAmountOwed(Number(e.target.value))}
-                  className="form-control"
-                  step="0.01"
-                  min="0"
-                  required
-                />
-              </div>
-              <div className="modal-footer d-flex justify-content-end">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Update Loan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-        
-      </div>
-    </div>
+            {/* Member Dropdown */}
+            <TextField
+              select
+              fullWidth
+              label="Member"
+              name="userId"
+              value={formData.userId}
+              onChange={handleChange}
+              required
+              margin="dense"
+              disabled={users.length === 0}
+            >
+              <MenuItem value="">-- Select Member --</MenuItem>
+              {users
+                .filter((user) => user.role === "member")
+                .map((user) => (
+                  <MenuItem key={user._id} value={user._id}>
+                    {user.names}
+                  </MenuItem>
+                ))}
+            </TextField>
+            {/* Season Dropdown */}
+            <TextField
+              select
+              fullWidth
+              label="Season"
+              name="seasonId"
+              value={formData.seasonId}
+              onChange={handleChange}
+              required
+              margin="dense"
+              disabled={seasons.length === 0}
+            >
+              <MenuItem value="">-- Select Season --</MenuItem>
+              {seasons.map((season) => (
+                <MenuItem key={season._id} value={season._id}>
+                  {season.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            {/* Amount Owed Field */}
+            <TextField
+              fullWidth
+              label="Amount Owed"
+              type="number"
+              name="amountOwed"
+              value={formData.amountOwed}
+              onChange={handleChange}
+              margin="dense"
+              step="0.01"
+              required
+            />
+            {/* Interest Rate Field */}
+            <TextField
+              fullWidth
+              label="Interest Rate (%)"
+              type="number"
+              name="interest"
+              value={formData.interest}
+              onChange={handleChange}
+              placeholder="Enter interest rate"
+              required
+              margin="dense"
+            />
+          </form>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} color="secondary">
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          onClick={handleSubmit}
+          color="primary"
+          variant="contained"
+        >
+          Update Loan
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
+};
+
+UpdateLoanModal.propTypes = {
+  show: PropTypes.bool.isRequired,
+  loan: PropTypes.object,
+  onClose: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
 };
 
 export default UpdateLoanModal;

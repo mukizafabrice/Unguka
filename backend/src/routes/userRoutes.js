@@ -15,7 +15,11 @@ import { protect, authorize } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 const upload = multer({ dest: "uploads/" });
-router.post("/register", registerUser);
+
+// CORRECTED: Apply 'protect' and 'authorize' to the /register route.
+// Only managers and superadmins should be able to register new users (members).
+router.post("/register", protect, authorize(['manager', 'superadmin']), registerUser);
+
 router.post("/login", loginUser);
 router.get("/", protect, getAllUsers);
 router.get("/:id", protect, getUserById);

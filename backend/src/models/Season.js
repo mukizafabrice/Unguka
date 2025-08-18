@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
 
 const seasonSchema = new mongoose.Schema({
-  // ⭐ NEW: Add cooperativeId to link seasons to a specific cooperative
   cooperativeId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Cooperative', // Refers to your Cooperative model
-    required: true, // Assuming every season must belong to a cooperative
+    ref: "Cooperative",
+    required: true,
   },
   name: {
     type: String,
@@ -30,6 +29,5 @@ const seasonSchema = new mongoose.Schema({
 });
 // ⭐ UPDATED: Ensure uniqueness per cooperative, per name, per year
 seasonSchema.index({ cooperativeId: 1, name: 1, year: 1 }, { unique: true });
-
 
 export default mongoose.model("Season", seasonSchema);

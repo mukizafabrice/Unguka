@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// ⭐ NEW: Import useAuth to get the current user's cooperativeId
 import { useAuth } from "../../contexts/AuthContext";
 
 import {
   fetchSeasons,
-  createSeason, // ⭐ Corrected from createSeasons (singular)
-  updateSeason, // ⭐ Corrected from updateSeasons (singular)
-  deleteSeason, // ⭐ Corrected from deleteSeasons (singular)
+  createSeason,
+  updateSeason,
+  deleteSeason,
 } from "../../services/seasonService";
 
 import {
@@ -33,9 +32,9 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Chip, // Added Chip for status display
+  CircularProgress, 
+  MenuItem,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -104,7 +103,7 @@ const getStatusColor = (status) => {
 function Season() {
   // ⭐ Get user and cooperativeId from AuthContext
   const { user } = useAuth();
-  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+  const cooperativeId = user?.cooperativeId;
 
   const [seasons, setSeasons] = useState([]);
   const [loading, setLoading] = useState(true);

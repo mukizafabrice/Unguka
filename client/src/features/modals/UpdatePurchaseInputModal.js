@@ -8,7 +8,7 @@ import {
   TextField,
   Button,
   MenuItem,
-  Grid,
+  Grid, // Keeping Grid for UpdatePurchaseInputModal as per the selection
   Typography,
   CircularProgress, // For loading state
 } from "@mui/material";
@@ -21,13 +21,32 @@ import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 
 // Styled components for consistent modal header
-const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[50],
-  borderBottom: `1px solid ${theme.palette.divider}`,
-  "& .MuiTypography-root": {
-    fontWeight: 600,
-  },
-}));
+const StyledDialogTitle = styled(DialogTitle)(({ theme }) => {
+  // ⭐ Defensive check: If theme or its required properties are undefined,
+  //    use hardcoded fallback values to prevent runtime error.
+  if (
+    !theme ||
+    !theme.palette ||
+    !theme.palette.grey ||
+    !theme.palette.divider
+  ) {
+    return {
+      backgroundColor: "#fafafa", // Fallback for theme.palette.grey[50]
+      borderBottom: `1px solid #e0e0e0`, // Fallback for theme.palette.divider
+      "& .MuiTypography-root": {
+        fontWeight: 600,
+      },
+    };
+  }
+  // If theme is properly provided, use its values
+  return {
+    backgroundColor: theme.palette.grey[50],
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    "& .MuiTypography-root": {
+      fontWeight: 600,
+    },
+  };
+});
 
 export default function UpdatePurchaseInputModal({
   show,
@@ -122,7 +141,7 @@ export default function UpdatePurchaseInputModal({
         _id: initialData._id, // Keep the _id for update operation
         userId: initialData.userId?._id || "", // Access _id from nested object
         productId: initialData.productId?._id || "", // Access _id from nested object
-        seasonId: initialData.seasonId?._id || "", // Access _id from nested object
+        seasonId: initialData.seasonId?._id || "",
         quantity:
           initialData.quantity !== undefined
             ? String(initialData.quantity)

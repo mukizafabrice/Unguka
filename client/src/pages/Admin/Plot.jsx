@@ -2,11 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// ⭐ NEW: Import useAuth to get the current user's cooperativeId
 import { useAuth } from "../../contexts/AuthContext";
 
 import {
-  fetchPlots, // ⭐ CORRECTED: Changed from fetchPlot to fetchPlots (plural)
+  fetchPlots,
   createPlot,
   updatePlot,
   deletePlot,
@@ -34,7 +33,11 @@ import {
   styled,
   Pagination,
   CircularProgress,
-  MenuItem, // Added MenuItem for search field dropdown
+  MenuItem,
+  Dialog, // ⭐ Added for confirmation dialog
+  DialogTitle, // ⭐ Added for confirmation dialog
+  DialogContent, // ⭐ Added for confirmation dialog
+  DialogActions, // ⭐ Added for confirmation dialog
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -98,6 +101,11 @@ function Plot() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedPlot, setSelectedPlot] = useState(null);
+
+  // ⭐ NEW STATE FOR CONFIRMATION DIALOG
+  const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
+  const [plotToDeleteId, setPlotToDeleteId] = useState(null);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState(""); // State for search input
   // ⭐ UPDATED: Default search field now includes 'size' and 'member' for plots. Removed 'productName', 'area'.
@@ -108,7 +116,9 @@ function Plot() {
   // Function to fetch plots for the manager's specific cooperativeId
   const loadPlots = useCallback(async () => {
     if (!cooperativeId) {
-      toast.error("Manager's cooperative ID is not available. Cannot load plots.");
+      toast.error(
+        "Manager's cooperative ID is not available. Cannot load plots."
+      );
       setLoading(false);
       return;
     }
@@ -134,7 +144,8 @@ function Plot() {
   }, [cooperativeId]); // Add cooperativeId to dependencies
 
   useEffect(() => {
-    if (cooperativeId) { // Only load plots if cooperativeId is available
+    if (cooperativeId) {
+      // Only load plots if cooperativeId is available
       loadPlots();
     }
   }, [cooperativeId, loadPlots]); // Depend on cooperativeId and loadPlots
@@ -192,25 +203,52 @@ function Plot() {
     }
   };
 
-  // ⭐ Modified handleDeletePlot to include cooperativeId
-  const handleDeletePlot = async (id) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot delete plot.");
+  // ⭐ NEW FUNCTION: Open confirmation dialog for deletion
+  const handleOpenConfirmDeleteDialog = (id) => {
+    setPlotToDeleteId(id);
+    setShowConfirmDeleteDialog(true);
+  };
+
+  // ⭐ NEW FUNCTION: Close confirmation dialog (cancel deletion)
+  const handleCancelDelete = () => {
+    setPlotToDeleteId(null);
+    setShowConfirmDeleteDialog(false);
+  };
+
+  // ⭐ NEW FUNCTION: Confirm and proceed with deletion
+  const confirmDeletePlot = async () => {
+    if (!cooperativeId || !plotToDeleteId) {
+      toast.error("Cooperative ID or Plot ID is missing. Cannot delete plot.");
       return;
     }
     try {
       // Pass the cooperativeId to deletePlot for backend authorization
-      const response = await deletePlot(id, cooperativeId);
+      const response = await deletePlot(plotToDeleteId, cooperativeId);
       if (response.success) {
         toast.success(response.message || "Plot deleted successfully!");
         await loadPlots();
+        // Adjust current page if the last item on a page was deleted
+        if (currentRows.length === 1 && currentPage > 1) {
+          setCurrentPage((prevPage) => prevPage - 1);
+        }
       } else {
         toast.error(response.message || "Failed to delete plot.");
       }
     } catch (error) {
-      console.error("Failed to delete plot:", error);
-      toast.error("An unexpected error occurred while deleting plot.");
+      console.error("Failed to delete plot (catch block):", error);
+      toast.error(
+        `Failed to delete plot: ${
+          error.message || "An unexpected error occurred."
+        }`
+      );
+    } finally {
+      handleCancelDelete(); // Always close the dialog
     }
+  };
+
+  // ⭐ MODIFIED handleDeletePlot to use the confirmation dialog
+  const handleDeletePlot = (id) => {
+    handleOpenConfirmDeleteDialog(id);
   };
 
   // Filter and sort plots based on search term, search field, and sort order
@@ -297,8 +335,8 @@ function Plot() {
         >
           <Box mb={3}>
             <Typography variant="body2" color="text.secondary">
-              Manage and track land plots, including member associations,
-              and size details for your cooperative.
+              Manage and track land plots, including member associations, and
+              size details for your cooperative.
             </Typography>
           </Box>
 
@@ -390,7 +428,8 @@ function Plot() {
                       </StyledTableHeaderCell> */}
                       <StyledTableHeaderCell sx={{ width: "20%" }}>
                         Size
-                      </StyledTableHeaderCell> {/* ⭐ CHANGED 'Area' to 'Size' */}
+                      </StyledTableHeaderCell>{" "}
+                      {/* ⭐ CHANGED 'Area' to 'Size' */}
                       <StyledTableHeaderCell sx={{ width: "20%" }}>
                         UPI
                       </StyledTableHeaderCell>
@@ -422,7 +461,10 @@ function Plot() {
                           {/* <StyledTableCell>
                             {plot.productId?.productName || "N/A"}
                           </StyledTableCell> */}
-                          <StyledTableCell>{plot.size || "N/A"}</StyledTableCell> {/* ⭐ CHANGED plot.area to plot.size */}
+                          <StyledTableCell>
+                            {plot.size || "N/A"}
+                          </StyledTableCell>{" "}
+                          {/* ⭐ CHANGED plot.area to plot.size */}
                           <StyledTableCell>{plot.upi || "N/A"}</StyledTableCell>
                           <StyledTableCell align="center">
                             <Stack
@@ -452,7 +494,9 @@ function Plot() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}> {/* ⭐ Adjusted colspan */}
+                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                          {" "}
+                          {/* ⭐ Adjusted colspan */}
                           <Typography variant="body1" color="text.secondary">
                             No plots found for this cooperative.
                           </Typography>
@@ -498,18 +542,42 @@ function Plot() {
         cooperativeId={cooperativeId}
       />
 
-      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
-      {/* <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      /> */}
+      {/* ⭐ NEW: Confirmation Dialog for Deletion */}
+      <Dialog
+        open={showConfirmDeleteDialog}
+        onClose={handleCancelDelete}
+        aria-labelledby="confirm-delete-dialog-title"
+        aria-describedby="confirm-delete-dialog-description"
+      >
+        <DialogTitle id="confirm-delete-dialog-title">
+          <Typography variant="h6" color="error">
+            Confirm Deletion
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography id="confirm-delete-dialog-description">
+            Are you sure you want to permanently delete this plot record? This
+            action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCancelDelete}
+            variant="outlined"
+            color="secondary"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeletePlot}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

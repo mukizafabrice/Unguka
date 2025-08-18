@@ -7,7 +7,6 @@ import { ToastContainer } from "react-toastify"; // ⭐ CRUCIAL: Import ToastCon
 import "react-toastify/dist/ReactToastify.css"; //
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
-import "react-toastify/dist/ReactToastify.css";
 //Admin imports
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Season from "./pages/Admin/Season";

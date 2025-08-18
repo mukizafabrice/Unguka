@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import Logout from "./Logout";
-
+import { useAuth } from "../contexts/AuthContext";
 import {
   Home,
   Package,
@@ -36,10 +36,12 @@ function SideNav({ isHide }) {
   const toggleMenu = (menu) => {
     setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
   };
-
+const { user } = useAuth();
   return (
     <div className={`sidebar ${isHide ? "hide" : ""}`}>
-      {/* <div className="sidebar-header">Unguka CO</div> */}
+      <div className="sidebar-header">
+        <h5 className="fw-bold">{user?.names || "System Admin"}</h5>
+      </div>
       <ul className="sidebar-menu">
         <li>
           <NavLink

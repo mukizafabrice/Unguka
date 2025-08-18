@@ -1,68 +1,65 @@
-// src/routes/feesRoutes.js
-import express from "express";
+// Example of your routes
+import express from "express";// Your existing middleware
+
 import {
   recordPayment,
   getFeesByUserAndSeason,
   getAllFees,
-  getAllFeesById, // Assuming this gets fees for a specific user by their ID
+  getAllFeesById,
   updateFee,
   deleteFee,
-} from "../controllers/feesController.js"; // Adjust path to your fees controllers as needed
-
-// Import your authentication and authorization middleware
-import { protect } from "../middleware/authMiddleware.js";
-import { authorizeRoles } from "../middleware/roleMiddleware.js";
-import { checkCooperativeAccess } from "../middleware/coopAccessMiddleware.js";
-
+} from "../controllers/feesController.js";
+import { protect } from '../middleware/authMiddleware.js';
+import { authorizeRoles } from '../middleware/roleMiddleware.js';
+import { checkCooperativeAccess } from '../middleware/coopAccessMiddleware.js';
 const router = express.Router();
+
+// Route to record a new payment
 router.post(
-  "/record-payment",
+  "/",
   protect,
   authorizeRoles(["superadmin", "manager"]),
-  checkCooperativeAccess("body"),
   recordPayment
 );
 
-router.get(
-  "/:cooperativeId/:userId/:seasonId",
-  protect,
-  authorizeRoles(["superadmin", "manager", "member"]),
-  checkCooperativeAccess("params"), // Expects cooperativeId from URL params
-  getFeesByUserAndSeason
-);
-
+// Route to get all fees for a specific cooperative (managers/superadmins only)
+// Note: The cooperativeId in params is now a hint, with the controller doing the final security check
 router.get(
   "/:cooperativeId",
   protect,
   authorizeRoles(["superadmin", "manager"]),
-  checkCooperativeAccess("params"), // Expects cooperativeId from URL params
   getAllFees
 );
 
+// Get fees by user ID and a specific cooperative
 router.get(
-  "/user/:cooperativeId/:userId",
+  "/:cooperativeId/user/:userId",
   protect,
-  authorizeRoles(["superadmin", "manager", "member"]),
-  checkCooperativeAccess("params"), // Expects cooperativeId from URL params
+  authorizeRoles(["superadmin", "manager"]),
   getAllFeesById
 );
 
-// PUT /api/fees/:id
-// Allows managers and superadmins to update a specific fee record.
-// cooperativeId for the fee being updated is typically in the request body.
+// Get fees by user and season in a specific cooperative
+router.get(
+  "/:cooperativeId/user/:userId/season/:seasonId",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  getFeesByUserAndSeason
+);
+
+// ⚠️ CHANGE: Removed cooperativeId from body for security and simplicity
 router.put(
   "/:id",
   protect,
   authorizeRoles(["superadmin", "manager"]),
-  checkCooperativeAccess("body"), // Expects cooperativeId in req.body
   updateFee
 );
 
+// ⚠️ CHANGE: Removed cooperativeId from body for security and simplicity
 router.delete(
   "/:id",
   protect,
   authorizeRoles(["superadmin", "manager"]),
-  checkCooperativeAccess("body"), // Expects cooperativeId in req.body
   deleteFee
 );
 

@@ -22,7 +22,11 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   Visibility,
@@ -36,16 +40,16 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
 import {
-  fetchLoans,
-  updateLoans,
-  deleteLoans,
+  fetchAllCooperativeLoans,
+  updateLoan,
+  deleteLoan,
   createLoan,
 } from "../../services/loanService";
 import AddLoanModal from "../../features/modals/AddLoanModal";
 import PayLoanModal from "../../features/modals/PayLoanModal";
 import UpdateLoanModal from "../../features/modals/UpdateLoanModal";
 
-// Styled components for a cleaner look
+// Styled components (no change)
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -54,24 +58,21 @@ const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   },
 }));
 
-// Styled component for table body cells - Adjusted padding for responsiveness
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  padding: "8px 16px", // Default padding
+  padding: "8px 16px",
   borderBottom: `1px solid ${theme.palette.divider}`,
   backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.primary,
-  wordWrap: 'break-word', // Ensure text wraps naturally
-  whiteSpace: 'normal',
+  wordWrap: "break-word",
+  whiteSpace: "normal",
   [theme.breakpoints.down("sm")]: {
-    // Apply on small screens
-    padding: "6px 8px", // Reduced padding for mobile
-    fontSize: "0.75rem", // Slightly smaller font size
+    padding: "6px 8px",
+    fontSize: "0.75rem",
   },
 }));
 
-// Styled component for table header cells - Adjusted padding for responsiveness
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
-  padding: "12px 16px", // Default padding
+  padding: "12px 16px",
   backgroundColor: "transparent",
   color: theme.palette.text.primary,
   fontWeight: 600,
@@ -82,16 +83,15 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   "&:last-of-type": {
     borderTopRightRadius: theme.shape.borderRadius,
   },
-  wordWrap: 'break-word', // Ensure text wraps naturally
-  whiteSpace: 'normal',
+  wordWrap: "break-word",
+  whiteSpace: "normal",
   [theme.breakpoints.down("sm")]: {
-    // Apply on small screens
-    padding: "8px 8px", // Reduced padding for mobile
-    fontSize: "0.75rem", // Slightly smaller font size
+    padding: "8px 8px",
+    fontSize: "0.75rem",
   },
 }));
 
-// Helper function for status chip color
+// Helper function for status chip color (no change)
 const getStatusColor = (status) => {
   switch (status) {
     case "repaid":
@@ -105,11 +105,13 @@ const getStatusColor = (status) => {
 
 function Loan() {
   const [loans, setLoans] = useState([]);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
   const [showPayModal, setShowPayModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // New state for confirmation
   const [selectedLoan, setSelectedLoan] = useState(null);
+  const [loanToDelete, setLoanToDelete] = useState(null); // New state to hold the loan to be deleted
   const [page, setPage] = useState(1);
   const rowsPerPage = 7;
   const [searchTerm, setSearchTerm] = useState("");
@@ -121,12 +123,12 @@ function Loan() {
   const loadLoans = useCallback(async () => {
     setLoading(true);
     try {
-      const loansData = await fetchLoans();
+      const loansData = await fetchAllCooperativeLoans();
       setLoans(loansData || []);
     } catch (error) {
       console.error("Failed to load loans:", error);
       toast.error("Failed to load loans.");
-      setLoans([]); // Ensure loans is reset on error
+      setLoans([]);
     } finally {
       setLoading(false);
     }
@@ -142,84 +144,94 @@ function Loan() {
       currency: "RWF",
     }).format(amount);
 
-  const handlePayLoan = async (loanId, amountPaid) => {
-    try {
-      await updateLoans(loanId, { amountPaid });
-      toast.success("Loan payment processed successfully!");
-      await loadLoans();
-      setShowPayModal(false);
-    } catch (error) { // Catch error for more specific toast
-      console.error("Failed to process payment:", error);
-      toast.error(
-        `Failed to process payment: ${error.response?.data?.message || error.message}`
+  const handleApiCall = useCallback(
+    async (apiFunction, successMessage, errorMessage) => {
+      try {
+        await apiFunction();
+        toast.success(successMessage);
+        await loadLoans();
+      } catch (error) {
+        console.error(errorMessage, error);
+        toast.error(
+          `${errorMessage}: ${error.response?.data?.message || error.message}`
+        );
+      }
+    },
+    [loadLoans]
+  );
+
+  const handlePayLoan = (loanId, amountPaid) => {
+    handleApiCall(
+      () => updateLoan(loanId, { amountPaid }),
+      "Loan payment processed successfully!",
+      "Failed to process payment"
+    );
+    setShowPayModal(false);
+  };
+
+  const handleUpdateLoan = (loanId, updatedData) => {
+    handleApiCall(
+      () => updateLoan(loanId, updatedData),
+      "Loan updated successfully!",
+      "Failed to update loan"
+    );
+    setShowUpdateModal(false);
+  };
+
+  // New handler to confirm deletion
+  const confirmDelete = (loan) => {
+    setLoanToDelete(loan);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleExecuteDelete = () => {
+    if (loanToDelete) {
+      handleApiCall(
+        () => deleteLoan(loanToDelete._id),
+        "Loan deleted successfully!",
+        "Failed to delete loan"
       );
+      setLoanToDelete(null);
+      setShowDeleteConfirm(false);
     }
   };
 
-  const handleUpdateLoan = async (loanId, updatedData) => {
-    try {
-      await updateLoans(loanId, updatedData);
-      toast.success("Loan updated successfully!");
-      await loadLoans();
-      setShowUpdateModal(false);
-    } catch (error) { // Catch error for more specific toast
-      console.error("Failed to update loan:", error);
-      toast.error(
-        `Failed to update loan: ${error.response?.data?.message || error.message}`
-      );
-    }
-  };
-
-  const handleDeleteLoan = async (id) => {
-    try {
-      await deleteLoans(id);
-      toast.success("Loan deleted successfully!");
-      await loadLoans();
-    } catch (error) { // Catch error for more specific toast
-      console.error("Failed to delete loan:", error);
-      toast.error(
-        `Failed to delete loan: ${error.response?.data?.message || error.message}`
-      );
-    }
-  };
-
-  const handleAddLoan = async (data) => {
-    try {
-      await createLoan(data);
-      toast.success("Loan added successfully!");
-      await loadLoans();
-      setShowAddModal(false);
-    } catch (error) {
-      console.error("Failed to add loan:", error);
-      toast.error(
-        `Failed to add loan: ${error.response?.data?.message || error.message}`
-      );
-    }
+  const handleAddLoan = (data) => {
+    handleApiCall(
+      () => createLoan(data),
+      "Loan added successfully!",
+      "Failed to add loan"
+    );
+    setShowAddModal(false);
   };
 
   const filteredLoans = useMemo(() => {
     let updated = loans;
-
     if (searchTerm) {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
       updated = updated.filter((loan) => {
-        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        const userNames =
+          loan.purchaseInputId?.userId?.names?.toLowerCase() ||
+          loan.userId?.names?.toLowerCase();
+        const productName =
+          loan.purchaseInputId?.productId?.productName?.toLowerCase();
+        const seasonName =
+          loan.purchaseInputId?.seasonId?.name?.toLowerCase() ||
+          loan.seasonId?.name?.toLowerCase();
+        const seasonYear =
+          loan.purchaseInputId?.seasonId?.year?.toString() ||
+          loan.seasonId?.year?.toString();
+
         switch (searchField) {
           case "name":
-            return loan.purchaseInputId?.userId?.names
-              ?.toLowerCase()
-              .includes(lowerCaseSearchTerm);
+            return userNames?.includes(lowerCaseSearchTerm) || false;
           case "product":
-            return loan.purchaseInputId?.productId?.productName
-              ?.toLowerCase()
-              .includes(lowerCaseSearchTerm);
+            return productName?.includes(lowerCaseSearchTerm) || false;
           case "season":
             return (
-              loan.purchaseInputId?.seasonId?.name
-                ?.toLowerCase()
-                .includes(lowerCaseSearchTerm) ||
-              loan.purchaseInputId?.seasonId?.year
-                ?.toString()
-                .includes(lowerCaseSearchTerm)
+              seasonName?.includes(lowerCaseSearchTerm) ||
+              seasonYear?.includes(lowerCaseSearchTerm) ||
+              false
             );
           default:
             return true;
@@ -249,6 +261,14 @@ function Loan() {
     setPage(newPage);
   }, []);
 
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" my={5}>
+        <CircularProgress color="primary" />
+      </Box>
+    );
+  }
+
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
@@ -264,7 +284,7 @@ function Loan() {
                 sx={{
                   backgroundColor: "primary.main",
                   "&:hover": { backgroundColor: "primary.dark" },
-                  minWidth: { xs: "100%", sm: "auto" }
+                  minWidth: { xs: "100%", sm: "auto" },
                 }}
               >
                 Add Loan
@@ -283,24 +303,24 @@ function Loan() {
         />
         <CardContent
           sx={{
-            maxHeight: isMobile ? 'calc(100vh - 200px)' : 'calc(100vh - 150px)',
-            overflow: 'hidden', // Hide overflow on CardContent itself
-            display: 'flex',
-            flexDirection: 'column',
+            maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          <Box mb={3} sx={{ flexShrink: 0 }}> {/* Ensures this Box doesn't shrink */}
+          <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
-              Manage and track loan records, including borrower details, product information, and payment status.
+              Manage and track loan records, including borrower details, product
+              information, and payment status.
             </Typography>
           </Box>
-
           <Stack
             direction={isMobile ? "column" : "row"}
             spacing={2}
             mb={3}
             alignItems={isMobile ? "stretch" : "center"}
-            sx={{ flexShrink: 0 }} // Ensures this Stack doesn't shrink
+            sx={{ flexShrink: 0 }}
           >
             <TextField
               select
@@ -349,129 +369,151 @@ function Loan() {
               <MenuItem value="repaid">Repaid</MenuItem>
             </TextField>
           </Stack>
-
-          {loading ? (
-            <Box display="flex" justifyContent="center" my={5} sx={{ flexGrow: 1 }}>
-              <CircularProgress color="primary" />
-            </Box>
-          ) : (
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}> {/* This box will scroll */}
-              <TableContainer
-                component={Paper}
-                sx={{ overflowX: "auto", borderRadius: 2, boxShadow: 2, flexGrow: 1 }}
-              >
-                <Table size="small" sx={{ tableLayout: 'fixed' }}>
-                  <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                      <StyledTableHeaderCell sx={{ width: '5%' }}>ID</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: '15%' }}>Member</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: '15%' }}>Product</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: '15%' }}>Season (Year)</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: '8%' }}>Quantity</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: '12%' }}>Amount Owed</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: '8%' }}>Interest</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: '8%' }}>Status</StyledTableHeaderCell>
-                      <StyledTableHeaderCell align="center" sx={{ width: '14%' }}>Actions</StyledTableHeaderCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedLoans.length > 0 ? (
-                      paginatedLoans.map((loan, index) => (
-                        <TableRow hover key={loan._id}>
-                          <StyledTableCell>
-                            {(page - 1) * rowsPerPage + index + 1}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {loan.purchaseInputId?.userId?.names ||
-                              loan.userId?.names || "N/A"}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {loan.purchaseInputId?.productId?.productName ||
-                              "Money" || "N/A"}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {loan.purchaseInputId?.seasonId?.name || "N/A"} (
-                            {loan.purchaseInputId?.seasonId?.year || "N/A"})
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {loan.purchaseInputId?.quantity || "N/A"}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {formatCurrency(loan.amountOwed)}
-                          </StyledTableCell>
-                          <StyledTableCell>{loan.interest || "N/A"}</StyledTableCell>
-                          <StyledTableCell>
-                            <Chip
-                              label={loan.status}
-                              size="small"
-                              color={getStatusColor(loan.status)}
-                            />
-                          </StyledTableCell>
-                          <StyledTableCell align="center">
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              justifyContent="center"
-                            >
-                              {loan.status === "pending" && (
-                                <Tooltip title="Pay Loan">
-                                  <IconButton
-                                    size="small"
-                                    color="primary"
-                                    onClick={() => {
-                                      setSelectedLoan(loan);
-                                      setShowPayModal(true);
-                                    }}
-                                  >
-                                    <Payment fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
-                              <Tooltip title="Edit Loan">
+          <Box
+            sx={{
+              flexGrow: 1,
+              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <TableContainer
+              component={Paper}
+              sx={{
+                overflowX: "auto",
+                borderRadius: 2,
+                boxShadow: 2,
+                flexGrow: 1,
+              }}
+            >
+              <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <StyledTableHeaderCell sx={{ width: "5%" }}>
+                      ID
+                    </StyledTableHeaderCell>
+                    <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      Member
+                    </StyledTableHeaderCell>
+                    <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      Product
+                    </StyledTableHeaderCell>
+                    <StyledTableHeaderCell sx={{ width: "15%" }}>
+                      Season (Year)
+                    </StyledTableHeaderCell>
+                    <StyledTableHeaderCell sx={{ width: "12%" }}>
+                      Amount Owed
+                    </StyledTableHeaderCell>
+                    <StyledTableHeaderCell sx={{ width: "8%" }}>
+                      Interest Rate
+                    </StyledTableHeaderCell>
+                    <StyledTableHeaderCell sx={{ width: "8%" }}>
+                      Status
+                    </StyledTableHeaderCell>
+                    <StyledTableHeaderCell align="center" sx={{ width: "14%" }}>
+                      Actions
+                    </StyledTableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedLoans.length > 0 ? (
+                    paginatedLoans.map((loan, index) => (
+                      <TableRow hover key={loan._id}>
+                        <StyledTableCell>
+                          {(page - 1) * rowsPerPage + index + 1}
+                        </StyledTableCell>
+                        <StyledTableCell>
+                          {loan.purchaseInputId?.userId?.names ||
+                            loan.userId?.names ||
+                            "N/A"}
+                        </StyledTableCell>
+                        <StyledTableCell>
+                          {loan.purchaseInputId?.productId?.productName ||
+                            "Money" ||
+                            "N/A"}
+                        </StyledTableCell>
+                        <StyledTableCell>
+                          {loan.purchaseInputId?.seasonId?.name || "N/A"} (
+                          {loan.purchaseInputId?.seasonId?.year || "N/A"})
+                        </StyledTableCell>
+                        <StyledTableCell>
+                          {formatCurrency(loan.amountOwed)}
+                        </StyledTableCell>
+                        <StyledTableCell>
+                          {loan.interest || "N/A"}
+                        </StyledTableCell>
+                        <StyledTableCell>
+                          <Chip
+                            label={loan.status}
+                            size="small"
+                            color={getStatusColor(loan.status)}
+                          />
+                        </StyledTableCell>
+                        <StyledTableCell align="center">
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            justifyContent="center"
+                          >
+                            {loan.status === "pending" && (
+                              <Tooltip title="Pay Loan">
                                 <IconButton
                                   size="small"
-                                  color="info"
+                                  color="primary"
                                   onClick={() => {
                                     setSelectedLoan(loan);
-                                    setShowUpdateModal(true);
+                                    setShowPayModal(true);
                                   }}
                                 >
-                                  <Edit fontSize="small" />
+                                  <Payment fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                              <Tooltip title="Delete Loan">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleDeleteLoan(loan._id)}
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
-                          </StyledTableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                          <Typography
-                            variant="body1"
-                            color="text.secondary"
-                          >
-                            No loans found.
-                          </Typography>
-                        </TableCell>
+                            )}
+                            <Tooltip title="Edit Loan">
+                              <IconButton
+                                size="small"
+                                color="info"
+                                onClick={() => {
+                                  setSelectedLoan(loan);
+                                  setShowUpdateModal(true);
+                                }}
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete Loan">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => confirmDelete(loan)} // Updated click handler
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
+                        </StyledTableCell>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                        <Typography variant="body1" color="text.secondary">
+                          No loans found.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
           {pageCount > 1 && (
-            <Box mt={3} display="flex" justifyContent="center" sx={{ flexShrink: 0 }}> {/* Pagination, always visible */}
+            <Box
+              mt={3}
+              display="flex"
+              justifyContent="center"
+              sx={{ flexShrink: 0 }}
+            >
               <Pagination
                 count={pageCount}
                 page={page}
@@ -510,6 +552,36 @@ function Loan() {
           onSubmit={handleAddLoan}
         />
       )}
+      {/* New: Delete Confirmation Dialog */}
+      <Dialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this loan for{" "}
+            <span style={{ fontWeight: "bold" }}>
+              {loanToDelete?.purchaseInputId?.userId?.names ||
+                loanToDelete?.userId?.names ||
+                "N/A"}
+            </span>
+            ? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteConfirm(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleExecuteDelete}
+            color="error"
+            variant="contained"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
       <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );

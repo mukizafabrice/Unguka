@@ -7,41 +7,41 @@ import { getCooperativeById } from "../../src/services/cooperativeService";
 import { useAuth } from "../contexts/AuthContext";
 function TopNav({ onMenuClick }) {
   const [cooperativeName, setCooperativeName] = useState("");
+  const { user1 } = useAuth();
 
   // Use a variable to hold user data for cleaner access
   const user = JSON.parse(localStorage.getItem("user"));
   const profilePic = user?.profilePicture;
   // const cooperativeId = user?.cooperativeId;
-  const { user1 } = useAuth();
-  const cooperativeId = user1?.cooperativeId;
 
+  const cooperativeId = user1?.cooperativeId || user?.cooperativeId;
+  console.log("Cooperative ID:", cooperativeId);
   // Use useEffect to fetch data when the component mounts or cooperativeId changes
+  // Add cooperativeId to the dependency array
   useEffect(() => {
     const loadCooperative = async () => {
-      if (!cooperativeId) {
-        // Exit early if no ID is available
-        return;
-      }
+      if (!cooperativeId) return;
 
       try {
-        // Use `await` to wait for the API call to complete
-        const responseData = await getCooperativeById(cooperativeId);
+        const response = await getCooperativeById(cooperativeId);
 
-        // Check for a valid response and access the correct property (e.g., `name`)
-        if (responseData && responseData.name) {
-          setCooperativeName(responseData.name);
+        if (response.success && response.data?.name) {
+          setCooperativeName(response.data.name);
         } else {
-          console.error("Cooperative data not found or invalid.");
-          setCooperativeName("Cooperative"); // Fallback name
+          console.error(
+            "Cooperative data not found or invalid:",
+            response.message
+          );
+          setCooperativeName("Cooperative");
         }
       } catch (error) {
         console.error("Failed to fetch cooperative:", error);
-        setCooperativeName("Cooperative"); // Fallback on error
+        setCooperativeName("Cooperative");
       }
     };
 
     loadCooperative();
-  }, [cooperativeId]); // Add cooperativeId to the dependency array
+  }, [cooperativeId]);
 
   return (
     <nav className="topnav">

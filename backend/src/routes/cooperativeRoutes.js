@@ -10,14 +10,15 @@ import { protect, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+router;
 router
   .route("/")
   .post(protect, authorize("superadmin"), createCooperative)
-  .get(protect, authorize("superadmin"), getAllCooperatives);
+  .get(protect, authorize("superadmin", "manager"), getAllCooperatives);
 
 router
   .route("/:id")
-  .get(protect, authorize("superadmin"), getCooperativeById)
+  .get(protect, getCooperativeById)
   .put(protect, authorize("superadmin"), updateCooperative)
   .delete(protect, authorize("superadmin"), deleteCooperative);
 

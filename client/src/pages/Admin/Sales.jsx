@@ -36,6 +36,10 @@ import {
   CircularProgress,
   MenuItem,
   Chip, // Added Chip for status display
+  Dialog, // ⭐ Added for confirmation dialog
+  DialogTitle, // ⭐ Added for confirmation dialog
+  DialogContent, // ⭐ Added for confirmation dialog
+  DialogActions, // ⭐ Added for confirmation dialog
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -111,6 +115,10 @@ function Sales() {
   const [selectedSale, setSelectedSale] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // ⭐ NEW STATE FOR CONFIRMATION DIALOG
+  const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
+  const [saleToDeleteId, setSaleToDeleteId] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 7;
@@ -294,15 +302,27 @@ function Sales() {
     }
   };
 
-  // ⭐ Modified handleDeleteSale to include cooperativeId
-  const handleDeleteSale = async (id) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot delete sale.");
+  // ⭐ NEW FUNCTION: Open confirmation dialog
+  const handleOpenConfirmDeleteDialog = (id) => {
+    setSaleToDeleteId(id);
+    setShowConfirmDeleteDialog(true);
+  };
+
+  // ⭐ NEW FUNCTION: Close confirmation dialog (cancel deletion)
+  const handleCancelDelete = () => {
+    setSaleToDeleteId(null);
+    setShowConfirmDeleteDialog(false);
+  };
+
+  // ⭐ NEW FUNCTION: Confirm and proceed with deletion
+  const confirmDeleteSale = async () => {
+    if (!cooperativeId || !saleToDeleteId) {
+      toast.error("Cooperative ID or Sale ID is missing. Cannot delete sale.");
       return;
     }
     try {
       // Pass the cooperativeId to deleteSale for backend authorization
-      const response = await deleteSale(id, cooperativeId); // ⭐ CORRECTED: use deleteSale
+      const response = await deleteSale(saleToDeleteId, cooperativeId); // ⭐ CORRECTED: use deleteSale
       if (response.success) {
         toast.success(response.message || "Sale deleted successfully!");
         await loadSales();
@@ -322,6 +342,9 @@ function Sales() {
           error.message || "An unexpected error occurred."
         }`
       );
+    } finally {
+      // Always close the dialog and reset the saleToDeleteId
+      handleCancelDelete();
     }
   };
 
@@ -558,7 +581,9 @@ function Sales() {
                                 aria-label="delete"
                                 color="error"
                                 size="small"
-                                onClick={() => handleDeleteSale(sale._id)}
+                                onClick={() =>
+                                  handleOpenConfirmDeleteDialog(sale._id)
+                                }
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -614,6 +639,43 @@ function Sales() {
         // ⭐ Pass cooperativeId to the modal for new sale creation
         cooperativeId={cooperativeId}
       />
+
+      {/* ⭐ NEW: Confirmation Dialog for Deletion */}
+      <Dialog
+        open={showConfirmDeleteDialog}
+        onClose={handleCancelDelete}
+        aria-labelledby="confirm-delete-dialog-title"
+        aria-describedby="confirm-delete-dialog-description"
+      >
+        <DialogTitle id="confirm-delete-dialog-title">
+          <Typography variant="h6" color="error">
+            Confirm Deletion
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography id="confirm-delete-dialog-description">
+            Are you sure you want to permanently delete this sale record? This
+            action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCancelDelete}
+            variant="outlined"
+            color="secondary"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteSale}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify"; // ✅ only toast
+import "react-toastify/dist/ReactToastify.css"; // ✅ CSS once (better put in App.js)
 
-// ⭐ NEW: Import useAuth to get the current user's cooperativeId
 import { useAuth } from "../../contexts/AuthContext";
 
 import {
@@ -36,6 +35,10 @@ import {
   CircularProgress,
   MenuItem,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -112,6 +115,10 @@ function PurchaseInputs() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedPurchaseInput, setSelectedPurchaseInput] = useState(null);
 
+  // ⭐ NEW STATE FOR CONFIRMATION DIALOG
+  const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
+  const [purchaseInputToDeleteId, setPurchaseInputToDeleteId] = useState(null);
+
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 7;
 
@@ -167,7 +174,6 @@ function PurchaseInputs() {
     }
   }, [cooperativeId, loadPurchaseInputs]); // Depend on cooperativeId and loadPurchaseInputs
 
-  // ⭐ Modified handleAddPurchaseInput to include cooperativeId
   const handleAddPurchaseInput = async (newPurchaseInputData) => {
     if (!cooperativeId) {
       toast.error("Cooperative ID is missing. Cannot add purchase.");
@@ -179,7 +185,7 @@ function PurchaseInputs() {
         ...newPurchaseInputData,
         cooperativeId: cooperativeId,
       };
-      const response = await createPurchaseInput(dataToSend); // ⭐ Corrected service call
+      const response = await createPurchaseInput(dataToSend);
       if (response.success) {
         toast.success(response.message || "Purchase added successfully!");
         await loadPurchaseInputs();
@@ -215,7 +221,7 @@ function PurchaseInputs() {
       const response = await updatePurchaseInput(
         _id, // Pass the extracted _id
         dataToSend // Pass the data with cooperativeId
-      ); // ⭐ Corrected service call
+      );
       if (response.success) {
         toast.success(response.message || "Purchase updated successfully!");
         await loadPurchaseInputs();
@@ -234,36 +240,57 @@ function PurchaseInputs() {
     }
   };
 
-  // ⭐ Modified handleDeletePurchaseInput to include cooperativeId
-  const handleDeletePurchaseInput = async (id) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot delete purchase.");
+  // ⭐ NEW FUNCTION: Open confirmation dialog for deletion
+  const handleOpenConfirmDeleteDialog = (id) => {
+    setPurchaseInputToDeleteId(id);
+    setShowConfirmDeleteDialog(true);
+  };
+
+  // ⭐ NEW FUNCTION: Close confirmation dialog (cancel deletion)
+  const handleCancelDelete = () => {
+    setPurchaseInputToDeleteId(null);
+    setShowConfirmDeleteDialog(false);
+  };
+
+  // ⭐ NEW FUNCTION: Confirm and proceed with deletion
+  const confirmDeletePurchaseInput = async () => {
+    if (!cooperativeId || !purchaseInputToDeleteId) {
+      toast.error(
+        "Cooperative ID or Purchase Input ID is missing. Cannot delete purchase."
+      );
       return;
     }
-    // Using window.confirm for simplicity, consider a custom MUI dialog for better UX
-    if (
-      window.confirm(
-        "Are you sure you want to delete this purchase? This action cannot be undone."
-      )
-    ) {
-      try {
-        // Pass the cooperativeId to deletePurchaseInput for backend authorization
-        const response = await deletePurchaseInput(id, cooperativeId); // ⭐ Corrected service call
-        if (response.success) {
-          toast.success(response.message || "Purchase deleted successfully!");
-          await loadPurchaseInputs();
-        } else {
-          toast.error(response.message || "Failed to delete purchase.");
+    try {
+      // Pass the cooperativeId to deletePurchaseInput for backend authorization
+      const response = await deletePurchaseInput(
+        purchaseInputToDeleteId,
+        cooperativeId
+      );
+      if (response.success) {
+        toast.success(response.message || "Purchase deleted successfully!");
+        await loadPurchaseInputs();
+        // Adjust current page if the last item on a page was deleted
+        if (currentRows.length === 1 && currentPage > 1) {
+          setCurrentPage((prevPage) => prevPage - 1);
         }
-      } catch (error) {
-        console.error("Failed to delete purchase:", error);
-        toast.error(
-          `Failed to delete purchase: ${
-            error.response?.data?.message || error.message
-          }`
-        );
+      } else {
+        toast.error(response.message || "Failed to delete purchase.");
       }
+    } catch (error) {
+      console.error("Failed to delete purchase (catch block):", error);
+      toast.error(
+        `Failed to delete purchase: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    } finally {
+      handleCancelDelete(); // Always close the dialog
     }
+  };
+
+  // ⭐ MODIFIED handleDeletePurchaseInput to use the confirmation dialog
+  const handleDeletePurchaseInput = (id) => {
+    handleOpenConfirmDeleteDialog(id);
   };
 
   // Filter and sort purchase inputs based on search, filter, and sort order
@@ -430,8 +457,7 @@ function PurchaseInputs() {
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="paid">Paid</MenuItem>
-              <MenuItem value="loan">Loan</MenuItem>{" "}
-              {/* ⭐ Changed from 'pending' to 'loan' */}
+              <MenuItem value="loan">Loan</MenuItem>
             </TextField>
             <Button
               variant="outlined"
@@ -646,7 +672,7 @@ function PurchaseInputs() {
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddPurchaseInput}
-        cooperativeId={cooperativeId} // ⭐ Pass cooperativeId to AddPurchaseInputModal
+        cooperativeId={cooperativeId}
       />
 
       <UpdatePurchaseInputModal
@@ -657,8 +683,45 @@ function PurchaseInputs() {
         }}
         onSubmit={handleUpdatePurchaseInput}
         initialData={selectedPurchaseInput}
-        cooperativeId={cooperativeId} // ⭐ Pass cooperativeId to UpdatePurchaseInputModal
+        cooperativeId={cooperativeId}
       />
+
+      {/* ⭐ NEW: Confirmation Dialog for Deletion */}
+      <Dialog
+        open={showConfirmDeleteDialog}
+        onClose={handleCancelDelete}
+        aria-labelledby="confirm-delete-dialog-title"
+        aria-describedby="confirm-delete-dialog-description"
+      >
+        <DialogTitle id="confirm-delete-dialog-title">
+          <Typography variant="h6" color="error">
+            Confirm Deletion
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography id="confirm-delete-dialog-description">
+            Are you sure you want to permanently delete this purchase record?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCancelDelete}
+            variant="outlined"
+            color="secondary"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeletePurchaseInput}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

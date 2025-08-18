@@ -1,10 +1,8 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
-import { checkCooperativeAccess } from "../middleware/coopAccessMiddleware.js";
-
 import {
-  borrowMoney,
+  createLoan,
   getAllLoans,
   getLoanById,
   updateLoan,
@@ -13,44 +11,31 @@ import {
 
 const router = express.Router();
 
-router.post(
-  "/",
-  protect,
-  authorizeRoles(["user", "manager"]),
-  checkCooperativeAccess("body"),
-  borrowMoney
-);
+// A single route for creating a loan, accessible only to managers.
+// The `cooperativeId` is handled by the backend.
+router.post("/", protect, authorizeRoles(["manager"]), createLoan);
 
+// Get all loans for the logged-in user's cooperative.
 router.get(
   "/",
   protect,
   authorizeRoles(["manager", "superadmin"]),
-  checkCooperativeAccess("query"),
   getAllLoans
 );
 
+// Get a specific loan by ID. Access is restricted to members, managers, and superadmins,
+// but the controller ensures they can only view loans within their cooperative.
 router.get(
   "/:id",
   protect,
-  authorizeRoles(["user", "manager", "superadmin"]),
-  checkCooperativeAccess("query"),
+  authorizeRoles(["member", "manager", "superadmin"]),
   getLoanById
 );
 
-router.put(
-  "/:id",
-  protect,
-  authorizeRoles(["manager", "superadmin"]),
-  checkCooperativeAccess("body"),
-  updateLoan
-);
+// Update a loan, restricted to managers.
+router.put("/:id", protect, authorizeRoles(["manager"]), updateLoan);
 
-router.delete(
-  "/:id",
-  protect,
-  authorizeRoles(["manager", "superadmin"]),
-  checkCooperativeAccess("body"),
-  deleteLoan
-);
+// Delete a loan, restricted to managers.
+router.delete("/:id", protect, authorizeRoles(["manager"]), deleteLoan);
 
 export default router;

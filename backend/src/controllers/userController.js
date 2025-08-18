@@ -2,12 +2,17 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import fs from "fs";
+// In your backend's user controller (e.g., authController.js)
+
+// In your backend's user controller (e.g., userController.js)
 
 export const registerUser = async (req, res) => {
   const { names, email, phoneNumber, nationalId, role, cooperativeId } =
     req.body;
   const defaultPass = "123";
+  const requestingUser = req.user; // This comes from your authentication middleware
 
+  // 1. Basic input validation for required fields
   if (!names || !email || !phoneNumber || !nationalId) {
     return res.status(400).json({ message: "Please fill all required fields" });
   }
@@ -16,6 +21,7 @@ export const registerUser = async (req, res) => {
     const cleanPhone = phoneNumber;
     const cleanNationalId = String(nationalId).trim();
 
+    // 2. Check for existing user with same email, phone, or national ID
     const existingUser = await User.findOne({
       $or: [
         { email: email },
@@ -23,6 +29,12 @@ export const registerUser = async (req, res) => {
         { nationalId: cleanNationalId },
       ],
     });
+
+    if (cleanNationalId < 16 && cleanNationalId > 16) {
+      return res
+        .status(400)
+        .json({ message: "Your national Id must be 16 in length" });
+    }
 
     if (existingUser) {
       return res.status(400).json({
@@ -33,19 +45,73 @@ export const registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(defaultPass, 10);
 
-    // Set cooperativeId conditionally based on the role
+    let newUserRole = "member"; // Default for the new user (can be overridden by superadmin)
+    let newUserCooperativeId = null; // Default, can be assigned
+
+    // 3. Authorization and Role/CooperativeId Assignment Logic
+    if (!requestingUser) {
+      // This should ideally be handled by an `auth` middleware before this function
+      return res
+        .status(401)
+        .json({ message: "Authentication required to register users." });
+    }
+
+    if (requestingUser.role === "superadmin") {
+      // Superadmin can create any role (member, manager, superadmin)
+      // and assign any cooperativeId.
+      // They can also create users without a cooperativeId (e.g., other superadmins)
+      newUserRole = role || "member"; // Use provided role, or default to member
+      newUserCooperativeId = cooperativeId; // Use provided cooperativeId, or keep null/undefined
+
+      // Optional: Add more specific validation for superadmin if needed,
+      // e.g., if a superadmin tries to create another superadmin, you might restrict that.
+      if (
+        newUserRole === "superadmin" &&
+        requestingUser.id.toString() !== newUser._id.toString()
+      ) {
+        // This check is typically for update/delete. For creation, consider if only one superadmin is allowed or if they can create others.
+        // For now, allow superadmin to create other superadmins if the 'role' is passed.
+      }
+    } else if (requestingUser.role === "manager") {
+      // Managers can ONLY create 'member's within THEIR OWN cooperative.
+      newUserRole = "member"; // Force role to 'member' for manager-initiated registrations
+      newUserCooperativeId = requestingUser.cooperativeId; // Assign manager's cooperativeId
+
+      // If manager tries to pass a 'role' or 'cooperativeId' in the body, ignore or reject
+      if (role && role !== "member") {
+        return res
+          .status(403)
+          .json({ message: "Managers can only create 'member' accounts." });
+      }
+      if (
+        cooperativeId &&
+        cooperativeId.toString() !== requestingUser.cooperativeId.toString()
+      ) {
+        return res.status(403).json({
+          message:
+            "Managers can only create users within their own cooperative.",
+        });
+      }
+    } else {
+      // Other roles (e.g., 'member') are not allowed to register new users
+      return res.status(403).json({
+        message: "Access denied: Your role does not permit user creation.",
+      });
+    }
+
+    // 4. Create new user instance
     const newUser = new User({
       names,
       email,
       password: hashedPassword,
       phoneNumber: cleanPhone,
       nationalId: cleanNationalId,
-      role: role || "member",
-      cooperativeId:
-        role === "member" || role === "manager" ? cooperativeId : null,
+      role: newUserRole, // Use the determined role
+      cooperativeId: newUserCooperativeId, // Use the determined cooperativeId
     });
 
-    // Validate that a cooperativeId is provided for non-superadmin roles
+    // 5. Final validation check for cooperativeId before saving
+    // This catches cases where superadmin explicitly tried to create a member/manager without a cooperativeId
     if (
       (newUser.role === "member" || newUser.role === "manager") &&
       !newUser.cooperativeId
@@ -57,6 +123,7 @@ export const registerUser = async (req, res) => {
 
     await newUser.save();
 
+    // ... (rest of your success response, JWT token generation, etc.)
     const token = jwt.sign(
       {
         id: newUser._id,
@@ -85,9 +152,98 @@ export const registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error registering user:", error);
+    // You might want to distinguish Mongoose validation errors from other errors
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: "Internal server error" });
   }
 };
+// export const registerUser = async (req, res) => {
+//   const { names, email, phoneNumber, nationalId, role, cooperativeId } =
+//     req.body;
+//   const defaultPass = "123";
+
+//   if (!names || !email || !phoneNumber || !nationalId) {
+//     return res.status(400).json({ message: "Please fill all required fields" });
+//   }
+
+//   try {
+//     const cleanPhone = phoneNumber;
+//     const cleanNationalId = String(nationalId).trim();
+
+//     const existingUser = await User.findOne({
+//       $or: [
+//         { email: email },
+//         { phoneNumber: cleanPhone },
+//         { nationalId: cleanNationalId },
+//       ],
+//     });
+
+//     if (existingUser) {
+//       return res.status(400).json({
+//         message:
+//           "User with this email, phone number, or national ID already exists.",
+//       });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(defaultPass, 10);
+
+//     // Set cooperativeId conditionally based on the role
+//     const newUser = new User({
+//       names,
+//       email,
+//       password: hashedPassword,
+//       phoneNumber: cleanPhone,
+//       nationalId: cleanNationalId,
+//       role: role || "member",
+//       cooperativeId:
+//         role === "member" || role === "manager" ? cooperativeId : null,
+//     });
+
+//     // Validate that a cooperativeId is provided for non-superadmin roles
+//     if (
+//       (newUser.role === "member" || newUser.role === "manager") &&!newUser.cooperativeId
+//
+//     ) {
+//       return res.status(400).json({
+//         message: "Cooperative ID is required for members and managers.",
+//       });
+//     }
+
+//     await newUser.save();
+
+//     const token = jwt.sign(
+//       {
+//         id: newUser._id,
+//         role: newUser.role,
+//         cooperativeId: newUser.cooperativeId,
+//       },
+//       process.env.JWT_SECRET,
+//       {
+//         expiresIn: "1d",
+//       }
+//     );
+
+//     res.status(201).json({
+//       message: "User registered successfully",
+//       user: {
+//         id: newUser._id,
+//         names: newUser.names,
+//         email: newUser.email,
+//         phoneNumber: newUser.phoneNumber,
+//         nationalId: newUser.nationalId,
+//         role: newUser.role,
+//         cooperativeId: newUser.cooperativeId,
+//         profilePicture: newUser.profilePicture,
+//       },
+//       token,
+//     });
+//   } catch (error) {
+//     console.error("Error registering user:", error);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
 
 //login
 
@@ -118,7 +274,16 @@ export const loginUser = async (req, res) => {
 
     // Include role and cooperativeId in the JWT payload
     const token = jwt.sign(
-      { id: user._id, role: user.role, cooperativeId: user.cooperativeId },
+      {
+        id: user._id,
+        names: user.names,
+        email: user.email,
+        nationalId: user.nationalId,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        cooperativeId: user.cooperativeId,
+        profilePicture: user.profilePicture,
+      },
       process.env.JWT_SECRET,
       {
         expiresIn: "1d",
@@ -267,8 +432,6 @@ export const deleteUser = async (req, res) => {
 };
 //update user
 
-// ... (imports)
-
 export const updateUser = async (req, res) => {
   const { id } = req.params;
   const { names, email, phoneNumber, nationalId, role, cooperativeId } =
@@ -303,8 +466,9 @@ export const updateUser = async (req, res) => {
       }
       // Prevent manager from changing the role or cooperative of a user
       if (
-        role !== userToUpdate.role ||
-        cooperativeId !== userToUpdate.cooperativeId
+        (role && role !== userToUpdate.role) ||
+        (cooperativeId &&
+          cooperativeId.toString() !== userToUpdate.cooperativeId.toString())
       ) {
         return res.status(403).json({
           message:

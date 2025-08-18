@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import Loan from "./Loan.js";
 const purchaseInputSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -16,7 +16,6 @@ const purchaseInputSchema = new mongoose.Schema({
     ref: "Season",
     required: true,
   },
-  // ⭐ NEW: Add cooperativeId to link purchases to a specific cooperative
   cooperativeId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Cooperative", // Refers to your Cooperative model
@@ -60,6 +59,22 @@ const purchaseInputSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+});
+
+purchaseInputSchema.post("findOneAndDelete", async function (doc) {
+  if (!doc) return;
+
+  const purchaseInputId = doc._id;
+
+  try {
+    // Delete all documents from other collections where the purchaseInputId field matches.
+    await Promise.all([mongoose.model("Loan").deleteMany({ purchaseInputId })]);
+  } catch (err) {
+    console.error(
+      `Error during cascading delete for user ${purchaseInputId}:`,
+      err
+    );
+  }
 });
 
 const PurchaseInput = mongoose.model("PurchaseInput", purchaseInputSchema);

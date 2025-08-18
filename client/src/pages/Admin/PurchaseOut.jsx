@@ -1,20 +1,17 @@
+// frontend/src/pages/PurchaseOut.jsx
+
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// ⭐ Import useAuth to get the current user's cooperativeId
 import { useAuth } from "../../contexts/AuthContext";
 
 import {
-  fetchAllPurchaseOuts, // ⭐ CORRECTED: Changed from fetchPurchaseOut to fetchAllPurchaseOuts
+  fetchAllPurchaseOuts,
   createPurchaseOut,
   updatePurchaseOut,
   deletePurchaseOut,
 } from "../../services/purchaseOutService";
-
-// Import fetchProducts and fetchSeasons for dropdowns in modals
-import { fetchProducts } from "../../services/productService";
-import { fetchSeasons } from "../../services/seasonService";
 
 import {
   Box,
@@ -39,20 +36,19 @@ import {
   Pagination,
   CircularProgress,
   MenuItem,
-  // Chip, // ⭐ REMOVED: No 'status' field in PurchaseOut schema
 } from "@mui/material";
+
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import ClearIcon from "@mui/icons-material/Clear"; // For Clear Filters button
+import ClearIcon from "@mui/icons-material/Clear";
 
-import AddPurchaseOutModal from "../../features/modals/AddPurchaseOutModal"; // Ensure this path is correct
-import UpdatePurchaseOutModal from "../../features/modals/UpdatePurchaseOutModal"; // Ensure this path is correct
+import AddPurchaseOutModal from "../../features/modals/AddPurchaseOutModal";
+import UpdatePurchaseOutModal from "../../features/modals/UpdatePurchaseOutModal";
 
-// Styled components consistent with other dashboards
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -76,7 +72,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "#f5f5f5", // ⭐ ADJUSTED: Consistent background for header
+  backgroundColor: "#f5f5f5",
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -94,13 +90,8 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// ⭐ REMOVED: getStatusColor function, as there's no 'status' in PurchaseOut schema
-
 function PurchaseOut() {
-  // ⭐ Get user and cooperativeId from AuthContext
   const { user } = useAuth();
-  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
-
   const [purchaseOuts, setPurchaseOuts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -112,7 +103,7 @@ function PurchaseOut() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("productName");
-  const [sortOrder, setSortOrder] = useState("desc"); // Default sort by date, newest first
+  const [sortOrder, setSortOrder] = useState("desc");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -120,23 +111,13 @@ function PurchaseOut() {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
       currency: "RWF",
-    }).format(amount || 0); // Handle null/undefined amount gracefully
+    }).format(amount || 0);
   };
 
-  // ⭐ Modified loadPurchaseOut to fetch purchase outs for the specific cooperativeId
   const loadPurchaseOut = useCallback(async () => {
-    if (!cooperativeId) {
-      toast.error(
-        "Manager's cooperative ID is not available. Cannot load purchase outs."
-      );
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      // Pass the cooperativeId to fetchAllPurchaseOuts
-      const response = await fetchAllPurchaseOuts(cooperativeId);
+      const response = await fetchAllPurchaseOuts();
       if (response.success && Array.isArray(response.data)) {
         setPurchaseOuts(response.data);
       } else {
@@ -151,29 +132,15 @@ function PurchaseOut() {
     } finally {
       setLoading(false);
     }
-  }, [cooperativeId]); // Add cooperativeId to dependencies
+  }, []);
 
   useEffect(() => {
-    // Only load purchase outs if cooperativeId is available
-    if (cooperativeId) {
-      loadPurchaseOut();
-    }
-  }, [cooperativeId, loadPurchaseOut]); // Depend on cooperativeId and loadPurchaseOut
+    loadPurchaseOut();
+  }, [loadPurchaseOut]);
 
-  // Handler for adding a new purchase out
-  // ⭐ Modified handleAddPurchaseOut to include cooperativeId
   const handleAddPurchaseOut = async (newPurchaseOutData) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot add purchase out.");
-      return;
-    }
     try {
-      // Add the cooperativeId to the purchase out data before sending
-      const dataToSend = {
-        ...newPurchaseOutData,
-        cooperativeId: cooperativeId,
-      };
-      const response = await createPurchaseOut(dataToSend);
+      const response = await createPurchaseOut(newPurchaseOutData);
       if (response.success) {
         toast.success(response.message || "Purchase added successfully!");
         setShowAddModal(false);
@@ -196,20 +163,9 @@ function PurchaseOut() {
     setShowUpdateModal(true);
   };
 
-  // Handler for updating a purchase out
-  // ⭐ Modified handleUpdatePurchaseOut to include cooperativeId in the data sent
   const handleUpdatePurchaseOut = async (id, updatedPurchaseOutData) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot update purchase out.");
-      return;
-    }
     try {
-      // Add the cooperativeId to the data for authorization at the backend
-      const dataToSend = {
-        ...updatedPurchaseOutData,
-        cooperativeId: cooperativeId,
-      };
-      const response = await updatePurchaseOut(id, dataToSend);
+      const response = await updatePurchaseOut(id, updatedPurchaseOutData);
       if (response.success) {
         toast.success(response.message || "Purchase updated successfully!");
         setShowUpdateModal(false);
@@ -232,16 +188,9 @@ function PurchaseOut() {
     }
   };
 
-  // Handler for deleting a purchase out
-  // ⭐ Modified handleDeletePurchaseOut to include cooperativeId
   const handleDeletePurchaseOut = async (id) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot delete purchase out.");
-      return;
-    }
     try {
-      // Pass the cooperativeId to deletePurchaseOut for backend authorization
-      const response = await deletePurchaseOut(id, cooperativeId);
+      const response = await deletePurchaseOut(id);
       if (response.success) {
         toast.success(response.message || "Purchase deleted successfully!");
         await loadPurchaseOut();
@@ -258,11 +207,9 @@ function PurchaseOut() {
     }
   };
 
-  // Filter and sort purchase outs based on search and sort order
   const filteredAndSortedPurchaseOuts = useMemo(() => {
     let filtered = purchaseOuts;
 
-    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter((po) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -288,14 +235,13 @@ function PurchaseOut() {
       });
     }
 
-    // Sort by date (createdAt) - newest first by default
     filtered.sort((a, b) => {
       const dateA = new Date(a.createdAt);
       const dateB = new Date(b.createdAt);
       if (sortOrder === "asc") {
-        return dateA.getTime() - dateB.getTime(); // Oldest first
+        return dateA.getTime() - dateB.getTime();
       } else {
-        return dateB.getTime() - dateA.getTime(); // Newest first
+        return dateB.getTime() - dateA.getTime();
       }
     });
 
@@ -312,7 +258,6 @@ function PurchaseOut() {
     indexOfLastRow
   );
 
-  // Reset page to 1 whenever filters or sorting changes
   useEffect(() => {
     setCurrentPage(1);
   }, [filteredAndSortedPurchaseOuts]);
@@ -351,7 +296,7 @@ function PurchaseOut() {
         <CardContent
           sx={{
             maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflow: "hidden", // Hide overflow on CardContent itself
+            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
@@ -361,8 +306,6 @@ function PurchaseOut() {
               Manage and track products purchased from outside the cooperative.
             </Typography>
           </Box>
-
-          {/* Search, Filter, and Sort Section */}
           <Paper
             sx={{
               mb: 3,
@@ -383,7 +326,6 @@ function PurchaseOut() {
                 gap: { xs: 1, sm: 2 },
               }}
             >
-              {/* Search Bar */}
               <TextField
                 variant="outlined"
                 size="small"
@@ -411,7 +353,6 @@ function PurchaseOut() {
                   ),
                 }}
               />
-              {/* Filter and Sort Buttons */}
               <Stack
                 direction={isMobile ? "column" : "row"}
                 spacing={2}
@@ -482,11 +423,11 @@ function PurchaseOut() {
               <TableContainer
                 component={Paper}
                 sx={{
-                  boxShadow: 3, // Consistent shadow
-                  borderRadius: 2, // Consistent border radius
+                  boxShadow: 3,
+                  borderRadius: 2,
                   overflowX: "auto",
                   flexGrow: 1,
-                  maxHeight: { xs: "50vh", md: "70vh" }, // Responsive max height for table scroll
+                  maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
                 <Table
@@ -494,8 +435,6 @@ function PurchaseOut() {
                   size="small"
                   sx={{ minWidth: 900, tableLayout: "fixed" }}
                 >
-                  {" "}
-                  {/* stickyHeader and minWidth */}
                   <TableHead>
                     <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
@@ -636,23 +575,25 @@ function PurchaseOut() {
         </CardContent>
       </Card>
 
-      {/* AddPurchaseOutModal and UpdatePurchaseOutModal will be passed the cooperativeId */}
-      <AddPurchaseOutModal
-        show={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddPurchaseOut}
-        cooperativeId={cooperativeId} // Pass cooperativeId to the modal
-      />
+      {/* Conditionally render the modals only when cooperativeId is available */}
+      {user?.cooperativeId && (
+        <>
+          <AddPurchaseOutModal
+            show={showAddModal}
+            onClose={() => setShowAddModal(false)}
+            onSubmit={handleAddPurchaseOut}
+            cooperativeId={user.cooperativeId}
+          />
 
-      <UpdatePurchaseOutModal
-        show={showUpdateModal}
-        purchaseOut={selectedPurchaseOut}
-        onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdatePurchaseOut}
-        cooperativeId={cooperativeId} // Pass cooperativeId to the modal
-      />
-
-      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
+          <UpdatePurchaseOutModal
+            show={showUpdateModal}
+            purchaseOut={selectedPurchaseOut}
+            onClose={() => setShowUpdateModal(false)}
+            onSubmit={handleUpdatePurchaseOut}
+            cooperativeId={user.cooperativeId}
+          />
+        </>
+      )}
     </Box>
   );
 }

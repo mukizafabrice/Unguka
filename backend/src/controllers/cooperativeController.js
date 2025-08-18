@@ -16,11 +16,9 @@ export const createCooperative = async (req, res) => {
   const requestingUser = req.user;
 
   if (requestingUser.role !== "superadmin") {
-    return res
-      .status(403)
-      .json({
-        message: "Access denied. Only superadmins can create cooperatives.",
-      });
+    return res.status(403).json({
+      message: "Access denied. Only superadmins can create cooperatives.",
+    });
   }
 
   if (!name || !registrationNumber || !district || !sector) {
@@ -35,12 +33,10 @@ export const createCooperative = async (req, res) => {
     });
 
     if (existingCooperative) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Cooperative with this name or registration number already exists.",
-        });
+      return res.status(400).json({
+        message:
+          "Cooperative with this name or registration number already exists.",
+      });
     }
 
     const newCooperative = new Cooperative({
@@ -74,13 +70,11 @@ export const createCooperative = async (req, res) => {
 export const getAllCooperatives = async (req, res) => {
   const requestingUser = req.user;
 
-  if (requestingUser.role !== "superadmin") {
-    return res
-      .status(403)
-      .json({
-        message: "Access denied. Only superadmins can view all cooperatives.",
-      });
-  }
+  // if (requestingUser.role !== "superadmin") {
+  //   return res.status(403).json({
+  //     message: "Access denied. Only superadmins can view all cooperatives.",
+  //   });
+  // }
 
   try {
     const cooperatives = await Cooperative.find();
@@ -98,14 +92,14 @@ export const getCooperativeById = async (req, res) => {
   const { id } = req.params;
   const requestingUser = req.user;
 
-  if (requestingUser.role !== "superadmin") {
-    return res
-      .status(403)
-      .json({
-        message:
-          "Access denied. Only superadmins can view cooperative details.",
-      });
-  }
+  // if (requestingUser.role !== "superadmin") {
+  //   return res
+  //     .status(403)
+  //     .json({
+  //       message:
+  //         "Access denied. Only superadmins can view cooperative details.",
+  //     });
+  // }
 
   if (!id) {
     return res.status(400).json({ message: "Cooperative ID is required." });
@@ -142,11 +136,9 @@ export const updateCooperative = async (req, res) => {
   const requestingUser = req.user;
 
   if (requestingUser.role !== "superadmin") {
-    return res
-      .status(403)
-      .json({
-        message: "Access denied. Only superadmins can update cooperatives.",
-      });
+    return res.status(403).json({
+      message: "Access denied. Only superadmins can update cooperatives.",
+    });
   }
 
   if (!id) {
@@ -185,11 +177,9 @@ export const updateCooperative = async (req, res) => {
   } catch (error) {
     console.error("Error updating cooperative:", error);
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({
-          message: "Cooperative name or registration number already exists.",
-        });
+      return res.status(400).json({
+        message: "Cooperative name or registration number already exists.",
+      });
     }
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((val) => val.message);
@@ -207,11 +197,9 @@ export const deleteCooperative = async (req, res) => {
   const requestingUser = req.user;
 
   if (requestingUser.role !== "superadmin") {
-    return res
-      .status(403)
-      .json({
-        message: "Access denied. Only superadmins can delete cooperatives.",
-      });
+    return res.status(403).json({
+      message: "Access denied. Only superadmins can delete cooperatives.",
+    });
   }
 
   if (!id) {
@@ -233,12 +221,10 @@ export const deleteCooperative = async (req, res) => {
 
     await Cooperative.findByIdAndDelete(id);
 
-    res
-      .status(200)
-      .json({
-        message:
-          "Cooperative deleted successfully and associated data has been cleaned up.",
-      });
+    res.status(200).json({
+      message:
+        "Cooperative deleted successfully and associated data has been cleaned up.",
+    });
   } catch (error) {
     console.error("Error deleting cooperative:", error);
     res.status(500).json({ message: "Internal server error." });

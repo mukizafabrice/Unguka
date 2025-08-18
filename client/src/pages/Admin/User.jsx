@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify"; // Only import 'toast' here, not 'ToastContainer'
+// The following line is commented out to resolve a compilation error related to CSS imports in this environment.
+// If you are running this in a full React project, ensure your build setup (e.g., Webpack, Vite)
+// is configured to handle CSS imports, or consider importing your main CSS file globally.
+// import "react-toastify/dist/ReactToastify.css";
 import {
   fetchUsers,
   createUser,
@@ -40,6 +43,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
+// Ensure these paths correctly point to your modal files based on your project structure.
+// If you continue to see "Could not resolve" errors, verify the file paths and names (case-sensitivity).
 import AddUserModal from "../../features/modals/AddUserModal";
 import UpdateUserModal from "../../features/modals/UpdateUserModal";
 
@@ -88,7 +93,9 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 // Helper function for status chip color
 const getRoleColor = (role) => {
   switch (role?.toLowerCase()) {
-    case "admin":
+    case "superadmin": // Assuming 'superadmin' is a role
+      return "secondary";
+    case "manager": // Assuming 'manager' is a role
       return "primary";
     case "member":
       return "success";
@@ -119,15 +126,15 @@ function User() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
+      // Assuming fetchUsers also returns { success, data, message }
       const response = await fetchUsers();
 
-      // Check if the response is a valid object with a 'data' property
-      if (response && Array.isArray(response.data)) {
+      if (response.success && Array.isArray(response.data)) {
         setUsers(response.data);
       } else {
-        console.error("API returned invalid data format:", response);
+        console.error("API returned invalid data format or failed:", response);
         setUsers([]);
-        toast.error("Received invalid data from the server.");
+        toast.error(response.message || "Received invalid data from the server.");
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
@@ -142,45 +149,59 @@ function User() {
     loadUsers();
   }, [loadUsers]);
 
+  // Handle adding a new user
   const handleAddUser = async (newUserData) => {
     try {
-      await createUser(newUserData);
-      toast.success("User added successfully!");
-      setShowAddModal(false);
-      await loadUsers();
+      // Now, createUser returns an object with `success` and `message`
+      const result = await createUser(newUserData);
+      console.log("User creation result:", result); // Log the full result for debugging
+
+      if (result.success) {
+        toast.success(result.message);
+        setShowAddModal(false);
+        await loadUsers(); // Reload users to show the newly added user
+      } else {
+        // If success is false, display the error message from the backend
+        toast.error(result.message);
+      }
     } catch (error) {
-      console.error("Failed to add user:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        "Failed to add user. Please try again.";
-      toast.error(errorMessage);
+      // This catch block will now primarily handle network errors or unhandled exceptions
+      // from the service call itself, not necessarily backend validation errors.
+      console.error("Unexpected error in handleAddUser:", error);
+      toast.error("An unexpected error occurred during user creation.");
     }
   };
 
+
   const handleUserUpdated = async (id, updatedUserData) => {
     try {
-      await updateUser(id, updatedUserData);
-      toast.success("User updated successfully!");
-      setShowUpdateModal(false);
-      await loadUsers();
-      setUserToEdit(null);
+      const result = await updateUser(id, updatedUserData);
+      if (result.success) {
+        toast.success(result.message);
+        setShowUpdateModal(false);
+        await loadUsers();
+        setUserToEdit(null);
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      console.error("Failed to update user:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        "Failed to update user. Please try again.";
-      toast.error(errorMessage);
+      console.error("Unexpected error in handleUserUpdated:", error);
+      toast.error("An unexpected error occurred during user update.");
     }
   };
 
   const handleDeleteUser = async (id) => {
     try {
-      await deleteUser(id);
-      toast.success("User deleted successfully!");
-      await loadUsers();
+      const result = await deleteUser(id);
+      if (result.success) {
+        toast.success(result.message);
+        await loadUsers();
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
-      console.error("Failed to delete user:", error);
-      toast.error("Failed to delete user. Please try again.");
+      console.error("Unexpected error in handleDeleteUser:", error);
+      toast.error("An unexpected error occurred during user deletion.");
     }
   };
 
@@ -340,7 +361,8 @@ function User() {
               sx={{ minWidth: isMobile ? "100%" : 180 }}
             >
               <MenuItem value="all">All</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
+              <MenuItem value="superadmin">Superadmin</MenuItem> {/* Added superadmin */}
+              <MenuItem value="manager">Manager</MenuItem> {/* Added manager */}
               <MenuItem value="member">Member</MenuItem>
               <MenuItem value="guest">Guest</MenuItem>
             </TextField>
@@ -512,6 +534,7 @@ function User() {
         onSubmit={handleUserUpdated}
         userData={userToEdit}
       />
+      {/* The ToastContainer has been removed from here as it should only be present once, typically in App.js */}
     </Box>
   );
 }

@@ -80,8 +80,10 @@ const UpdateProductionModal = ({
         // Filter members by cooperativeId on the client-side if fetchUsers gets all
         const filteredMembers = membersResponse.data.filter(
           (user) =>
-            user.cooperativeId === cooperativeId && user.role === "member" // Assuming you only want 'member' role
+            String(user.cooperativeId?._id || user.cooperativeId) ===
+              String(cooperativeId) && user.role === "member"
         );
+        
         setMembers(filteredMembers);
       } else {
         console.error("Failed to fetch members:", membersResponse.message);

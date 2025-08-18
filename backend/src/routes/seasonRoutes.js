@@ -24,9 +24,6 @@ router.post(
   createSeason
 );
 
-// GET /api/seasons - Get all seasons
-// Superadmins can view all. Managers/Members can view seasons within their cooperative.
-// The `getAllSeasons` controller handles filtering by `cooperativeId` if provided in `req.query`.
 router.get(
   "/",
   protect, // Ensure user is authenticated

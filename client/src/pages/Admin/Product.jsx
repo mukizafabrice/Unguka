@@ -109,32 +109,27 @@ function Product() {
   // ⭐ Modified loadProducts to fetch products for the specific cooperativeId
   const loadProducts = useCallback(async () => {
     if (!cooperativeId) {
-      toast.error(
-        "Manager's cooperative ID is not available. Cannot load products."
-      );
+      toast.error("Cooperative ID is missing. Cannot load products.");
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      // Pass the cooperativeId to fetchProducts
       const response = await fetchProducts(cooperativeId);
       if (response.success && Array.isArray(response.data)) {
         setProducts(response.data);
       } else {
-        console.error("Failed to fetch products:", response.message);
         toast.error(response.message || "Failed to load products.");
         setProducts([]);
       }
     } catch (error) {
-      console.error("Failed to fetch products (catch block):", error);
       toast.error("An unexpected error occurred while loading products.");
       setProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [cooperativeId]); // Add cooperativeId to dependencies
+  }, [cooperativeId]);
 
   useEffect(() => {
     // Only load products if cooperativeId is available
@@ -166,14 +161,19 @@ function Product() {
     }
   };
 
-  // ⭐ Modified handleDeleteProduct to include cooperativeId
   const handleDeleteProduct = async (id) => {
     if (!cooperativeId) {
       toast.error("Cooperative ID is missing. Cannot delete product.");
       return;
     }
+
+    // Ask for confirmation
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this product?"
+    );
+    if (!confirmed) return; // User canceled
+
     try {
-      // Pass the cooperativeId to deleteProduct for backend authorization
       const response = await deleteProduct(id, cooperativeId);
       if (response.success) {
         toast.success(response.message || "Product deleted successfully!");
@@ -427,19 +427,6 @@ function Product() {
         onSubmit={handleProductUpdated}
         productData={productToEdit}
       />
-
-      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
-      {/* <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      /> */}
     </Box>
   );
 }

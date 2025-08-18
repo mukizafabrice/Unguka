@@ -14,10 +14,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid, // Import Grid for responsive layout
+  Grid,
 } from "@mui/material";
 
-// Corrected import: fetchProducts from productService
 import { fetchProducts } from "../../services/productService";
 import { fetchSeasons } from "../../services/seasonService";
 
@@ -33,65 +32,60 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
   const [seasons, setSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Effect to load products and seasons when modal opens
+  // Corrected Effect:
+  // This useEffect will now only run if 'show' is true AND 'cooperativeId' has a value.
   useEffect(() => {
-    if (show) {
-      setLoading(true); // Reset loading state when modal opens
+    const loadDependencies = async () => {
+      // This check is still good, but the dependency array change makes it less likely to fire.
+      if (!cooperativeId) {
+        toast.error(
+          "Cooperative ID is missing. Cannot load products or seasons."
+        );
+        setLoading(false);
+        return;
+      }
 
-      const loadDependencies = async () => {
-        if (!cooperativeId) {
-          toast.error(
-            "Cooperative ID is missing. Cannot load products or seasons."
-          );
-          setLoading(false);
-          return;
-        }
-        try {
-          // Pass cooperativeId to fetch functions
-          const [productsResponse, seasonsResponse] = await Promise.all([
-            fetchProducts(cooperativeId), // Corrected function name and passed cooperativeId
-            fetchSeasons(cooperativeId), // Assuming fetchSeasons also accepts cooperativeId for scoping
-          ]);
+      setLoading(true);
+      try {
+        const [productsResponse, seasonsResponse] = await Promise.all([
+          fetchProducts(cooperativeId),
+          fetchSeasons(cooperativeId),
+        ]);
 
-          if (
-            productsResponse.success &&
-            Array.isArray(productsResponse.data)
-          ) {
-            setProducts(productsResponse.data);
-          } else {
-            console.error(
-              "Failed to fetch products:",
-              productsResponse.message
-            );
-            toast.error(productsResponse.message || "Failed to load products.");
-            setProducts([]);
-          }
-
-          if (seasonsResponse.success && Array.isArray(seasonsResponse.data)) {
-            setSeasons(seasonsResponse.data);
-          } else {
-            console.error("Failed to fetch seasons:", seasonsResponse.message);
-            toast.error(seasonsResponse.message || "Failed to load seasons.");
-            setSeasons([]);
-          }
-          setLoading(false);
-        } catch (error) {
-          console.error(
-            "Failed to fetch modal dependencies (catch block):",
-            error
-          );
-          toast.error(
-            "An unexpected error occurred while loading products or seasons."
-          );
-          setLoading(false);
+        if (productsResponse.success && Array.isArray(productsResponse.data)) {
+          setProducts(productsResponse.data);
+        } else {
+          console.error("Failed to fetch products:", productsResponse.message);
+          toast.error(productsResponse.message || "Failed to load products.");
           setProducts([]);
+        }
+
+        if (seasonsResponse.success && Array.isArray(seasonsResponse.data)) {
+          setSeasons(seasonsResponse.data);
+        } else {
+          console.error("Failed to fetch seasons:", seasonsResponse.message);
+          toast.error(seasonsResponse.message || "Failed to load seasons.");
           setSeasons([]);
         }
-      };
+      } catch (error) {
+        console.error(
+          "Failed to fetch modal dependencies (catch block):",
+          error
+        );
+        toast.error(
+          "An unexpected error occurred while loading products or seasons."
+        );
+        setProducts([]);
+        setSeasons([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    if (show && cooperativeId) {
       loadDependencies();
     }
-  }, [show, cooperativeId]); // Depend on show and cooperativeId
+  }, [show, cooperativeId]); // The key change is here: the effect now depends on both 'show' and 'cooperativeId'.
 
   // Reset form data when the modal is shown
   useEffect(() => {
@@ -105,7 +99,6 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
     }
   }, [show]);
 
-  // Handle changes to form inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
     const processedValue = ["quantity", "unitPrice"].includes(name)
@@ -118,11 +111,9 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
     }));
   };
 
-  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Basic validation
     if (
       !formData.productId ||
       !formData.seasonId ||
@@ -143,14 +134,13 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
       return;
     }
 
-    // Calculate the totalPrice before submitting
     const totalPrice = formData.quantity * formData.unitPrice;
 
-    // Call the onSubmit prop with the complete data, including cooperativeId
+    // The data sent to the onSubmit prop is correct, as confirmed by your database log.
     onSubmit({
       ...formData,
       totalPrice,
-      cooperativeId, // Ensure cooperativeId is included
+      cooperativeId,
     });
   };
 
@@ -183,10 +173,7 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {" "}
-              {/* Use Grid for responsive layout */}
               <Grid item xs={12} sm={6}>
-                {/* Product Dropdown */}
                 <FormControl fullWidth margin="dense" required>
                   <InputLabel id="productId-label">Product</InputLabel>
                   <Select
@@ -209,7 +196,6 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
-                {/* Season Dropdown */}
                 <FormControl fullWidth margin="dense" required>
                   <InputLabel id="seasonId-label">Season</InputLabel>
                   <Select
@@ -232,7 +218,6 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
-                {/* Quantity Input */}
                 <TextField
                   margin="dense"
                   id="quantity"
@@ -243,12 +228,11 @@ const AddPurchaseOutModal = ({ show, onClose, onSubmit, cooperativeId }) => {
                   variant="outlined"
                   value={formData.quantity}
                   onChange={handleChange}
-                  inputProps={{ min: "1", step: "0.01" }} // Allow decimals for quantity if needed
+                  inputProps={{ min: "1", step: "0.01" }}
                   required
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                {/* Unit Price Input */}
                 <TextField
                   margin="dense"
                   id="unitPrice"

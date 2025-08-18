@@ -53,15 +53,17 @@ const AddPlotModal = ({ show, onClose, onSave, cooperativeId }) => {
       try {
         // Fetch all users and then filter by cooperativeId and role 'member'
         const usersResponse = await fetchUsers(); // This fetches all users
-        if (usersResponse.success && Array.isArray(usersResponse.data.data)) {
+        if (usersResponse.success && Array.isArray(usersResponse.data)) {
           // Adjust based on your userService response structure
           // Filter users by cooperativeId and role "member" to show relevant members
-          const filteredMembers = usersResponse.data.data.filter(
+          const filteredMembers = usersResponse.data.filter(
             (user) =>
-              String(user.cooperativeId) === String(cooperativeId) &&
+              String(user.cooperativeId?._id) === String(cooperativeId) &&
               user.role === "member"
           );
+
           setUsers(filteredMembers);
+          console.log(filteredMembers);
         } else {
           setDataLoadError(usersResponse.message || "Failed to load members.");
         }

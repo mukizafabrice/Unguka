@@ -29,9 +29,10 @@ export const createPurchaseInput = async (req, res) => {
       !mongoose.Types.ObjectId.isValid(seasonId) ||
       !mongoose.Types.ObjectId.isValid(cooperativeId) // ⭐ NEW: Validate cooperativeId
     ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid userId, productId, seasonId, or cooperativeId format." });
+      return res.status(400).json({
+        message:
+          "Invalid userId, productId, seasonId, or cooperativeId format.",
+      });
     }
 
     // Validate quantities and prices
@@ -43,9 +44,14 @@ export const createPurchaseInput = async (req, res) => {
     }
 
     // Check if product exists within the *specific cooperative*
-    const productExists = await Product.findOne({ _id: productId, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+    const productExists = await Product.findOne({
+      _id: productId,
+      cooperativeId: cooperativeId,
+    }); // ⭐ UPDATED: Filter by cooperativeId
     if (!productExists) {
-      return res.status(404).json({ message: "Product not found in this cooperative." });
+      return res
+        .status(404)
+        .json({ message: "Product not found in this cooperative." });
     }
 
     const totalPrice = unitPrice * quantity;
@@ -58,12 +64,19 @@ export const createPurchaseInput = async (req, res) => {
     const amountRemaining = totalPrice - amountPaid;
 
     // Check stock for the product within the *specific cooperative*
-    const stock = await Stock.findOne({ productId: productId, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+    const stock = await Stock.findOne({
+      productId: productId,
+      cooperativeId: cooperativeId,
+    }); // ⭐ UPDATED: Filter by cooperativeId
     if (!stock) {
-      return res.status(404).json({ message: "Stock for this product not found in your cooperative." });
+      return res.status(404).json({
+        message: "Stock for this product not found in your cooperative.",
+      });
     }
     if (stock.quantity < quantity) {
-      return res.status(400).json({ message: "Not enough stock available for this product." });
+      return res
+        .status(400)
+        .json({ message: "Not enough stock available for this product." });
     }
 
     // Update stock quantity
@@ -103,7 +116,7 @@ export const createPurchaseInput = async (req, res) => {
       status,
       amountPaid,
       amountRemaining: finalAmountRemaining,
-      cooperativeId, // ⭐ NEW: Include cooperativeId in purchase input
+      cooperativeId,
     });
 
     // Create a new Loan document if there's an outstanding amount
@@ -111,8 +124,8 @@ export const createPurchaseInput = async (req, res) => {
       await Loan.create({
         purchaseInputId: newPurchase._id,
         userId,
-        cooperativeId, // ⭐ NEW: Include cooperativeId in loan
-        quantity, // This might be redundant if loan tracks payment, not physical quantity
+        cooperativeId,
+        seasonId,
         amountOwed: finalAmountRemaining,
         loanRevenue: loanRevenue,
         interest,
@@ -126,7 +139,7 @@ export const createPurchaseInput = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating purchase input:", error);
-    if (error.name === 'ValidationError') {
+    if (error.name === "ValidationError") {
       return res.status(400).json({ message: error.message });
     }
     res.status(500).json({ message: "Server error", error: error.message });
@@ -167,21 +180,20 @@ export const getAllPurchaseInputs = async (req, res) => {
   }
 };
 
-// Get Purchase Inputs by User ID (modified to include cooperativeId for security)
-// This endpoint now expects `id` to be the PurchaseInput's _id or a userId if `cooperativeId` is present
-// Given your route is `/:id`, I'll assume `id` is the PurchaseInput's ID for `getPurchaseInputById`
-// And for getting purchases *for a user*, it should be a separate route or use a query parameter.
-// Let's adjust this to expect `id` as `_id` of PurchaseInput and `cooperativeId` as query.
 export const getPurchaseInputById = async (req, res) => {
   try {
-    const { id } = req.params; // This is the PurchaseInput ID
-    const { cooperativeId } = req.query; // ⭐ NEW: Expect cooperativeId for authorization
+    const { id } = req.params;
+    const { cooperativeId } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid purchase input ID format." });
+      return res
+        .status(400)
+        .json({ message: "Invalid purchase input ID format." });
     }
     if (cooperativeId && !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res.status(400).json({ message: "Invalid cooperative ID format." });
+      return res
+        .status(400)
+        .json({ message: "Invalid cooperative ID format." });
     }
 
     let query = { _id: id };
@@ -205,7 +217,7 @@ export const getPurchaseInputById = async (req, res) => {
     res.status(200).json(purchase); // Return single purchase object
   } catch (error) {
     console.error("Error fetching purchase input by ID:", error);
-    if (error.name === 'CastError') {
+    if (error.name === "CastError") {
       return res.status(400).json({ message: "Invalid ID format." });
     }
     res.status(500).json({ message: "Server error", error: error.message });
@@ -229,27 +241,43 @@ export const updatePurchaseInput = async (req, res) => {
 
     // Validate IDs
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid purchase input ID format." });
+      return res
+        .status(400)
+        .json({ message: "Invalid purchase input ID format." });
     }
     if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res.status(400).json({ message: "Cooperative ID is required and must be valid." });
+      return res
+        .status(400)
+        .json({ message: "Cooperative ID is required and must be valid." });
     }
     // Validate other IDs if they are provided for update
-    if (userId && !mongoose.Types.ObjectId.isValid(userId)) return res.status(400).json({ message: "Invalid userId format." });
-    if (productId && !mongoose.Types.ObjectId.isValid(productId)) return res.status(400).json({ message: "Invalid productId format." });
-    if (seasonId && !mongoose.Types.ObjectId.isValid(seasonId)) return res.status(400).json({ message: "Invalid seasonId format." });
+    if (userId && !mongoose.Types.ObjectId.isValid(userId))
+      return res.status(400).json({ message: "Invalid userId format." });
+    if (productId && !mongoose.Types.ObjectId.isValid(productId))
+      return res.status(400).json({ message: "Invalid productId format." });
+    if (seasonId && !mongoose.Types.ObjectId.isValid(seasonId))
+      return res.status(400).json({ message: "Invalid seasonId format." });
 
     // Fetch the old purchase, ensuring it belongs to the correct cooperative
-    const oldPurchase = await PurchaseInput.findOne({ _id: id, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+    const oldPurchase = await PurchaseInput.findOne({
+      _id: id,
+      cooperativeId: cooperativeId,
+    }); // ⭐ UPDATED: Filter by cooperativeId
     if (!oldPurchase) {
-      return res.status(404).json({ message: "Purchase input not found or unauthorized to update." });
+      return res.status(404).json({
+        message: "Purchase input not found or unauthorized to update.",
+      });
     }
 
     // Determine new values, defaulting to old values if not provided in request
-    const newQuantity = quantity !== undefined ? quantity : oldPurchase.quantity;
-    const newUnitPrice = unitPrice !== undefined ? unitPrice : oldPurchase.unitPrice;
-    const newAmountPaid = amountPaid !== undefined ? amountPaid : oldPurchase.amountPaid;
-    const newInterest = interest !== undefined ? interest : oldPurchase.interest; // Use old interest if not provided
+    const newQuantity =
+      quantity !== undefined ? quantity : oldPurchase.quantity;
+    const newUnitPrice =
+      unitPrice !== undefined ? unitPrice : oldPurchase.unitPrice;
+    const newAmountPaid =
+      amountPaid !== undefined ? amountPaid : oldPurchase.amountPaid;
+    const newInterest =
+      interest !== undefined ? interest : oldPurchase.interest; // Use old interest if not provided
 
     // Validate new quantity/unitPrice/amountPaid
     if (newQuantity <= 0 || newUnitPrice <= 0 || newAmountPaid < 0) {
@@ -273,17 +301,26 @@ export const updatePurchaseInput = async (req, res) => {
     const amountPaidDifference = newAmountPaid - oldPurchase.amountPaid;
 
     // Adjust stock (productId should be oldPurchase.productId, as we assume it's the same product)
-    const stock = await Stock.findOne({ productId: oldPurchase.productId, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+    const stock = await Stock.findOne({
+      productId: oldPurchase.productId,
+      cooperativeId: cooperativeId,
+    }); // ⭐ UPDATED: Filter by cooperativeId
     if (stock) {
       // Ensure there's enough stock if quantity is increasing
       if (quantityDifference > 0 && stock.quantity < quantityDifference) {
-        return res.status(400).json({ message: `Not enough stock to increase quantity by ${quantityDifference}.` });
+        return res.status(400).json({
+          message: `Not enough stock to increase quantity by ${quantityDifference}.`,
+        });
       }
       stock.quantity -= quantityDifference; // Decreases if positive, increases if negative
       await stock.save();
     } else {
-      console.error(`Stock for product ${oldPurchase.productId} not found in cooperative ${cooperativeId}.`);
-      return res.status(404).json({ message: "Associated product stock not found." });
+      console.error(
+        `Stock for product ${oldPurchase.productId} not found in cooperative ${cooperativeId}.`
+      );
+      return res
+        .status(404)
+        .json({ message: "Associated product stock not found." });
     }
 
     // Adjust cash
@@ -292,8 +329,12 @@ export const updatePurchaseInput = async (req, res) => {
       cash.amount += amountPaidDifference; // Increases if positive, decreases if negative
       await cash.save();
     } else {
-      console.error(`Cash document not found for cooperative ${cooperativeId}.`);
-      return res.status(404).json({ message: "Associated cooperative cash account not found." });
+      console.error(
+        `Cash document not found for cooperative ${cooperativeId}.`
+      );
+      return res
+        .status(404)
+        .json({ message: "Associated cooperative cash account not found." });
     }
 
     let finalAmountRemaining = newAmountRemaining;
@@ -305,7 +346,10 @@ export const updatePurchaseInput = async (req, res) => {
       loanRevenue = newAmountRemaining * loanInterestRate;
       finalAmountRemaining = newAmountRemaining + loanRevenue;
 
-      let loan = await Loan.findOne({ purchaseInputId: oldPurchase._id, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+      let loan = await Loan.findOne({
+        purchaseInputId: oldPurchase._id,
+        cooperativeId: cooperativeId,
+      }); // ⭐ UPDATED: Filter by cooperativeId
 
       if (loan) {
         // Update existing loan
@@ -329,7 +373,10 @@ export const updatePurchaseInput = async (req, res) => {
       }
     } else {
       // If no amount remaining, delete any existing loan for this purchase
-      await Loan.findOneAndDelete({ purchaseInputId: oldPurchase._id, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+      await Loan.findOneAndDelete({
+        purchaseInputId: oldPurchase._id,
+        cooperativeId: cooperativeId,
+      }); // ⭐ UPDATED: Filter by cooperativeId
     }
 
     const newStatus = finalAmountRemaining > 0 ? "loan" : "paid";
@@ -356,15 +403,16 @@ export const updatePurchaseInput = async (req, res) => {
       .populate("seasonId", "name year")
       .populate("cooperativeId", "name registrationNumber"); // ⭐ NEW: Populate cooperative info
 
-    res
-      .status(200)
-      .json({ message: "Purchase updated successfully", purchase: updatedPurchase });
+    res.status(200).json({
+      message: "Purchase updated successfully",
+      purchase: updatedPurchase,
+    });
   } catch (error) {
     console.error("Error updating purchase input:", error);
-    if (error.name === 'CastError') {
+    if (error.name === "CastError") {
       return res.status(400).json({ message: "Invalid ID format." });
     }
-    if (error.name === 'ValidationError') {
+    if (error.name === "ValidationError") {
       return res.status(400).json({ message: error.message });
     }
     res.status(500).json({ message: "Server error", error: error.message });
@@ -378,25 +426,39 @@ export const deletePurchaseInput = async (req, res) => {
     const { cooperativeId } = req.body; // ⭐ NEW: Expect cooperativeId for authorization
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid purchase input ID format." });
+      return res
+        .status(400)
+        .json({ message: "Invalid purchase input ID format." });
     }
     if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res.status(400).json({ message: "Cooperative ID is required and must be valid." });
+      return res
+        .status(400)
+        .json({ message: "Cooperative ID is required and must be valid." });
     }
 
     // Find the purchase input, ensuring it belongs to the correct cooperative
-    const purchase = await PurchaseInput.findOne({ _id: id, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+    const purchase = await PurchaseInput.findOne({
+      _id: id,
+      cooperativeId: cooperativeId,
+    }); // ⭐ UPDATED: Filter by cooperativeId
     if (!purchase) {
-      return res.status(404).json({ message: "Purchase input not found or unauthorized to delete." });
+      return res.status(404).json({
+        message: "Purchase input not found or unauthorized to delete.",
+      });
     }
 
     // Revert stock changes
-    const stock = await Stock.findOne({ productId: purchase.productId, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+    const stock = await Stock.findOne({
+      productId: purchase.productId,
+      cooperativeId: cooperativeId,
+    }); // ⭐ UPDATED: Filter by cooperativeId
     if (stock) {
       stock.quantity += purchase.quantity; // Add back the purchased quantity
       await stock.save();
     } else {
-      console.warn(`Stock for product ${purchase.productId} not found in cooperative ${cooperativeId} during deletion cleanup.`);
+      console.warn(
+        `Stock for product ${purchase.productId} not found in cooperative ${cooperativeId} during deletion cleanup.`
+      );
       // Optionally, you might want to return an error or a partial success here
     }
 
@@ -407,20 +469,30 @@ export const deletePurchaseInput = async (req, res) => {
         cash.amount -= purchase.amountPaid; // Subtract the amount paid
         await cash.save();
       } else {
-        console.warn(`Cash document not found for cooperative ${cooperativeId} during deletion cleanup.`);
+        console.warn(
+          `Cash document not found for cooperative ${cooperativeId} during deletion cleanup.`
+        );
       }
     }
 
     // Delete associated loan (if any)
-    await Loan.findOneAndDelete({ purchaseInputId: purchase._id, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+    await Loan.findOneAndDelete({
+      purchaseInputId: purchase._id,
+      cooperativeId: cooperativeId,
+    }); // ⭐ UPDATED: Filter by cooperativeId
 
     // Finally, delete the purchase input
-    await PurchaseInput.findOneAndDelete({ _id: id, cooperativeId: cooperativeId }); // ⭐ UPDATED: Filter by cooperativeId
+    await PurchaseInput.findOneAndDelete({
+      _id: id,
+      cooperativeId: cooperativeId,
+    }); // ⭐ UPDATED: Filter by cooperativeId
 
-    res.status(200).json({ message: "Purchase deleted and related data adjusted successfully." });
+    res.status(200).json({
+      message: "Purchase deleted and related data adjusted successfully.",
+    });
   } catch (error) {
     console.error("Error deleting purchase input:", error);
-    if (error.name === 'CastError') {
+    if (error.name === "CastError") {
       return res.status(400).json({ message: "Invalid ID format." });
     }
     res.status(500).json({ message: "Server error", error: error.message });

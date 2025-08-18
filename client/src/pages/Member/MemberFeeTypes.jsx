@@ -123,11 +123,7 @@ function FeeType() {
 
   // Media query hook to detect mobile screen sizes
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
-  /**
-   * Fetches fee types from the backend and updates the state.
-   * Uses useCallback to memoize the function, preventing unnecessary re-creations.
-   */
+ 
   const loadFeeTypes = useCallback(async () => {
     setLoading(true); // Set loading to true before fetching
     try {
@@ -138,9 +134,9 @@ function FeeType() {
       toast.error("Failed to load fee types."); // Display error toast
       setFeeTypes([]); // Clear fee types on error
     } finally {
-      setLoading(false); // Set loading to false after fetching (whether success or error)
+      setLoading(false); 
     }
-  }, []); // Empty dependency array means this function is created once
+  }, []); 
 
   // Effect hook to load fee types when the component mounts
   useEffect(() => {

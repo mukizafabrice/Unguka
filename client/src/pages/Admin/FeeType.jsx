@@ -36,6 +36,10 @@ import {
   CircularProgress,
   MenuItem,
   Chip, // For status display
+  Dialog, // ⭐ Added for confirmation dialog
+  DialogTitle, // ⭐ Added for confirmation dialog
+  DialogContent, // ⭐ Added for confirmation dialog
+  DialogActions, // ⭐ Added for confirmation dialog
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -113,6 +117,10 @@ function FeeTypeManagement() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedFeeType, setSelectedFeeType] = useState(null); // Changed name from feeTypeToEdit
 
+  // ⭐ NEW STATE FOR CONFIRMATION DIALOG
+  const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
+  const [feeTypeToDeleteId, setFeeTypeToDeleteId] = useState(null);
+
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 7;
 
@@ -153,7 +161,8 @@ function FeeTypeManagement() {
   }, [cooperativeId]);
 
   useEffect(() => {
-    if (cooperativeId) { // Only load if cooperativeId is available
+    if (cooperativeId) {
+      // Only load if cooperativeId is available
       loadFeeTypes();
     }
   }, [cooperativeId, loadFeeTypes]);
@@ -211,63 +220,54 @@ function FeeTypeManagement() {
     }
   };
 
-  // Handler for deleting a fee type
-  const handleDeleteFeeType = async (id) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot delete fee type.");
+  // ⭐ NEW FUNCTION: Open confirmation dialog for deletion
+  const handleOpenConfirmDeleteDialog = (id) => {
+    setFeeTypeToDeleteId(id);
+    setShowConfirmDeleteDialog(true);
+  };
+
+  // ⭐ NEW FUNCTION: Close confirmation dialog (cancel deletion)
+  const handleCancelDelete = () => {
+    setFeeTypeToDeleteId(null);
+    setShowConfirmDeleteDialog(false);
+  };
+
+  // ⭐ NEW FUNCTION: Confirm and proceed with deletion
+  const confirmDeleteFeeType = async () => {
+    if (!cooperativeId || !feeTypeToDeleteId) {
+      toast.error(
+        "Cooperative ID or Fee Type ID is missing. Cannot delete fee type."
+      );
       return;
     }
-
-    // Using toast for confirmation as window.confirm is not recommended in iframes.
-    // For a more robust solution, implement a custom Material-UI confirmation dialog.
-    toast.warn(
-      (
-        <div>
-          Are you sure you want to delete this fee type?
-          <br />
-          This action cannot be undone.
-          <br />
-          <Button
-            size="small"
-            variant="contained"
-            color="secondary"
-            onClick={async () => {
-              try {
-                // Close the toast after confirming
-                toast.dismiss();
-                // Pass cooperativeId to deleteFeeType for backend authorization
-                const response = await deleteFeeType(id, cooperativeId);
-                if (response.success) {
-                  toast.success(response.message || "Fee type deleted successfully!");
-                  await loadFeeTypes();
-                } else {
-                  toast.error(response.message || "Failed to delete fee type.");
-                }
-              } catch (error) {
-                console.error("Failed to delete fee type:", error);
-                toast.error("An unexpected error occurred while deleting fee type.");
-              }
-            }}
-            sx={{ mt: 1, mr: 1 }}
-          >
-            Yes, Delete
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => toast.dismiss()} // Dismiss the toast if cancel
-            sx={{ mt: 1 }}
-          >
-            Cancel
-          </Button>
-        </div>
-      ),
-      {
-        autoClose: false, // Keep toast open until user interacts
-        closeOnClick: false,
-        draggable: false,
+    try {
+      // Pass cooperativeId to deleteFeeType for backend authorization
+      const response = await deleteFeeType(feeTypeToDeleteId, cooperativeId);
+      if (response.success) {
+        toast.success(response.message || "Fee type deleted successfully!");
+        await loadFeeTypes();
+        // Adjust current page if the last item on a page was deleted
+        if (currentRows.length === 1 && currentPage > 1) {
+          setCurrentPage((prevPage) => prevPage - 1);
+        }
+      } else {
+        toast.error(response.message || "Failed to delete fee type.");
       }
-    );
+    } catch (error) {
+      console.error("Failed to delete fee type (catch block):", error);
+      toast.error(
+        `Failed to delete fee type: ${
+          error.message || "An unexpected error occurred."
+        }`
+      );
+    } finally {
+      handleCancelDelete(); // Always close the dialog
+    }
+  };
+
+  // ⭐ MODIFIED handleDeleteFeeType to use the confirmation dialog
+  const handleDeleteFeeType = (id) => {
+    handleOpenConfirmDeleteDialog(id);
   };
 
   // Filter and sort fee types based on search, status filter, and sort order
@@ -284,7 +284,9 @@ function FeeTypeManagement() {
           case "amount":
             return feeType.amount?.toString().includes(lowerCaseSearchTerm);
           case "description":
-            return feeType.description?.toLowerCase().includes(lowerCaseSearchTerm);
+            return feeType.description
+              ?.toLowerCase()
+              .includes(lowerCaseSearchTerm);
           case "status":
             return feeType.status?.toLowerCase().includes(lowerCaseSearchTerm);
           default:
@@ -296,16 +298,17 @@ function FeeTypeManagement() {
     // Apply status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter(
-        (feeType) => feeType.status?.toLowerCase() === statusFilter.toLowerCase()
+        (feeType) =>
+          feeType.status?.toLowerCase() === statusFilter.toLowerCase()
       );
     }
 
     // Apply isPerSeason filter
     if (isPerSeasonFilter !== "all") {
-        const isPerSeasonBool = isPerSeasonFilter === 'true';
-        filtered = filtered.filter(
-            (feeType) => feeType.isPerSeason === isPerSeasonBool
-        );
+      const isPerSeasonBool = isPerSeasonFilter === "true";
+      filtered = filtered.filter(
+        (feeType) => feeType.isPerSeason === isPerSeasonBool
+      );
     }
 
     // Apply sorting by name or amount
@@ -327,7 +330,14 @@ function FeeTypeManagement() {
     });
 
     return filtered;
-  }, [feeTypes, searchTerm, searchField, statusFilter, isPerSeasonFilter, sortOrder]);
+  }, [
+    feeTypes,
+    searchTerm,
+    searchField,
+    statusFilter,
+    isPerSeasonFilter,
+    sortOrder,
+  ]);
 
   const totalPages = Math.ceil(filteredAndSortedFeeTypes.length / rowsPerPage);
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -351,11 +361,11 @@ function FeeTypeManagement() {
   };
 
   const handleClearFilters = () => {
-    setSearchTerm('');
-    setSearchField('name');
-    setStatusFilter('all');
-    setIsPerSeasonFilter('all');
-    setSortOrder('asc');
+    setSearchTerm("");
+    setSearchField("name");
+    setStatusFilter("all");
+    setIsPerSeasonFilter("all");
+    setSortOrder("asc");
     setCurrentPage(1);
   };
 
@@ -392,13 +402,32 @@ function FeeTypeManagement() {
         >
           <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
-              Manage different types of fees, including their amounts, whether they are per season, and if they auto-apply.
+              Manage different types of fees, including their amounts, whether
+              they are per season, and if they auto-apply.
             </Typography>
           </Box>
 
           {/* Search, Filter, and Sort Section */}
-          <Paper sx={{ mb: 3, p: { xs: 1.5, sm: 2 }, display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 }, borderRadius: '8px', boxShadow: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}>
+          <Paper
+            sx={{
+              mb: 3,
+              p: { xs: 1.5, sm: 2 },
+              display: "flex",
+              flexDirection: "column",
+              gap: { xs: 1.5, sm: 2 },
+              borderRadius: "8px",
+              boxShadow: 3,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: { xs: 1, sm: 2 },
+              }}
+            >
               {/* Search Bar */}
               <TextField
                 variant="outlined"
@@ -407,19 +436,22 @@ function FeeTypeManagement() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 sx={{
-                  width: { xs: '100%', sm: '300px', md: '350px' },
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '25px',
-                    '& fieldset': { borderColor: '#e0e0e0' },
-                    '&:hover fieldset': { borderColor: '#bdbdbd' },
-                    '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: '2px' },
+                  width: { xs: "100%", sm: "300px", md: "350px" },
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "25px",
+                    "& fieldset": { borderColor: "#e0e0e0" },
+                    "&:hover fieldset": { borderColor: "#bdbdbd" },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#1976d2",
+                      borderWidth: "2px",
+                    },
                   },
-                  '& .MuiInputBase-input': { padding: '8px 12px' },
+                  "& .MuiInputBase-input": { padding: "8px 12px" },
                 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: '#757575' }} />
+                      <SearchIcon sx={{ color: "#757575" }} />
                     </InputAdornment>
                   ),
                 }}
@@ -474,19 +506,27 @@ function FeeTypeManagement() {
                   size="medium"
                   onClick={handleSort}
                   startIcon={
-                    sortOrder === "asc" ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />
+                    sortOrder === "asc" ? (
+                      <ArrowUpwardIcon />
+                    ) : (
+                      <ArrowDownwardIcon />
+                    )
                   }
                   sx={{ minWidth: { xs: "100%", sm: "auto" } }}
                 >
-                  Sort by {searchField === "amount" ? "Amount" : "Name"} {sortOrder === "asc" ? "(Asc)" : "(Desc)"}
+                  Sort by {searchField === "amount" ? "Amount" : "Name"}{" "}
+                  {sortOrder === "asc" ? "(Asc)" : "(Desc)"}
                 </Button>
-                {(searchTerm || statusFilter !== 'all' || isPerSeasonFilter !== 'all' || sortOrder !== 'asc' ) && (
+                {(searchTerm ||
+                  statusFilter !== "all" ||
+                  isPerSeasonFilter !== "all" ||
+                  sortOrder !== "asc") && (
                   <Button
                     variant="outlined"
                     onClick={handleClearFilters}
                     startIcon={<ClearIcon />}
                     size="small"
-                    sx={{ ml: { xs: 0, md: 'auto' }, mt: { xs: 1, md: 0 } }}
+                    sx={{ ml: { xs: 0, md: "auto" }, mt: { xs: 1, md: 0 } }}
                   >
                     Clear Filters
                   </Button>
@@ -496,35 +536,80 @@ function FeeTypeManagement() {
           </Paper>
 
           {loading ? (
-            <Box display="flex" justifyContent="center" my={5} sx={{ flexGrow: 1 }}>
+            <Box
+              display="flex"
+              justifyContent="center"
+              my={5}
+              sx={{ flexGrow: 1 }}
+            >
               <CircularProgress color="primary" />
             </Box>
           ) : (
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <Box
+              sx={{
+                flexGrow: 1,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <TableContainer
                 component={Paper}
-                sx={{ overflowX: "auto", borderRadius: 2, boxShadow: 2, flexGrow: 1 }}
+                sx={{
+                  overflowX: "auto",
+                  borderRadius: 2,
+                  boxShadow: 2,
+                  flexGrow: 1,
+                }}
               >
-                <Table size="small" sx={{ tableLayout: 'fixed', minWidth: 800 }}>
+                <Table
+                  size="small"
+                  sx={{ tableLayout: "fixed", minWidth: 800 }}
+                >
                   <TableHead>
                     <TableRow>
-                      <StyledTableHeaderCell sx={{ width: "5%" }}>ID</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>Name</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>Amount</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "25%" }}>Description</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>Status</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>Per Season</StyledTableHeaderCell>
-                      <StyledTableHeaderCell align="center" sx={{ width: "15%" }}>Action</StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>
+                        ID
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                        Name
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Amount
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "25%" }}>
+                        Description
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                        Status
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                        Per Season
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell
+                        align="center"
+                        sx={{ width: "15%" }}
+                      >
+                        Action
+                      </StyledTableHeaderCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {currentRows.length > 0 ? (
                       currentRows.map((feeType, index) => (
                         <TableRow hover key={feeType._id}>
-                          <StyledTableCell>{(currentPage - 1) * rowsPerPage + index + 1}</StyledTableCell>
-                          <StyledTableCell>{feeType.name || "N/A"}</StyledTableCell>
-                          <StyledTableCell>{formatCurrency(feeType.amount)}</StyledTableCell>
-                          <StyledTableCell sx={{ whiteSpace: 'normal' }}>{feeType.description || "N/A"}</StyledTableCell>
+                          <StyledTableCell>
+                            {(currentPage - 1) * rowsPerPage + index + 1}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {feeType.name || "N/A"}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {formatCurrency(feeType.amount)}
+                          </StyledTableCell>
+                          <StyledTableCell sx={{ whiteSpace: "normal" }}>
+                            {feeType.description || "N/A"}
+                          </StyledTableCell>
                           <StyledTableCell>
                             <Chip
                               label={feeType.status || "N/A"}
@@ -532,9 +617,15 @@ function FeeTypeManagement() {
                               color={getStatusColor(feeType.status)}
                             />
                           </StyledTableCell>
-                          <StyledTableCell>{feeType.isPerSeason ? "Yes" : "No"}</StyledTableCell>
+                          <StyledTableCell>
+                            {feeType.isPerSeason ? "Yes" : "No"}
+                          </StyledTableCell>
                           <StyledTableCell align="center">
-                            <Stack direction="row" spacing={1} justifyContent="center">
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              justifyContent="center"
+                            >
                               <IconButton
                                 aria-label="update"
                                 color="primary"
@@ -571,7 +662,12 @@ function FeeTypeManagement() {
           )}
 
           {totalPages > 1 && (
-            <Box mt={3} display="flex" justifyContent="center" sx={{ flexShrink: 0 }}>
+            <Box
+              mt={3}
+              display="flex"
+              justifyContent="center"
+              sx={{ flexShrink: 0 }}
+            >
               <Pagination
                 count={totalPages}
                 page={currentPage}
@@ -599,17 +695,42 @@ function FeeTypeManagement() {
         initialData={selectedFeeType}
       />
 
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      {/* ⭐ NEW: Confirmation Dialog for Deletion */}
+      <Dialog
+        open={showConfirmDeleteDialog}
+        onClose={handleCancelDelete}
+        aria-labelledby="confirm-delete-dialog-title"
+        aria-describedby="confirm-delete-dialog-description"
+      >
+        <DialogTitle id="confirm-delete-dialog-title">
+          <Typography variant="h6" color="error">
+            Confirm Deletion
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography id="confirm-delete-dialog-description">
+            Are you sure you want to permanently delete this fee type? This
+            action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCancelDelete}
+            variant="outlined"
+            color="secondary"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteFeeType}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

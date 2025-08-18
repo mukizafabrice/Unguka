@@ -1,25 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-// Removed ToastContainer and toast import as it's handled globally
-// import { ToastContainer, toast } from "react-toastify";
-// import "react-toastify/dist/ReactToastify.css";
-
-// Using a placeholder toast function if not globally available, or rely on global setup
-// const toast = {
-//   success: (msg) => console.log("Toast Success:", msg),
-//   error: (msg) => console.log("Toast Error:", msg),
-// };
-
-import {
-  fetchAllFees,
-  recordPayment,
-  updateFee,
-  deleteFee,
-} from "../../services/feesService";
-import { fetchUsers } from "../../services/userService";
-import { fetchSeasons } from "../../services/seasonService";
-import { fetchFeeTypes } from "../../services/feeTypeService";
-import { getCooperatives } from "../../services/cooperativeService"; // Assuming this service exists
-
 import {
   Box,
   Card,
@@ -44,33 +23,38 @@ import {
   CircularProgress,
   MenuItem,
   Chip,
-  OutlinedInput, // For multi-select
-  Select, // For multi-select
+  OutlinedInput,
+  Select,
   InputLabel,
   FormControl,
 } from "@mui/material";
+
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import CheckBoxOutlinedIcon from '@mui/icons-material/CheckBoxOutlined'; // Example icon for multi-select
-
-import AddFeeModal from "../../features/modals/AddFeeModal";
+import ClearIcon from "@mui/icons-material/Clear";
 import UpdateFeeModal from "../../features/modals/UpdateFeeModal";
+import AddFeeModal from "../../features/modals/AddFeeModal";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-// Assuming `toast` is globally available or imported in a parent component like App.js
-// If `toast` is not accessible here after removing its import, you'd need to
-// pass it down as a prop or use React Context for it, or re-import it.
-// For this update, we are assuming it's available via a global setup.
-const toast = window.toast || { // Fallback if window.toast isn't set
-  success: (msg) => console.log("Toast Success:", msg),
-  error: (msg) => console.log("Toast Error:", msg),
-  // Add other toast methods as needed if you rely on this fallback
-};
+import { useAuth } from "../../contexts/AuthContext";
 
+import {
+  fetchAllFees,
+  recordPayment,
+  updateFee,
+  deleteFee,
+} from "../../services/feesService";
+import { fetchUsers } from "../../services/userService";
+import { fetchSeasons } from "../../services/seasonService";
+import { fetchFeeTypes } from "../../services/feeTypeService";
+import { getCooperatives } from "../../services/cooperativeService";
 
+// Styled Components
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -94,7 +78,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "transparent",
+  backgroundColor: "#f5f5f5",
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -125,6 +109,8 @@ const getStatusColor = (status) => {
 };
 
 function Fees() {
+  const { user } = useAuth();
+
   const [fees, setFees] = useState([]);
   const [users, setUsers] = useState([]);
   const [seasons, setSeasons] = useState([]);
@@ -149,70 +135,188 @@ function Fees() {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount || 0);
+  };
+
   const loadFeesData = useCallback(async () => {
     setLoading(true);
+    let allFees = [];
+
     try {
-      const [cooperativesData, usersData, seasonsData, feeTypesData] =
-        await Promise.all([
-          getCooperatives(),
-          fetchUsers(),
-          fetchSeasons(),
-          fetchFeeTypes(),
+      const [cooperativesResult, usersResult, seasonsResult, feeTypesResult] =
+        await Promise.allSettled([
+          user?.role === "superadmin" ? getCooperatives() : Promise.resolve({}),
+          user?.cooperativeId
+            ? fetchUsers(user.cooperativeId)
+            : Promise.resolve([]),
+          user?.cooperativeId
+            ? fetchSeasons(user.cooperativeId)
+            : Promise.resolve([]),
+          user?.cooperativeId
+            ? fetchFeeTypes(user.cooperativeId)
+            : Promise.resolve([]),
         ]);
 
-      setCooperatives(cooperativesData || []);
-      setUsers(usersData || []);
-      setSeasons(seasonsData || []);
-      setFeeTypes(feeTypesData || []);
+      if (
+        usersResult.status === "fulfilled" &&
+        Array.isArray(usersResult.value?.data)
+      ) {
+        setUsers(usersResult.value.data);
+        const uMap = usersResult.value.data.reduce((acc, u) => {
+          acc[u._id] = u.names;
+          return acc;
+        }, {});
+        setUsersMap(uMap);
+      } else {
+        console.error(
+          "Failed to fetch users:",
+          usersResult.reason || "Unknown error"
+        );
+        toast.error("Failed to load user data.");
+        setUsers([]);
+        setUsersMap({});
+      }
 
-      const userMap = {};
-      (usersData || []).forEach((user) => {
-        userMap[user._id] = user.names;
-      });
-      setUsersMap(userMap);
+      if (
+        seasonsResult.status === "fulfilled" &&
+        Array.isArray(seasonsResult.value?.data)
+      ) {
+        setSeasons(seasonsResult.value.data);
+      } else {
+        console.error(
+          "Failed to fetch seasons:",
+          seasonsResult.reason || "Unknown error"
+        );
+        toast.error("Failed to load season data.");
+        setSeasons([]);
+      }
 
-      const coopMap = {};
-      (cooperativesData || []).forEach((coop) => {
-        coopMap[coop._id] = coop.name;
-      });
-      setCooperativesMap(coopMap);
+      if (
+        feeTypesResult.status === "fulfilled" &&
+        Array.isArray(feeTypesResult.value?.data)
+      ) {
+        setFeeTypes(feeTypesResult.value.data);
+      } else {
+        console.error(
+          "Failed to fetch fee types:",
+          feeTypesResult.reason || "Unknown error"
+        );
+        toast.error("Failed to load fee type data.");
+        setFeeTypes([]);
+      }
 
-      const currentCoopIdsToFetch =
-        selectedCooperativeIds.length > 0
-          ? selectedCooperativeIds
-          : (cooperativesData || []).map((coop) => coop._id);
+      if (
+        user?.role === "superadmin" &&
+        cooperativesResult.status === "fulfilled" &&
+        Array.isArray(cooperativesResult.value?.data)
+      ) {
+        setCooperatives(cooperativesResult.value.data);
+        const cMap = cooperativesResult.value.data.reduce((acc, c) => {
+          acc[c._id] = c.name;
+          return acc;
+        }, {});
+        setCooperativesMap(cMap);
+      } else if (user?.role === "superadmin") {
+        console.error(
+          "Failed to fetch cooperatives:",
+          cooperativesResult.reason || "Unknown error"
+        );
+        toast.error("Failed to load cooperative data.");
+        setCooperatives([]);
+        setCooperativesMap({});
+      } else {
+        setCooperatives(
+          user?.cooperativeId
+            ? [
+                {
+                  _id: user.cooperativeId,
+                  name: user.cooperativeName || "My Cooperative",
+                },
+              ]
+            : []
+        );
+        setCooperativesMap(
+          user?.cooperativeId
+            ? { [user.cooperativeId]: user.cooperativeName || "My Cooperative" }
+            : {}
+        );
+      }
 
-      let allFees = [];
-      if (currentCoopIdsToFetch.length > 0) {
-        const feesPromises = currentCoopIdsToFetch.map(async (coopId) => {
+      if (
+        !user ||
+        (!user.cooperativeId && user.role !== "superadmin") ||
+        (user.role !== "manager" && user.role !== "superadmin")
+      ) {
+        console.warn(
+          "User does not have permission or cooperativeId to view all fees."
+        );
+        setFees([]);
+        toast.warn("You do not have permission to view this data.");
+        setLoading(false);
+        return;
+      }
+
+      let cooperativeIdsToFetch = [];
+      if (user.role === "superadmin") {
+        cooperativeIdsToFetch =
+          selectedCooperativeIds.length > 0
+            ? selectedCooperativeIds
+            : cooperativesResult.status === "fulfilled" &&
+              Array.isArray(cooperativesResult.value?.data)
+            ? cooperativesResult.value.data.map((coop) => coop._id)
+            : [];
+      } else {
+        cooperativeIdsToFetch = [user.cooperativeId];
+      }
+
+      if (cooperativeIdsToFetch.length > 0) {
+        const feesPromises = cooperativeIdsToFetch.map(async (coopId) => {
           try {
-            return await fetchAllFees(coopId);
+            const response = await fetchAllFees(coopId);
+            return response.data || [];
           } catch (err) {
-            console.warn(`Failed to fetch fees for cooperative ${coopId}:`, err);
+            console.warn(
+              `Failed to fetch fees for cooperative ${coopId}:`,
+              err
+            );
             return [];
           }
         });
-        const resolvedFees = await Promise.all(feesPromises);
-        allFees = resolvedFees.flat();
+        const resolvedFeesArrays = await Promise.all(feesPromises);
+        allFees = resolvedFeesArrays.flat();
+      } else {
+        toast.warn("No cooperative selected or available to fetch fees from.");
       }
 
       setFees(allFees);
     } catch (error) {
-      console.error("Failed to fetch all data:", error);
-      toast.error("Failed to load fees dashboard data.");
+      console.error("Error during fees data load:", error);
+      toast.error("An unexpected error occurred while loading fees data.");
       setFees([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedCooperativeIds]);
+  }, [user, selectedCooperativeIds]);
 
   useEffect(() => {
-    loadFeesData();
-  }, [loadFeesData]);
+    if (user) {
+      loadFeesData();
+    }
+  }, [user, loadFeesData]);
 
+  // ✅ CORRECTION 1: Ensure `cooperativeId` is included in the data sent for new fees.
+  // The backend controller now expects this to be in `req.body` for validation.
   const handleAddFee = async (feeData) => {
     try {
-      await recordPayment(feeData);
+      const feeDataWithCoopId = {
+        ...feeData,
+        cooperativeId: user.cooperativeId,
+      };
+      await recordPayment(feeDataWithCoopId);
       setShowAddModal(false);
       toast.success("Fee record added successfully!");
       await loadFeesData();
@@ -226,9 +330,12 @@ function Fees() {
     }
   };
 
-  const handleDeleteFee = async (id, cooperativeId) => {
+  // ✅ CORRECTION 2: Removed the `cooperativeId` from the `deleteFee` service call.
+  // The backend now securely retrieves the cooperative ID from the user's token,
+  // making this parameter redundant and potentially insecure.
+  const handleDeleteFee = async (id) => {
     try {
-      await deleteFee(id, cooperativeId);
+      await deleteFee(id); // Only pass the fee ID
       toast.success("Fee record deleted successfully!");
       await loadFeesData();
     } catch (error) {
@@ -251,6 +358,7 @@ function Fees() {
       await updateFee(id, updatedFeeData);
       toast.success("Fee record updated successfully!");
       setShowUpdateModal(false);
+      setFeeToEdit(null);
       await loadFeesData();
     } catch (error) {
       console.error("Error updating fee:", error);
@@ -262,43 +370,46 @@ function Fees() {
     }
   };
 
+  // Memoized filtering and sorting logic
   const filteredAndSortedFees = useMemo(() => {
-    let filtered = fees;
+    let currentFiltered = fees;
 
     if (searchTerm) {
-      filtered = filtered.filter((fee) => {
-        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      currentFiltered = currentFiltered.filter((fee) => {
+        let valueToSearch = "";
         switch (searchField) {
           case "user":
-            return (fee.userId?.names || usersMap[fee.userId])
-              ?.toLowerCase()
-              .includes(lowerCaseSearchTerm);
+            valueToSearch = fee.userId?.names || usersMap[fee.userId] || "";
+            break;
           case "season":
-            return (
-              fee.seasonId?.name?.toLowerCase().includes(lowerCaseSearchTerm) ||
-              fee.seasonId?.year?.toString().includes(lowerCaseSearchTerm)
-            );
+            valueToSearch = `${fee.seasonId?.name || ""} ${
+              fee.seasonId?.year || ""
+            }`;
+            break;
           case "feeType":
-            return fee.feeTypeId?.name
-              ?.toLowerCase()
-              .includes(lowerCaseSearchTerm);
+            valueToSearch = fee.feeTypeId?.name || "";
+            break;
           case "cooperative":
-            return (fee.cooperativeId?.name || cooperativesMap[fee.cooperativeId])
-              ?.toLowerCase()
-              .includes(lowerCaseSearchTerm);
+            valueToSearch =
+              fee.cooperativeId?.name ||
+              cooperativesMap[fee.cooperativeId] ||
+              "";
+            break;
           default:
             return true;
         }
+        return valueToSearch.toLowerCase().includes(lowerCaseSearchTerm);
       });
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter(
+      currentFiltered = currentFiltered.filter(
         (fee) => fee.status?.toLowerCase() === statusFilter.toLowerCase()
       );
     }
 
-    filtered.sort((a, b) => {
+    currentFiltered.sort((a, b) => {
       const dateA = new Date(a.createdAt);
       const dateB = new Date(b.createdAt);
       if (sortOrder === "asc") {
@@ -308,9 +419,18 @@ function Fees() {
       }
     });
 
-    return filtered;
-  }, [fees, usersMap, cooperativesMap, searchTerm, searchField, statusFilter, sortOrder]);
+    return currentFiltered;
+  }, [
+    fees,
+    usersMap,
+    cooperativesMap,
+    searchTerm,
+    searchField,
+    statusFilter,
+    sortOrder,
+  ]);
 
+  // Pagination logic
   const totalPages = Math.ceil(filteredAndSortedFees.length / rowsPerPage);
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
@@ -338,13 +458,6 @@ function Fees() {
     setSelectedCooperativeIds(
       typeof value === "string" ? value.split(",") : value
     );
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-RW", {
-      style: "currency",
-      currency: "RWF",
-    }).format(amount);
   };
 
   return (
@@ -377,37 +490,44 @@ function Fees() {
               owed, and payment status.
             </Typography>
           </Box>
-
           <Stack
             direction={isMobile ? "column" : "row"}
             spacing={2}
             mb={3}
             alignItems={isMobile ? "stretch" : "center"}
           >
-            <FormControl sx={{ minWidth: 150, flexShrink: 0 }}>
-              <InputLabel id="cooperative-select-label" size="small">Cooperative(s)</InputLabel>
-              <Select
-                labelId="cooperative-select-label"
-                id="cooperative-select-multiple"
-                multiple
-                value={selectedCooperativeIds}
-                onChange={handleCooperativeSelectChange}
-                input={<OutlinedInput label="Cooperative(s)" size="small" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                    {selected.map((value) => (
-                      <Chip key={value} label={cooperativesMap[value] || value} />
-                    ))}
-                  </Box>
-                )}
-              >
-                {cooperatives.map((coop) => (
-                  <MenuItem key={coop._id} value={coop._id}>
-                    {coop.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {user?.role === "superadmin" && (
+              <FormControl sx={{ minWidth: 150, flexShrink: 0 }} size="small">
+                <InputLabel id="cooperative-select-label">
+                  Cooperative(s)
+                </InputLabel>
+                <Select
+                  labelId="cooperative-select-label"
+                  id="cooperative-select-multiple"
+                  multiple
+                  value={selectedCooperativeIds}
+                  onChange={handleCooperativeSelectChange}
+                  input={<OutlinedInput label="Cooperative(s)" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                      {selected.map((value) => (
+                        <Chip
+                          key={value}
+                          label={cooperativesMap[value] || value}
+                          size="small"
+                        />
+                      ))}
+                    </Box>
+                  )}
+                >
+                  {cooperatives.map((coop) => (
+                    <MenuItem key={coop._id} value={coop._id}>
+                      {coop.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
 
             <TextField
               select
@@ -420,7 +540,9 @@ function Fees() {
               <MenuItem value="user">User Name</MenuItem>
               <MenuItem value="season">Season/Year</MenuItem>
               <MenuItem value="feeType">Fee Type</MenuItem>
-              <MenuItem value="cooperative">Cooperative</MenuItem>
+              {user?.role === "superadmin" && (
+                <MenuItem value="cooperative">Cooperative</MenuItem>
+              )}
             </TextField>
             <TextField
               label={`Search ${
@@ -475,7 +597,6 @@ function Fees() {
               Sort by Date {sortOrder === "asc" ? "(Oldest)" : "(Newest)"}
             </Button>
           </Stack>
-
           {loading ? (
             <Box display="flex" justifyContent="center" my={5}>
               <CircularProgress color="primary" />
@@ -543,13 +664,16 @@ function Fees() {
                             {indexOfFirstRow + index + 1}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {fee.cooperativeId?.name || cooperativesMap[fee.cooperativeId] || "N/A"}
+                            {fee.cooperativeId?.name ||
+                              cooperativesMap[fee.cooperativeId] ||
+                              "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.userId?.names || usersMap[fee.userId] || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {fee.seasonId?.name || "N/A"} ({fee.seasonId?.year || "N/A"})
+                            {fee.seasonId?.name || "N/A"} (
+                            {fee.seasonId?.year || "N/A"})
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.feeTypeId?.name || "N/A"}
@@ -592,11 +716,12 @@ function Fees() {
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
+                              {/* ✅ CORRECTION 3: Pass only the fee ID to the delete handler */}
                               <IconButton
                                 aria-label="delete"
                                 color="error"
                                 size="small"
-                                onClick={() => handleDeleteFee(fee._id, fee.cooperativeId)}
+                                onClick={() => handleDeleteFee(fee._id)}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -636,25 +761,32 @@ function Fees() {
         </CardContent>
       </Card>
 
-      <AddFeeModal
-        show={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddFee}
-        users={users}
-        seasons={seasons}
-        feeTypes={feeTypes}
-        cooperatives={cooperatives} // Pass cooperatives for selection
-      />
-      <UpdateFeeModal
-        show={showUpdateModal}
-        onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleFeeUpdated}
-        feeToEdit={feeToEdit}
-        users={users}
-        seasons={seasons}
-        feeTypes={feeTypes}
-        cooperatives={cooperatives}
-      />
+      {user?.cooperativeId && (
+        <>
+          <AddFeeModal
+            show={showAddModal}
+            onClose={() => setShowAddModal(false)}
+            onSubmit={handleAddFee}
+            users={users}
+            seasons={seasons}
+            feeTypes={feeTypes}
+            cooperatives={cooperatives}
+            cooperativeId={user.cooperativeId}
+          />
+          <UpdateFeeModal
+            show={showUpdateModal}
+            onClose={() => setShowUpdateModal(false)}
+            onSubmit={handleFeeUpdated}
+            feeToEdit={feeToEdit}
+            users={users}
+            seasons={seasons}
+            feeTypes={feeTypes}
+            cooperatives={cooperatives}
+            cooperativeId={user.cooperativeId}
+          />
+        </>
+      )}
+      <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );
 }

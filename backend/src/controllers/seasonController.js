@@ -11,12 +11,10 @@ export const createSeason = async (req, res) => {
 
   // Validate required fields including cooperativeId
   if (!name || !year || !cooperativeId) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Name, year, and cooperative ID are required",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Name, year, and cooperative ID are required",
+    });
   }
 
   // Validate cooperativeId format
@@ -27,7 +25,6 @@ export const createSeason = async (req, res) => {
   }
 
   try {
-    // ⭐ UPDATED: Check for existing season unique per cooperative, name, and year
     const existingSeason = await Season.findOne({ name, year, cooperativeId });
     if (existingSeason) {
       return res.status(409).json({
@@ -52,12 +49,10 @@ export const createSeason = async (req, res) => {
     }
     // Handle duplicate key error specifically for the unique index
     if (error.code === 11000) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: `Season '${name}' for year ${year} already exists in this cooperative.`,
-        });
+      return res.status(409).json({
+        success: false,
+        message: `Season '${name}' for year ${year} already exists in this cooperative.`,
+      });
     }
     res.status(500).json({ success: false, message: "Internal server error" });
   }
@@ -66,7 +61,6 @@ export const createSeason = async (req, res) => {
 // Get all seasons
 export const getAllSeasons = async (req, res) => {
   try {
-    // ⭐ NEW: Allow filtering by cooperativeId from query parameters
     const { cooperativeId } = req.query;
     let query = {};
 
@@ -79,18 +73,15 @@ export const getAllSeasons = async (req, res) => {
       query.cooperativeId = cooperativeId;
     }
 
-    // ⭐ UPDATED: Filter by query and populate cooperative info
     const seasons = await Season.find(query)
-      .populate("cooperativeId", "name registrationNumber") // Populate cooperative details
+      .populate("cooperativeId", "name registrationNumber")
       .sort({ createdAt: -1 });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: seasons,
-        message: "Seasons fetched successfully",
-      });
+    res.status(200).json({
+      success: true,
+      data: seasons,
+      message: "Seasons fetched successfully",
+    });
   } catch (error) {
     console.error("Error fetching seasons:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -127,20 +118,16 @@ export const getSeasonById = async (req, res) => {
     );
 
     if (!season) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Season not found or unauthorized access",
-        });
-    }
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: season,
-        message: "Season fetched successfully",
+      return res.status(404).json({
+        success: false,
+        message: "Season not found or unauthorized access",
       });
+    }
+    res.status(200).json({
+      success: true,
+      data: season,
+      message: "Season fetched successfully",
+    });
   } catch (error) {
     console.error("Error fetching season:", error);
     if (error.name === "CastError") {
@@ -165,12 +152,10 @@ export const updateSeason = async (req, res) => {
   }
   // Validate cooperativeId from body
   if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Cooperative ID is required and must be valid.",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Cooperative ID is required and must be valid.",
+    });
   }
 
   try {
@@ -180,12 +165,10 @@ export const updateSeason = async (req, res) => {
       cooperativeId: cooperativeId,
     });
     if (!season) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Season not found or unauthorized to update",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Season not found or unauthorized to update",
+      });
     }
 
     const oldStatus = season.status;
@@ -249,13 +232,11 @@ export const updateSeason = async (req, res) => {
       }
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Season updated successfully",
-        data: season,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Season updated successfully",
+      data: season,
+    });
   } catch (error) {
     console.error("Error updating season:", error);
     if (error.name === "ValidationError") {
@@ -263,12 +244,10 @@ export const updateSeason = async (req, res) => {
     }
     // Handle duplicate key error specifically for the unique index
     if (error.code === 11000) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: `Season '${name}' for year ${year} already exists in this cooperative.`,
-        });
+      return res.status(409).json({
+        success: false,
+        message: `Season '${name}' for year ${year} already exists in this cooperative.`,
+      });
     }
     res.status(500).json({ success: false, message: "Internal server error" });
   }
@@ -287,12 +266,10 @@ export const deleteSeason = async (req, res) => {
         .json({ success: false, message: "Invalid season ID" });
     }
     if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Cooperative ID is required and must be valid.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Cooperative ID is required and must be valid.",
+      });
     }
 
     // ⭐ UPDATED: Find and delete season by ID and cooperativeId for security
@@ -302,12 +279,10 @@ export const deleteSeason = async (req, res) => {
     });
 
     if (!season) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Season not found or unauthorized to delete",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Season not found or unauthorized to delete",
+      });
     }
     res
       .status(200)

@@ -8,7 +8,7 @@ import {
   TextField,
   Button,
   MenuItem,
-  Grid,
+  Stack, // ⭐ Import Stack for vertical layout
   Typography,
   CircularProgress, // For loading state
 } from "@mui/material";
@@ -21,15 +21,39 @@ import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 
 // Styled components for consistent modal header
-const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[50],
-  borderBottom: `1px solid ${theme.palette.divider}`,
-  "& .MuiTypography-root": {
-    fontWeight: 600,
-  },
-}));
+const StyledDialogTitle = styled(DialogTitle)(({ theme }) => {
+  // ⭐ Defensive check: If theme or its required properties are undefined,
+  //    use hardcoded fallback values to prevent runtime error.
+  if (
+    !theme ||
+    !theme.palette ||
+    !theme.palette.grey ||
+    !theme.palette.divider
+  ) {
+    return {
+      backgroundColor: "#fafafa", // Fallback for theme.palette.grey[50]
+      borderBottom: `1px solid #e0e0e0`, // Fallback for theme.palette.divider
+      "& .MuiTypography-root": {
+        fontWeight: 600,
+      },
+    };
+  }
+  // If theme is properly provided, use its values
+  return {
+    backgroundColor: theme.palette.grey[50],
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    "& .MuiTypography-root": {
+      fontWeight: 600,
+    },
+  };
+});
 
-export default function AddPurchaseInputModal({ show, onClose, onSubmit, cooperativeId }) {
+export default function AddPurchaseInputModal({
+  show,
+  onClose,
+  onSubmit,
+  cooperativeId,
+}) {
   const [formData, setFormData] = useState({
     userId: "",
     productId: "",
@@ -53,7 +77,7 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit, coopera
     setTotalAmount(quantity * unitPrice);
     // If total amount is less than or equal to amount paid, reset interest
     if (quantity * unitPrice <= (parseFloat(formData.amountPaid) || 0)) {
-        setFormData(prevData => ({ ...prevData, interest: "" }));
+      setFormData((prevData) => ({ ...prevData, interest: "" }));
     }
   }, [formData.quantity, formData.unitPrice, formData.amountPaid]);
 
@@ -68,11 +92,12 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit, coopera
       setLoading(true);
       try {
         // ⭐ Pass cooperativeId to fetch functions for multi-cooperative filtering
-        const [usersResponse, productsResponse, seasonsResponse] = await Promise.all([
-          fetchUsers(cooperativeId), // Assuming fetchUsers can filter by cooperativeId
-          fetchProducts(cooperativeId), // Assuming fetchProduct can filter by cooperativeId
-          fetchSeasons(cooperativeId), // Assuming fetchSeasons can filter by cooperativeId
-        ]);
+        const [usersResponse, productsResponse, seasonsResponse] =
+          await Promise.all([
+            fetchUsers(cooperativeId), // Assuming fetchUsers can filter by cooperativeId
+            fetchProducts(cooperativeId), // Assuming fetchProduct can filter by cooperativeId
+            fetchSeasons(cooperativeId), // Assuming fetchSeasons can filter by cooperativeId
+          ]);
 
         // ⭐ Enhanced error handling for each fetch operation
         if (usersResponse.success && Array.isArray(usersResponse.data)) {
@@ -95,7 +120,6 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit, coopera
           toast.error(seasonsResponse.message || "Failed to load seasons.");
           setSeasons([]);
         }
-
       } catch (error) {
         console.error("Failed to load modal data:", error);
         toast.error("An unexpected error occurred while loading form data.");
@@ -133,60 +157,63 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit, coopera
     }));
   }, []);
 
-  const handleSubmit = useCallback((e) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
 
-    if (!formData.userId || !formData.productId || !formData.seasonId) {
-      toast.error("Please select a user, product, and season.");
-      return;
-    }
-    const quantityNum = parseFloat(formData.quantity);
-    const unitPriceNum = parseFloat(formData.unitPrice);
-    const amountPaidNum = parseFloat(formData.amountPaid);
-    const interestNum = parseFloat(formData.interest) || 0; // Default to 0 if not entered
+      if (!formData.userId || !formData.productId || !formData.seasonId) {
+        toast.error("Please select a user, product, and season.");
+        return;
+      }
+      const quantityNum = parseFloat(formData.quantity);
+      const unitPriceNum = parseFloat(formData.unitPrice);
+      const amountPaidNum = parseFloat(formData.amountPaid);
+      const interestNum = parseFloat(formData.interest) || 0; // Default to 0 if not entered
 
-    if (isNaN(quantityNum) || quantityNum <= 0) {
-      toast.error("Quantity must be a number greater than 0.");
-      return;
-    }
-    if (isNaN(unitPriceNum) || unitPriceNum <= 0) {
-      toast.error("Unit Price must be a number greater than 0.");
-      return;
-    }
+      if (isNaN(quantityNum) || quantityNum <= 0) {
+        toast.error("Quantity must be a number greater than 0.");
+        return;
+      }
+      if (isNaN(unitPriceNum) || unitPriceNum <= 0) {
+        toast.error("Unit Price must be a number greater than 0.");
+        return;
+      }
 
-    const calculatedTotalPrice = quantityNum * unitPriceNum;
+      const calculatedTotalPrice = quantityNum * unitPriceNum;
 
-    if (isNaN(amountPaidNum) || amountPaidNum < 0) {
-      toast.error("Amount paid must be a non-negative number.");
-      return;
-    }
+      if (isNaN(amountPaidNum) || amountPaidNum < 0) {
+        toast.error("Amount paid must be a non-negative number.");
+        return;
+      }
 
-    if (amountPaidNum > calculatedTotalPrice) {
-      toast.error("Amount paid cannot exceed the total price.");
-      return;
-    }
+      if (amountPaidNum > calculatedTotalPrice) {
+        toast.error("Amount paid cannot exceed the total price.");
+        return;
+      }
 
-    // Determine status
-    let status = "paid";
-    if (calculatedTotalPrice > amountPaidNum) {
-      status = "loan"; // ⭐ Set status to 'loan' if there's a remaining balance
-    }
+      // Determine status
+      let status = "paid";
+      if (calculatedTotalPrice > amountPaidNum) {
+        status = "loan";
+      }
 
-    // Prepare data to submit, including cooperativeId and calculated fields
-    const dataToSubmit = {
-      ...formData,
-      quantity: quantityNum,
-      unitPrice: unitPriceNum,
-      amountPaid: amountPaidNum,
-      totalPrice: calculatedTotalPrice,
-      amountRemaining: calculatedTotalPrice - amountPaidNum,
-      status: status,
-      interest: status === "loan" ? interestNum : 0, // Only include interest if status is 'loan'
-      cooperativeId: cooperativeId, // ⭐ Crucially, add cooperativeId here
-    };
+      // Prepare data to submit, including cooperativeId and calculated fields
+      const dataToSubmit = {
+        ...formData,
+        quantity: quantityNum,
+        unitPrice: unitPriceNum,
+        amountPaid: amountPaidNum,
+        totalPrice: calculatedTotalPrice,
+        amountRemaining: calculatedTotalPrice - amountPaidNum,
+        status: status,
+        interest: status === "loan" ? interestNum : 0, // Only include interest if status is 'loan'
+        cooperativeId: cooperativeId, // ⭐ Crucially, add cooperativeId here
+      };
 
-    onSubmit(dataToSubmit);
-  }, [formData, onSubmit, cooperativeId]);
+      onSubmit(dataToSubmit);
+    },
+    [formData, onSubmit, cooperativeId]
+  );
 
   const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat("en-RW", {
@@ -200,164 +227,160 @@ export default function AddPurchaseInputModal({ show, onClose, onSubmit, coopera
       <StyledDialogTitle onClose={onClose}>Add New Purchase</StyledDialogTitle>
       <DialogContent dividers>
         {loading ? (
-          <Grid container justifyContent="center" alignItems="center" sx={{ height: 200 }}>
+          <Stack // ⭐ Replaced Grid with Stack for loading state
+            justifyContent="center"
+            alignItems="center"
+            sx={{ height: 200 }}
+          >
             <CircularProgress />
-            <Typography variant="subtitle1" sx={{ ml: 2 }}>Loading data...</Typography>
-          </Grid>
+            <Typography variant="subtitle1" sx={{ ml: 2 }}>
+              Loading data...
+            </Typography>
+          </Stack>
         ) : (
           <form>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  select
-                  label="Member"
-                  name="userId"
-                  value={formData.userId}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  margin="normal"
-                  variant="outlined"
-                  size="small"
-                >
-                  <MenuItem value="">Select a member</MenuItem>
-                  {users.map((user) => (
-                    <MenuItem key={user._id} value={user._id}>
-                      {user.names}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
+            {/* ⭐ Replaced Grid container with Stack for vertical layout */}
+            <Stack spacing={2} sx={{ width: "100%" }}>
+              <TextField
+                select
+                label="Member"
+                name="userId"
+                value={formData.userId}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin="normal"
+                variant="outlined"
+                size="small"
+              >
+                <MenuItem value="">Select a member</MenuItem>
+                {users.map((user) => (
+                  <MenuItem key={user._id} value={user._id}>
+                    {user.names}
+                  </MenuItem>
+                ))}
+              </TextField>
 
-              <Grid item xs={12}>
-                <TextField
-                  select
-                  label="Product"
-                  name="productId"
-                  value={formData.productId}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  margin="normal"
-                  variant="outlined"
-                  size="small"
-                >
-                  <MenuItem value="">Select a product</MenuItem>
-                  {products.map((product) => (
-                    <MenuItem key={product._id} value={product._id}>
-                      {product.productName}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
+              <TextField
+                select
+                label="Product"
+                name="productId"
+                value={formData.productId}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin="normal"
+                variant="outlined"
+                size="small"
+              >
+                <MenuItem value="">Select a product</MenuItem>
+                {products.map((product) => (
+                  <MenuItem key={product._id} value={product._id}>
+                    {product.productName}
+                  </MenuItem>
+                ))}
+              </TextField>
 
-              <Grid item xs={12}>
-                <TextField
-                  select
-                  label="Season"
-                  name="seasonId"
-                  value={formData.seasonId}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  margin="normal"
-                  variant="outlined"
-                  size="small"
-                >
-                  <MenuItem value="">Select a season</MenuItem>
-                  {seasons.map((season) => (
-                    <MenuItem key={season._id} value={season._id}>
-                      {season.name} ({season.year})
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
+              <TextField
+                select
+                label="Season"
+                name="seasonId"
+                value={formData.seasonId}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin="normal"
+                variant="outlined"
+                size="small"
+              >
+                <MenuItem value="">Select a season</MenuItem>
+                {seasons.map((season) => (
+                  <MenuItem key={season._id} value={season._id}>
+                    {season.name} ({season.year})
+                  </MenuItem>
+                ))}
+              </TextField>
 
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Quantity"
-                  type="number"
-                  name="quantity"
-                  value={formData.quantity}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  margin="normal"
-                  variant="outlined"
-                  size="small"
-                  inputProps={{ min: "0" }}
-                />
-              </Grid>
+              <TextField
+                label="Quantity"
+                type="number"
+                name="quantity"
+                value={formData.quantity}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin="normal"
+                variant="outlined"
+                size="small"
+                inputProps={{ min: "0" }}
+              />
 
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Unit Price"
-                  type="number"
-                  name="unitPrice"
-                  value={formData.unitPrice}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  margin="normal"
-                  variant="outlined"
-                  size="small"
-                  inputProps={{ min: "0" }}
-                />
-              </Grid>
+              <TextField
+                label="Unit Price"
+                type="number"
+                name="unitPrice"
+                value={formData.unitPrice}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin="normal"
+                variant="outlined"
+                size="small"
+                inputProps={{ min: "0" }}
+              />
 
-              <Grid item xs={12}>
-                <TextField
-                  label="Total Amount"
-                  value={formatCurrency(totalAmount)}
-                  fullWidth
-                  margin="normal"
-                  variant="outlined"
-                  size="small"
-                  InputProps={{
-                    readOnly: true,
-                  }}
-                />
-              </Grid>
+              <TextField
+                label="Total Amount"
+                value={formatCurrency(totalAmount)}
+                fullWidth
+                margin="normal"
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  readOnly: true,
+                }}
+              />
 
-              <Grid item xs={12}>
-                <TextField
-                  label="Amount Paid"
-                  type="number"
-                  name="amountPaid"
-                  value={formData.amountPaid}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  margin="normal"
-                  variant="outlined"
-                  size="small"
-                  inputProps={{ min: "0" }}
-                />
-              </Grid>
+              <TextField
+                label="Amount Paid"
+                type="number"
+                name="amountPaid"
+                value={formData.amountPaid}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin="normal"
+                variant="outlined"
+                size="small"
+                inputProps={{ min: "0" }}
+              />
 
               {totalAmount > (parseFloat(formData.amountPaid) || 0) && (
-                <Grid item xs={12}>
-                  <TextField
-                    label="Loan Interest (%)"
-                    type="number"
-                    name="interest"
-                    value={formData.interest}
-                    onChange={handleChange}
-                    fullWidth
-                    required
-                    margin="normal"
-                    variant="outlined"
-                    size="small"
-                    inputProps={{ min: "0", max: "100" }}
-                    helperText="Enter interest rate if a balance remains (loan)"
-                  />
-                </Grid>
+                <TextField // ⭐ No Grid wrapper needed here, Stack handles spacing
+                  label="Loan Interest (%)"
+                  type="number"
+                  name="interest"
+                  value={formData.interest}
+                  onChange={handleChange}
+                  fullWidth
+                  required
+                  margin="normal"
+                  variant="outlined"
+                  size="small"
+                  inputProps={{ min: "0", max: "100" }}
+                  helperText="Enter interest rate if a balance remains (loan)"
+                />
               )}
-            </Grid>
+            </Stack>
           </form>
         )}
       </DialogContent>
-      <DialogActions sx={{ padding: 2, borderTop: `1px solid ${theme => theme.palette.divider}` }}>
+      <DialogActions
+        sx={{
+          padding: 2,
+          borderTop: `1px solid ${(theme) => theme.palette.divider}`,
+        }}
+      >
         <Button onClick={onClose} variant="outlined" color="secondary">
           Cancel
         </Button>

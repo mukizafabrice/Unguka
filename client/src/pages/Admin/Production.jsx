@@ -35,6 +35,10 @@ import {
   CircularProgress,
   MenuItem,
   // Chip // Uncomment if paymentStatus needs chipping as in other tables
+  Dialog, // ⭐ Added for confirmation dialog
+  DialogTitle, // ⭐ Added for confirmation dialog
+  DialogContent, // ⭐ Added for confirmation dialog
+  DialogActions, // ⭐ Added for confirmation dialog
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -97,6 +101,10 @@ function Production() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedProduction, setSelectedProduction] = useState(null);
+
+  // ⭐ NEW STATE FOR CONFIRMATION DIALOG
+  const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
+  const [productionToDeleteId, setProductionToDeleteId] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(7); // Consistent rows per page
@@ -188,26 +196,53 @@ function Production() {
     setShowUpdateModal(true);
   };
 
-  const handleDeleteProduction = async (id) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot delete production.");
+  // ⭐ NEW FUNCTION: Open confirmation dialog for deletion
+  const handleOpenConfirmDeleteDialog = (id) => {
+    setProductionToDeleteId(id);
+    setShowConfirmDeleteDialog(true);
+  };
+
+  // ⭐ NEW FUNCTION: Close confirmation dialog (cancel deletion)
+  const handleCancelDelete = () => {
+    setProductionToDeleteId(null);
+    setShowConfirmDeleteDialog(false);
+  };
+
+  // ⭐ NEW FUNCTION: Confirm and proceed with deletion
+  const confirmDeleteProduction = async () => {
+    if (!cooperativeId || !productionToDeleteId) {
+      toast.error("Cooperative ID or Production ID is missing. Cannot delete production.");
       return;
     }
-    if (window.confirm("Are you sure you want to delete this production entry? This action cannot be undone.")) {
-      try {
-        const response = await deleteProduction(id, cooperativeId);
-        if (response.success) {
-          toast.success(response.message || "Production deleted successfully!");
-          await loadProductions();
-        } else {
-          toast.error(response.message || "Failed to delete production.");
+    try {
+      const response = await deleteProduction(productionToDeleteId, cooperativeId);
+      if (response.success) {
+        toast.success(response.message || "Production deleted successfully!");
+        await loadProductions();
+        // Adjust current page if the last item on a page was deleted
+        if (currentRows.length === 1 && currentPage > 1) {
+          setCurrentPage((prevPage) => prevPage - 1);
         }
-      } catch (error) {
-        console.error("Failed to delete production:", error);
-        toast.error("An unexpected error occurred while deleting production.");
+      } else {
+        toast.error(response.message || "Failed to delete production.");
       }
+    } catch (error) {
+      console.error("Failed to delete production (catch block):", error);
+      toast.error(
+        `Failed to delete production: ${
+          error.message || "An unexpected error occurred."
+        }`
+      );
+    } finally {
+      handleCancelDelete(); // Always close the dialog
     }
   };
+
+  // ⭐ MODIFIED handleDeleteProduction to use the confirmation dialog
+  const handleDeleteProduction = (id) => {
+    handleOpenConfirmDeleteDialog(id);
+  };
+
 
   const filteredAndSortedProductions = useMemo(() => {
     let filtered = productions;
@@ -557,6 +592,31 @@ function Production() {
         initialData={selectedProduction}
         cooperativeId={cooperativeId}
       />
+
+      {/* ⭐ NEW: Confirmation Dialog for Deletion */}
+      <Dialog
+        open={showConfirmDeleteDialog}
+        onClose={handleCancelDelete}
+        aria-labelledby="confirm-delete-dialog-title"
+        aria-describedby="confirm-delete-dialog-description"
+      >
+        <DialogTitle id="confirm-delete-dialog-title">
+          <Typography variant="h6" color="error">Confirm Deletion</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography id="confirm-delete-dialog-description">
+            Are you sure you want to permanently delete this production record? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete} variant="outlined" color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={confirmDeleteProduction} variant="contained" color="error" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

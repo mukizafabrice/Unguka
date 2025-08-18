@@ -15,10 +15,13 @@ export const createCooperative = async (cooperativeData) => {
   }
 };
 
-// Get all cooperatives
-export const getCooperatives = async () => {
+export const getCooperatives = async (token) => {
   try {
-    const response = await axiosInstance.get(`${API_URL}`);
+    const response = await axiosInstance.get(`${API_URL}`, {
+      headers: {
+        Authorization: `Bearer ${token}`, // send JWT token
+      },
+    });
     return { success: true, data: response.data };
   } catch (error) {
     return {
@@ -70,5 +73,3 @@ export const deleteCooperative = async (id) => {
     };
   }
 };
-
-

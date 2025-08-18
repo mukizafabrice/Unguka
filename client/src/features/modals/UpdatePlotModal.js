@@ -60,12 +60,13 @@ function UpdatePlotModal({
       try {
         // Fetch users and filter by cooperativeId and 'member' role
         const usersResponse = await fetchUsers();
-        if (usersResponse.success && Array.isArray(usersResponse.data.data)) {
-          const filteredMembers = usersResponse.data.data.filter(
+        if (usersResponse.success && Array.isArray(usersResponse.data)) {
+          const filteredMembers = usersResponse.data.filter(
             (user) =>
-              String(user.cooperativeId) === String(cooperativeId) &&
-              user.role === "member"
+              String(user.cooperativeId?._id || user.cooperativeId) ===
+                String(cooperativeId) && user.role === "member"
           );
+
           setUsers(filteredMembers);
         } else {
           setDataLoadError(usersResponse.message || "Failed to load members.");

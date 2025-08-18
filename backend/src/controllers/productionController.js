@@ -3,11 +3,12 @@ import mongoose from "mongoose";
 import Stock from "../models/Stock.js";
 import Product from "../models/Product.js"; // Assuming Product model also has cooperativeId
 import User from "../models/User.js"; // Import User model to populate user details
+import Season from "../models/Season.js"; // ⭐ ADD THIS LINE: Import the Season model
 
 export const createProduction = async (req, res) => {
   try {
     const { userId, productId, seasonId, quantity, unitPrice, cooperativeId } =
-      req.body; // ⭐ Added cooperativeId
+      req.body;
 
     // --- Input Validation and Type Conversion ---
     // Ensure IDs are valid Mongoose ObjectIds
@@ -15,15 +16,13 @@ export const createProduction = async (req, res) => {
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(productId) ||
       !mongoose.Types.ObjectId.isValid(seasonId) ||
-      !mongoose.Types.ObjectId.isValid(cooperativeId) // ⭐ Validate cooperativeId
+      !mongoose.Types.ObjectId.isValid(cooperativeId)
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Invalid ID provided for user, product, season, or cooperative.",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid ID provided for user, product, season, or cooperative.",
+      });
     }
 
     // Convert quantity and unitPrice to numbers and validate
@@ -36,22 +35,18 @@ export const createProduction = async (req, res) => {
       !Number.isInteger(parsedQuantity) ||
       parsedQuantity <= 0
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Quantity must be a positive integer.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be a positive integer.",
+      });
     }
 
     // Check if unitPrice is a finite positive number
     if (!Number.isFinite(parsedUnitPrice) || parsedUnitPrice <= 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Unit Price must be a positive number.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Unit Price must be a positive number.",
+      });
     }
     // --- End of Input Validation ---
 
@@ -61,33 +56,27 @@ export const createProduction = async (req, res) => {
     // This adds an extra layer of security and data integrity.
     const product = await Product.findOne({ _id: productId, cooperativeId });
     if (!product) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Product not found in this cooperative.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Product not found in this cooperative.",
+      });
     }
 
     const user = await User.findOne({ _id: userId, cooperativeId });
     if (!user) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "User not found in this cooperative.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "User not found in this cooperative.",
+      });
     }
 
-    // Assuming season is also tied to cooperative
-    const season = await Production.findOne({ _id: seasonId, cooperativeId });
+    // ⭐ CORRECTED LINE: Use the 'Season' model to find the season
+    const season = await Season.findOne({ _id: seasonId, cooperativeId });
     if (!season) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Season not found in this cooperative.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Season not found in this cooperative.",
+      });
     }
 
     // 2. Save new production
@@ -95,7 +84,7 @@ export const createProduction = async (req, res) => {
       userId,
       productId,
       seasonId,
-      cooperativeId, // ⭐ Include cooperativeId
+      cooperativeId, // Include cooperativeId
       quantity: parsedQuantity,
       unitPrice: parsedUnitPrice,
       totalPrice,
@@ -104,7 +93,7 @@ export const createProduction = async (req, res) => {
     await newProduction.save();
 
     // 3. Update stock (add to existing or create new) within the same cooperative
-    const existingStock = await Stock.findOne({ productId, cooperativeId }); // ⭐ Filter by cooperativeId
+    const existingStock = await Stock.findOne({ productId, cooperativeId }); // Filter by cooperativeId
 
     if (existingStock) {
       existingStock.quantity = existingStock.quantity + parsedQuantity;
@@ -113,7 +102,7 @@ export const createProduction = async (req, res) => {
     } else {
       const newStock = new Stock({
         productId,
-        cooperativeId, // ⭐ Include cooperativeId
+        cooperativeId, // Include cooperativeId
         quantity: parsedQuantity,
         totalPrice,
       });
@@ -161,13 +150,11 @@ export const getAllProductions = async (req, res) => {
       .populate("cooperativeId", "name") // ⭐ Populate cooperative info
       .sort({ createdAt: -1 });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: productions,
-        message: "Productions fetched successfully",
-      }); // Consistent response
+    res.status(200).json({
+      success: true,
+      data: productions,
+      message: "Productions fetched successfully",
+    }); // Consistent response
   } catch (error) {
     console.error("Error fetching all productions:", error);
     res
@@ -183,12 +170,10 @@ export const getProductions = async (req, res) => {
 
     if (!userId || !seasonId || !cooperativeId) {
       // ⭐ Validate cooperativeId
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "userId, seasonId, and cooperativeId are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "userId, seasonId, and cooperativeId are required",
+      });
     }
 
     if (
@@ -196,12 +181,10 @@ export const getProductions = async (req, res) => {
       !mongoose.Types.ObjectId.isValid(seasonId) ||
       !mongoose.Types.ObjectId.isValid(cooperativeId)
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Invalid ID format for user, season, or cooperative.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ID format for user, season, or cooperative.",
+      });
     }
 
     // This query finds productions that match user, season, and cooperative
@@ -216,13 +199,11 @@ export const getProductions = async (req, res) => {
       .populate("cooperativeId", "name") // ⭐ Populate cooperative info
       .sort({ createdAt: -1 });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: productions,
-        message: "Productions fetched successfully",
-      });
+    res.status(200).json({
+      success: true,
+      data: productions,
+      message: "Productions fetched successfully",
+    });
   } catch (error) {
     console.error("Error fetching productions by user and season:", error);
     res
@@ -243,12 +224,10 @@ export const getProductionsByUserId = async (req, res) => {
         .json({ success: false, message: "Invalid user ID format." });
     }
     if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Cooperative ID is required and must be valid.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Cooperative ID is required and must be valid.",
+      });
     }
 
     const productions = await Production.find({ userId, cooperativeId }) // ⭐ Filter by cooperativeId
@@ -260,21 +239,17 @@ export const getProductionsByUserId = async (req, res) => {
       .exec();
 
     if (!productions || productions.length === 0) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "No productions found for this user in this cooperative",
-        }); // Consistent response
+      return res.status(404).json({
+        success: false,
+        message: "No productions found for this user in this cooperative",
+      }); // Consistent response
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: productions,
-        message: "Productions fetched successfully",
-      });
+    res.status(200).json({
+      success: true,
+      data: productions,
+      message: "Productions fetched successfully",
+    });
   } catch (error) {
     console.error("Error fetching productions by user ID:", error);
     res
@@ -293,12 +268,10 @@ export const updateProduction = async (req, res) => {
         .json({ success: false, message: "Invalid production ID format." });
     }
     if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Cooperative ID is required and must be valid.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Cooperative ID is required and must be valid.",
+      });
     }
 
     // Find the production, ensuring it belongs to the specified cooperative
@@ -307,12 +280,10 @@ export const updateProduction = async (req, res) => {
       cooperativeId,
     }); // ⭐ Filter by cooperativeId
     if (!existing) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Production not found or unauthorized.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Production not found or unauthorized.",
+      });
     }
 
     const oldQuantity = existing.quantity;
@@ -325,25 +296,21 @@ export const updateProduction = async (req, res) => {
         cooperativeId,
       });
       if (!newProduct) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message:
-              "New product not found or does not belong to this cooperative.",
-          });
+        return res.status(400).json({
+          success: false,
+          message:
+            "New product not found or does not belong to this cooperative.",
+        });
       }
       // If changing product, also ensure old stock is decreased and new stock increased if necessary.
       // For simplicity, sticking to previous logic: changing product is not supported directly through this endpoint
       // as it complicates stock adjustments greatly (requires reducing old product stock and adding to new product stock).
       // If this functionality is needed, it would typically be a more complex, dedicated "transfer production" or "edit product in production" flow.
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Changing the product associated with a production is not supported via this endpoint.",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Changing the product associated with a production is not supported via this endpoint.",
+      });
     }
 
     // Parse and validate new quantity and unitPrice
@@ -355,21 +322,17 @@ export const updateProduction = async (req, res) => {
       !Number.isInteger(parsedQuantity) ||
       parsedQuantity <= 0
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Quantity must be a positive integer.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be a positive integer.",
+      });
     }
 
     if (!Number.isFinite(parsedUnitPrice) || parsedUnitPrice <= 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Unit Price must be a positive number.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Unit Price must be a positive number.",
+      });
     }
 
     const newTotal = parsedQuantity * parsedUnitPrice;
@@ -393,12 +356,10 @@ export const updateProduction = async (req, res) => {
       .populate("cooperativeId", "name");
 
     if (!updated) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Production not found or unauthorized after update attempt.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Production not found or unauthorized after update attempt.",
+      });
     }
 
     // Adjust stock within the same cooperative
@@ -419,13 +380,11 @@ export const updateProduction = async (req, res) => {
       );
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Production updated successfully",
-        data: updated,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Production updated successfully",
+      data: updated,
+    });
   } catch (error) {
     console.error("Error updating production:", error);
     if (error.name === "ValidationError") {
@@ -449,12 +408,10 @@ export const deleteProduction = async (req, res) => {
         .json({ success: false, message: "Invalid production ID format." });
     }
     if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Cooperative ID is required and must be valid.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Cooperative ID is required and must be valid.",
+      });
     }
 
     // Find the production, ensuring it belongs to the specified cooperative
@@ -463,12 +420,10 @@ export const deleteProduction = async (req, res) => {
       cooperativeId,
     }); // ⭐ Filter by cooperativeId
     if (!production) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Production not found or unauthorized.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Production not found or unauthorized.",
+      });
     }
 
     // Adjust stock within the same cooperative

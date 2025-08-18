@@ -8,7 +8,7 @@ import { Home, Users, Building, BarChart, Megaphone, User } from "lucide-react";
 import "../assets/styles/dashboard.css";
 
 function SuperNav({ isHide }) {
-  const { user } = useAuth(); // Get the authenticated user object
+  const { user } = useAuth();
 
   return (
     <div className={`sidebar ${isHide ? "hide" : ""}`}>
