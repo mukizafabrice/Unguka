@@ -24,10 +24,10 @@ function AddFeeModal({
   users,
   seasons,
   feeTypes,
-  cooperatives,
+  cooperativeId, // Cooperative ID from parent (from token)
+  cooperativeName, // ⭐ NEW: Cooperative Name from parent (from DB fetch)
 }) {
   const [formData, setFormData] = useState({
-    cooperativeId: "", // Added cooperativeId to form data
     userId: "",
     seasonId: "",
     feeTypeId: "",
@@ -40,7 +40,6 @@ function AddFeeModal({
   useEffect(() => {
     if (show) {
       setFormData({
-        cooperativeId: "", // Reset cooperativeId
         userId: "",
         seasonId: "",
         feeTypeId: "",
@@ -85,7 +84,6 @@ function AddFeeModal({
 
     // Basic form validation
     if (
-      !formData.cooperativeId || // Validate cooperativeId
       !formData.userId ||
       !formData.seasonId ||
       !formData.feeTypeId ||
@@ -95,9 +93,10 @@ function AddFeeModal({
       return;
     }
 
-    // Call the onSubmit function from the parent component
+    // Call the onSubmit function, passing the cooperativeId from the prop
     onSubmit({
       ...formData,
+      cooperativeId: cooperativeId, // Always use the cooperativeId from the prop
       paymentAmount: Number(formData.paymentAmount),
     });
   };
@@ -130,26 +129,14 @@ function AddFeeModal({
           onSubmit={handleSubmit}
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
-          {/* Cooperative Selection */}
-          <FormControl fullWidth required>
-            <InputLabel id="cooperative-label">Cooperative</InputLabel>
-            <Select
-              labelId="cooperative-label"
-              id="cooperativeId"
-              name="cooperativeId"
-              value={formData.cooperativeId}
-              onChange={handleChange}
-              label="Cooperative"
-            >
-              <MenuItem value="">Select Cooperative</MenuItem>
-              {cooperatives &&
-                cooperatives.map((coop) => (
-                  <MenuItem key={coop._id} value={coop._id}>
-                    {coop.name}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
+          {/* ⭐ DISPLAY: Cooperative Name (disabled field) */}
+          <TextField
+            label="Cooperative"
+            value={cooperativeName || "N/A"}
+            fullWidth
+            disabled // Make it read-only
+            sx={{ mb: 2 }} // Add some margin below
+          />
 
           {/* User Selection */}
           <FormControl fullWidth required>
@@ -164,11 +151,13 @@ function AddFeeModal({
             >
               <MenuItem value="">Select User</MenuItem>
               {users &&
-                users.map((user) => (
-                  <MenuItem key={user._id} value={user._id}>
-                    {user.names}
-                  </MenuItem>
-                ))}
+                users
+                  .filter((user) => user.role === "member") // ⭐ Filter for 'member' role
+                  .map((user) => (
+                    <MenuItem key={user._id} value={user._id}>
+                      {user.names}
+                    </MenuItem>
+                  ))}
             </Select>
           </FormControl>
 
@@ -233,7 +222,7 @@ function AddFeeModal({
             onChange={handleChange}
             fullWidth
             required
-            inputProps={{ min: "0", step: "0.01" }} // Ensure minimum value is 0 and allows decimals
+            inputProps={{ min: "0", step: "0.01" }}
           />
         </Box>
       </DialogContent>

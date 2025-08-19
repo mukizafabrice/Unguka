@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchPaymentTransactions } from "../../services/paymentTransactionService";
+import { useAuth } from "../../contexts/AuthContext"; // Import useAuth to get cooperativeId
 import {
   Box,
   Card,
@@ -24,12 +25,12 @@ import {
   styled,
   TextField,
   MenuItem,
-  InputAdornment, // Added for search icon
+  InputAdornment,
 } from "@mui/material";
 import {
-  ArrowBack as ArrowLeft, // Renamed for consistency with Material-UI icons
-  Search, // Imported Search icon
-} from "@mui/icons-material"; // Changed import source for icons
+  ArrowBack as ArrowLeft,
+  Search,
+} from "@mui/icons-material";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -106,11 +107,23 @@ function PaymentTransaction() {
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  const { user } = useAuth(); // Access user from AuthContext
+  const cooperativeId = user?.cooperativeId; // Get the cooperativeId
+
   // Function to fetch transactions
   const getTransactions = useCallback(async () => {
+    // Only proceed if cooperativeId is available
+    if (!cooperativeId) {
+      console.log("[PaymentTransaction] Skipping transaction fetch: cooperativeId is undefined.");
+      setLoading(false); // Stop loading if no cooperativeId
+      setTransactions([]); // Clear transactions if no cooperativeId
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await fetchPaymentTransactions();
+      // Pass the cooperativeId to the fetchPaymentTransactions service
+      const res = await fetchPaymentTransactions(cooperativeId);
       // Ensure res is an array or has a .data property that is an array
       const paymentsData = res.data || res; // Adjust based on actual API response structure
 
@@ -124,14 +137,15 @@ function PaymentTransaction() {
       });
 
       setTransactions(mappedPayments);
+      console.log(`[PaymentTransaction] Fetched ${mappedPayments.length} transactions for cooperativeId: ${cooperativeId}`);
     } catch (error) {
-      console.error("Failed to fetch payment transactions:", error);
+      console.error("[PaymentTransaction] Failed to fetch payment transactions:", error);
       toast.error("Failed to load payment transactions.");
       setTransactions([]); // Ensure transactions is reset on error
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]); // Add cooperativeId to dependencies
 
   useEffect(() => {
     getTransactions();
@@ -157,7 +171,7 @@ function PaymentTransaction() {
       currentFiltered = currentFiltered.filter((tx) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
         switch (searchField) {
-          case "user": // Changed from 'member' to 'user' for consistency with Payment component
+          case "user":
             return tx.userName?.toLowerCase().includes(lowerCaseSearchTerm);
           case "paymentDate": // Search by formatted date string
             return tx.transactionDate
@@ -178,6 +192,9 @@ function PaymentTransaction() {
     }
 
     // Apply status filter (for payment status)
+    // Note: The PaymentTransaction model does not inherently have a 'status' field.
+    // This filter might not work as expected unless you add 'status' to your PaymentTransaction model,
+    // or you're deriving it from a related 'Payment' document.
     if (statusFilter !== "all") {
       currentFiltered = currentFiltered.filter(
         (tx) => tx.status?.toLowerCase() === statusFilter.toLowerCase()
@@ -215,8 +232,6 @@ function PaymentTransaction() {
 
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
-      {" "}
-      {/* Reduced top padding (pt) to 0 */}
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         <StyledCardHeader
           title={<Typography variant="h6">Payment Transactions</Typography>}
@@ -234,7 +249,7 @@ function PaymentTransaction() {
         <CardContent
           sx={{
             maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflow: "hidden", // Hide overflow on CardContent itself
+            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
@@ -321,8 +336,6 @@ function PaymentTransaction() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
@@ -335,7 +348,6 @@ function PaymentTransaction() {
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                      {/* Using StyledTableHeaderCell for header cells */}
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
@@ -360,7 +372,6 @@ function PaymentTransaction() {
                     {paginatedTransactions.length > 0 ? (
                       paginatedTransactions.map((tx, index) => (
                         <TableRow hover key={tx._id}>
-                          {/* Using StyledTableCell for body cells */}
                           <StyledTableCell>
                             {(currentPage - 1) * rowsPerPage + index + 1}
                           </StyledTableCell>
@@ -404,7 +415,6 @@ function PaymentTransaction() {
             </Box>
           )}
 
-          {/* Pagination controls: Only show if there's more than one page */}
           {totalPages > 1 && (
             <Box
               mt={3}

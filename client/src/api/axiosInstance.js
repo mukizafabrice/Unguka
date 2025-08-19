@@ -5,7 +5,7 @@ const axiosInstance = axios.create({
   // IMPORTANT: Set your backend's base URL here.
   // This ensures all requests made with axiosInstance go to your API.
   baseURL: "http://localhost:8000/api", // Adjust to your actual backend URL
-  timeout: 10000, // Optional: Request timeout in milliseconds
+  timeout: 100000, // Optional: Request timeout in milliseconds
   headers: {
     "Content-Type": "application/json",
   },

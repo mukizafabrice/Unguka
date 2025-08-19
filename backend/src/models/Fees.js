@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 const feesSchema = new mongoose.Schema(
   {
-    // ⭐ NEW: Add cooperativeId to link fees to a specific cooperative
     cooperativeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Cooperative', // Refers to your Cooperative model

@@ -25,6 +25,11 @@ const paymentTransactionSchema = new mongoose.Schema({
     required: true,
   },
   transactionDate: { type: Date, default: Date.now },
+  cooperativeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Cooperative", // Assuming you have a Cooperative model
+    required: true,
+  },
 });
 
 export default mongoose.model("PaymentTransaction", paymentTransactionSchema);

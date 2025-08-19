@@ -23,10 +23,11 @@ import {
   CircularProgress,
   MenuItem,
   Chip,
-  OutlinedInput,
-  Select,
-  InputLabel,
-  FormControl,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
@@ -35,10 +36,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import ClearIcon from "@mui/icons-material/Clear";
 import UpdateFeeModal from "../../features/modals/UpdateFeeModal";
 import AddFeeModal from "../../features/modals/AddFeeModal";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { useAuth } from "../../contexts/AuthContext";
@@ -52,9 +52,9 @@ import {
 import { fetchUsers } from "../../services/userService";
 import { fetchSeasons } from "../../services/seasonService";
 import { fetchFeeTypes } from "../../services/feeTypeService";
-import { getCooperatives } from "../../services/cooperativeService";
+import { getCooperativeById } from "../../services/cooperativeService";
 
-// Styled Components
+// --- Styled Components ---
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -110,19 +110,23 @@ const getStatusColor = (status) => {
 
 function Fees() {
   const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
 
   const [fees, setFees] = useState([]);
   const [users, setUsers] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [feeTypes, setFeeTypes] = useState([]);
-  const [cooperatives, setCooperatives] = useState([]);
+  const [cooperativeName, setCooperativeName] = useState("");
   const [usersMap, setUsersMap] = useState({});
-  const [cooperativesMap, setCooperativesMap] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [feeToEdit, setFeeToEdit] = useState(null);
+
+  // ⭐ NEW: State for the confirmation dialog
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [feeToDeleteId, setFeeToDeleteId] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 7;
@@ -131,10 +135,10 @@ function Fees() {
   const [searchField, setSearchField] = useState("user");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("desc");
-  const [selectedCooperativeIds, setSelectedCooperativeIds] = useState([]);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  // Helper function for currency formatting
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
@@ -144,32 +148,41 @@ function Fees() {
 
   const loadFeesData = useCallback(async () => {
     setLoading(true);
-    let allFees = [];
+
+    if (!cooperativeId) {
+      console.warn(
+        "User does not have a cooperativeId assigned. Cannot load fees."
+      );
+      setFees([]);
+      toast.warn("You must be assigned to a cooperative to view fees.");
+      setLoading(false);
+      return;
+    }
 
     try {
-      const [cooperativesResult, usersResult, seasonsResult, feeTypesResult] =
-        await Promise.allSettled([
-          user?.role === "superadmin" ? getCooperatives() : Promise.resolve({}),
-          user?.cooperativeId
-            ? fetchUsers(user.cooperativeId)
-            : Promise.resolve([]),
-          user?.cooperativeId
-            ? fetchSeasons(user.cooperativeId)
-            : Promise.resolve([]),
-          user?.cooperativeId
-            ? fetchFeeTypes(user.cooperativeId)
-            : Promise.resolve([]),
-        ]);
+      const [
+        usersResult,
+        seasonsResult,
+        feeTypesResult,
+        feesResult,
+        coopNameResult,
+      ] = await Promise.allSettled([
+        fetchUsers(cooperativeId),
+        fetchSeasons(cooperativeId),
+        fetchFeeTypes(cooperativeId),
+        fetchAllFees(cooperativeId),
+        getCooperativeById(cooperativeId),
+      ]);
 
       if (
         usersResult.status === "fulfilled" &&
         Array.isArray(usersResult.value?.data)
       ) {
         setUsers(usersResult.value.data);
-        const uMap = usersResult.value.data.reduce((acc, u) => {
-          acc[u._id] = u.names;
-          return acc;
-        }, {});
+        const uMap = usersResult.value.data.reduce(
+          (acc, u) => ({ ...acc, [u._id]: u.names }),
+          {}
+        );
         setUsersMap(uMap);
       } else {
         console.error(
@@ -210,89 +223,32 @@ function Fees() {
       }
 
       if (
-        user?.role === "superadmin" &&
-        cooperativesResult.status === "fulfilled" &&
-        Array.isArray(cooperativesResult.value?.data)
+        feesResult.status === "fulfilled" &&
+        Array.isArray(feesResult.value?.data)
       ) {
-        setCooperatives(cooperativesResult.value.data);
-        const cMap = cooperativesResult.value.data.reduce((acc, c) => {
-          acc[c._id] = c.name;
-          return acc;
-        }, {});
-        setCooperativesMap(cMap);
-      } else if (user?.role === "superadmin") {
-        console.error(
-          "Failed to fetch cooperatives:",
-          cooperativesResult.reason || "Unknown error"
-        );
-        toast.error("Failed to load cooperative data.");
-        setCooperatives([]);
-        setCooperativesMap({});
+        setFees(feesResult.value.data);
       } else {
-        setCooperatives(
-          user?.cooperativeId
-            ? [
-                {
-                  _id: user.cooperativeId,
-                  name: user.cooperativeName || "My Cooperative",
-                },
-              ]
-            : []
+        console.error(
+          "Failed to fetch fees:",
+          feesResult.reason || "Unknown error"
         );
-        setCooperativesMap(
-          user?.cooperativeId
-            ? { [user.cooperativeId]: user.cooperativeName || "My Cooperative" }
-            : {}
-        );
+        toast.error("Failed to load fees data.");
+        setFees([]);
       }
 
       if (
-        !user ||
-        (!user.cooperativeId && user.role !== "superadmin") ||
-        (user.role !== "manager" && user.role !== "superadmin")
+        coopNameResult.status === "fulfilled" &&
+        coopNameResult.value?.data?.name
       ) {
-        console.warn(
-          "User does not have permission or cooperativeId to view all fees."
+        setCooperativeName(coopNameResult.value.data.name);
+      } else {
+        console.error(
+          "Failed to fetch cooperative name:",
+          coopNameResult.reason || "Unknown error"
         );
-        setFees([]);
-        toast.warn("You do not have permission to view this data.");
-        setLoading(false);
-        return;
+        setCooperativeName("N/A");
+        toast.error("Failed to load cooperative name.");
       }
-
-      let cooperativeIdsToFetch = [];
-      if (user.role === "superadmin") {
-        cooperativeIdsToFetch =
-          selectedCooperativeIds.length > 0
-            ? selectedCooperativeIds
-            : cooperativesResult.status === "fulfilled" &&
-              Array.isArray(cooperativesResult.value?.data)
-            ? cooperativesResult.value.data.map((coop) => coop._id)
-            : [];
-      } else {
-        cooperativeIdsToFetch = [user.cooperativeId];
-      }
-
-      if (cooperativeIdsToFetch.length > 0) {
-        const feesPromises = cooperativeIdsToFetch.map(async (coopId) => {
-          try {
-            const response = await fetchAllFees(coopId);
-            return response.data || [];
-          } catch (err) {
-            console.warn(
-              `Failed to fetch fees for cooperative ${coopId}:`,
-              err
-            );
-            return [];
-          }
-        });
-        const resolvedFeesArrays = await Promise.all(feesPromises);
-        allFees = resolvedFeesArrays.flat();
-      } else {
-        toast.warn("No cooperative selected or available to fetch fees from.");
-      }
-
-      setFees(allFees);
     } catch (error) {
       console.error("Error during fees data load:", error);
       toast.error("An unexpected error occurred while loading fees data.");
@@ -300,21 +256,19 @@ function Fees() {
     } finally {
       setLoading(false);
     }
-  }, [user, selectedCooperativeIds]);
+  }, [cooperativeId]);
 
   useEffect(() => {
-    if (user) {
+    if (cooperativeId) {
       loadFeesData();
     }
-  }, [user, loadFeesData]);
+  }, [cooperativeId, loadFeesData]);
 
-  // ✅ CORRECTION 1: Ensure `cooperativeId` is included in the data sent for new fees.
-  // The backend controller now expects this to be in `req.body` for validation.
   const handleAddFee = async (feeData) => {
     try {
       const feeDataWithCoopId = {
         ...feeData,
-        cooperativeId: user.cooperativeId,
+        cooperativeId: cooperativeId,
       };
       await recordPayment(feeDataWithCoopId);
       setShowAddModal(false);
@@ -330,13 +284,26 @@ function Fees() {
     }
   };
 
-  // ✅ CORRECTION 2: Removed the `cooperativeId` from the `deleteFee` service call.
-  // The backend now securely retrieves the cooperative ID from the user's token,
-  // making this parameter redundant and potentially insecure.
-  const handleDeleteFee = async (id) => {
+  // ⭐ NEW: Function to open the confirmation dialog
+  const handleOpenDeleteDialog = (id) => {
+    setFeeToDeleteId(id);
+    setOpenDeleteDialog(true);
+  };
+
+  // ⭐ NEW: Function to close the confirmation dialog
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false);
+    setFeeToDeleteId(null);
+  };
+
+  // ⭐ MODIFIED: Actual deletion function, now called after confirmation
+  const handleConfirmDelete = async () => {
+    if (!feeToDeleteId) return;
+
     try {
-      await deleteFee(id); // Only pass the fee ID
+      await deleteFee(feeToDeleteId);
       toast.success("Fee record deleted successfully!");
+      handleCloseDeleteDialog(); // Close dialog on success
       await loadFeesData();
     } catch (error) {
       console.error("Error deleting fee:", error);
@@ -345,6 +312,7 @@ function Fees() {
           error.response?.data?.message || error.message
         }`
       );
+      handleCloseDeleteDialog(); // Close dialog on error as well
     }
   };
 
@@ -370,10 +338,8 @@ function Fees() {
     }
   };
 
-  // Memoized filtering and sorting logic
   const filteredAndSortedFees = useMemo(() => {
     let currentFiltered = fees;
-
     if (searchTerm) {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
       currentFiltered = currentFiltered.filter((fee) => {
@@ -389,12 +355,6 @@ function Fees() {
             break;
           case "feeType":
             valueToSearch = fee.feeTypeId?.name || "";
-            break;
-          case "cooperative":
-            valueToSearch =
-              fee.cooperativeId?.name ||
-              cooperativesMap[fee.cooperativeId] ||
-              "";
             break;
           default:
             return true;
@@ -420,17 +380,8 @@ function Fees() {
     });
 
     return currentFiltered;
-  }, [
-    fees,
-    usersMap,
-    cooperativesMap,
-    searchTerm,
-    searchField,
-    statusFilter,
-    sortOrder,
-  ]);
+  }, [fees, usersMap, searchTerm, searchField, statusFilter, sortOrder]);
 
-  // Pagination logic
   const totalPages = Math.ceil(filteredAndSortedFees.length / rowsPerPage);
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
@@ -449,15 +400,6 @@ function Fees() {
 
   const handleSort = () => {
     setSortOrder((prevSortOrder) => (prevSortOrder === "asc" ? "desc" : "asc"));
-  };
-
-  const handleCooperativeSelectChange = (event) => {
-    const {
-      target: { value },
-    } = event;
-    setSelectedCooperativeIds(
-      typeof value === "string" ? value.split(",") : value
-    );
   };
 
   return (
@@ -486,8 +428,7 @@ function Fees() {
         >
           <Box mb={3}>
             <Typography variant="body2" color="text.secondary">
-              Manage and track fee records, including user payments, amounts
-              owed, and payment status.
+              Manage and track fee records for your cooperative.
             </Typography>
           </Box>
           <Stack
@@ -496,39 +437,6 @@ function Fees() {
             mb={3}
             alignItems={isMobile ? "stretch" : "center"}
           >
-            {user?.role === "superadmin" && (
-              <FormControl sx={{ minWidth: 150, flexShrink: 0 }} size="small">
-                <InputLabel id="cooperative-select-label">
-                  Cooperative(s)
-                </InputLabel>
-                <Select
-                  labelId="cooperative-select-label"
-                  id="cooperative-select-multiple"
-                  multiple
-                  value={selectedCooperativeIds}
-                  onChange={handleCooperativeSelectChange}
-                  input={<OutlinedInput label="Cooperative(s)" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {selected.map((value) => (
-                        <Chip
-                          key={value}
-                          label={cooperativesMap[value] || value}
-                          size="small"
-                        />
-                      ))}
-                    </Box>
-                  )}
-                >
-                  {cooperatives.map((coop) => (
-                    <MenuItem key={coop._id} value={coop._id}>
-                      {coop.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-
             <TextField
               select
               label="Search By"
@@ -540,9 +448,6 @@ function Fees() {
               <MenuItem value="user">User Name</MenuItem>
               <MenuItem value="season">Season/Year</MenuItem>
               <MenuItem value="feeType">Fee Type</MenuItem>
-              {user?.role === "superadmin" && (
-                <MenuItem value="cooperative">Cooperative</MenuItem>
-              )}
             </TextField>
             <TextField
               label={`Search ${
@@ -550,9 +455,7 @@ function Fees() {
                   ? "User Name"
                   : searchField === "season"
                   ? "Season/Year"
-                  : searchField === "feeType"
-                  ? "Fee Type"
-                  : "Cooperative"
+                  : "Fee Type"
               }`}
               variant="outlined"
               size="small"
@@ -664,9 +567,7 @@ function Fees() {
                             {indexOfFirstRow + index + 1}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {fee.cooperativeId?.name ||
-                              cooperativesMap[fee.cooperativeId] ||
-                              "N/A"}
+                            {cooperativeName || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.userId?.names || usersMap[fee.userId] || "N/A"}
@@ -716,12 +617,11 @@ function Fees() {
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
-                              {/* ✅ CORRECTION 3: Pass only the fee ID to the delete handler */}
                               <IconButton
                                 aria-label="delete"
                                 color="error"
                                 size="small"
-                                onClick={() => handleDeleteFee(fee._id)}
+                                onClick={() => handleOpenDeleteDialog(fee._id)} // ⭐ Use the new handler
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -741,7 +641,6 @@ function Fees() {
                   </TableBody>
                 </Table>
               </TableContainer>
-
               {totalPages > 1 && (
                 <Box mt={3} display="flex" justifyContent="center">
                   <Pagination
@@ -761,7 +660,8 @@ function Fees() {
         </CardContent>
       </Card>
 
-      {user?.cooperativeId && (
+      {/* --- Modals and Dialogs --- */}
+      {cooperativeId && (
         <>
           <AddFeeModal
             show={showAddModal}
@@ -770,8 +670,8 @@ function Fees() {
             users={users}
             seasons={seasons}
             feeTypes={feeTypes}
-            cooperatives={cooperatives}
-            cooperativeId={user.cooperativeId}
+            cooperativeId={cooperativeId}
+            cooperativeName={cooperativeName}
           />
           <UpdateFeeModal
             show={showUpdateModal}
@@ -781,12 +681,40 @@ function Fees() {
             users={users}
             seasons={seasons}
             feeTypes={feeTypes}
-            cooperatives={cooperatives}
-            cooperativeId={user.cooperativeId}
+            cooperativeId={cooperativeId}
+            cooperativeName={cooperativeName}
           />
         </>
       )}
-      <ToastContainer position="bottom-right" autoClose={3000} />
+
+      {/* ⭐ NEW: Confirmation Dialog for Deletion */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">{"Confirm Deletion"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to permanently delete this fee record? This
+            action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

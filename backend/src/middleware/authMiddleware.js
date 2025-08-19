@@ -53,7 +53,6 @@ import User from "../models/User.js";
 // };
 
 // In your backend's authMiddleware.js
-
 export const protect = async (req, res, next) => {
   let token;
   if (
@@ -70,12 +69,12 @@ export const protect = async (req, res, next) => {
           .status(401)
           .json({ message: "Not authorized, user not found" });
       }
-      // --- ADD THIS LOG ---
+
       console.log(
         "Protect Middleware: User role found in DB for token:",
         req.user.role
       );
-      // --- END ADD ---
+
       next();
     } catch (error) {
       console.error(error);
@@ -91,7 +90,7 @@ export const authorize = (roles) => {
   return (req, res, next) => {
     const allowed = Array.isArray(roles) ? roles : [roles]; // flatten
 
-    console.log("Authorize Middleware: Allowed roles for this route:", allowed);
+    console.log("Authorize Middleware: Allowed roles:", allowed);
     console.log("Authorize Middleware: Current req.user.role:", req.user?.role);
 
     if (!req.user || !allowed.includes(req.user.role)) {

@@ -10,7 +10,7 @@ export const checkCooperativeAccess = (location = "body") => {
     if (req.user.role === "superadmin") {
       return next();
     }
-   
+
     const requestedCooperativeId =
       location === "body" ? req.body.cooperativeId : req.query.cooperativeId;
 
@@ -27,12 +27,10 @@ export const checkCooperativeAccess = (location = "body") => {
     // Compare the requested cooperativeId with the user's cooperativeId
     // Convert to string for reliable comparison (MongoDB ObjectIds might be objects)
     if (String(requestedCooperativeId) !== String(userCooperativeId)) {
-      return res
-        .status(403)
-        .json({
-          message:
-            "Forbidden: You do not have access to this cooperative's resources.",
-        });
+      return res.status(403).json({
+        message:
+          "Forbidden: You do not have access to this cooperative's resources.",
+      });
     }
 
     // If authorized, proceed

@@ -68,7 +68,7 @@ const AddSaleModal = ({ show, onClose, onSubmit, cooperativeId }) => {
       setLoadingStocks(true);
       setStocksError(null);
       try {
-        // ⭐ Pass cooperativeId to fetchStocks
+        
         const response = await fetchStocks(cooperativeId);
         if (response.success && Array.isArray(response.data)) {
           // Check success and if data is array

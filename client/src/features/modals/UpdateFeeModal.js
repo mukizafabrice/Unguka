@@ -21,36 +21,35 @@ function UpdateFeeModal({
   show,
   onClose,
   onSubmit,
-  feeToEdit,
+  feeToEdit, // The fee object to be edited
   users,
   seasons,
   feeTypes,
-  cooperatives,
+  cooperativeId, // Cooperative ID from parent (from token)
+  cooperativeName, // ⭐ NEW: Cooperative Name from parent (from DB fetch)
 }) {
   const [formData, setFormData] = useState({
-    _id: "",
+    userId: "",
+    seasonId: "",
+    feeTypeId: "",
     amountOwed: "",
     amountPaid: "",
     status: "",
-    // Add cooperativeId here for consistency, though it's disabled for editing
-    cooperativeId: "",
   });
 
-  // Populate form data when modal is shown or feeToEdit changes
+  // Populate form data when feeToEdit changes
   useEffect(() => {
     if (show && feeToEdit) {
       setFormData({
-        _id: feeToEdit._id,
-        amountOwed: feeToEdit.amountOwed,
-        amountPaid: feeToEdit.amountPaid,
-        status: feeToEdit.status,
-        cooperativeId: feeToEdit.cooperativeId?._id || feeToEdit.cooperativeId, // Ensure we get the ID
+        userId: feeToEdit.userId?._id || feeToEdit.userId, // Handle populated or unpopulated
+        seasonId: feeToEdit.seasonId?._id || feeToEdit.seasonId,
+        feeTypeId: feeToEdit.feeTypeId?._id || feeToEdit.feeTypeId,
+        amountOwed: feeToEdit.amountOwed || "",
+        amountPaid: feeToEdit.amountPaid || "",
+        status: feeToEdit.status || "",
       });
     }
   }, [show, feeToEdit]);
-
-  // If the modal is not visible or there's no fee to edit, don't render
-  if (!show || !feeToEdit) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -63,43 +62,23 @@ function UpdateFeeModal({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.amountOwed || !formData.amountPaid) {
-      toast.error("Amount Owed and Amount Paid are required.");
-      return;
-    }
-    if (Number(formData.amountOwed) < 0 || Number(formData.amountPaid) < 0) {
-      toast.error("Amounts cannot be negative.");
+    if (
+      !formData.userId ||
+      !formData.seasonId ||
+      !formData.feeTypeId ||
+      formData.amountPaid === "" ||
+      !formData.status
+    ) {
+      toast.error("Please fill in all required fields.");
       return;
     }
 
-    onSubmit(formData._id, {
-      amountOwed: Number(formData.amountOwed),
+    onSubmit(feeToEdit._id, {
+      // Pass the ID of the fee being edited
+      ...formData,
+      cooperativeId: cooperativeId, // Ensure cooperativeId is included from prop
       amountPaid: Number(formData.amountPaid),
-      status: formData.status,
-      // Pass the cooperativeId back, even though it's not editable, for the update service
-      cooperativeId: formData.cooperativeId,
     });
-  };
-
-  // Helper to get names from IDs
-  const getUserName = (userId) => {
-    const user = users.find((u) => u._id === userId);
-    return user ? user.names : "N/A";
-  };
-
-  const getSeasonName = (seasonId) => {
-    const season = seasons.find((s) => s._id === seasonId);
-    return season ? `${season.name} (${season.year})` : "N/A";
-  };
-
-  const getFeeTypeName = (feeTypeId) => {
-    const feeType = feeTypes.find((ft) => ft._id === feeTypeId);
-    return feeType ? feeType.name : "N/A";
-  };
-
-  const getCooperativeName = (cooperativeId) => {
-    const cooperative = cooperatives.find((c) => c._id === cooperativeId);
-    return cooperative ? cooperative.name : "N/A";
   };
 
   return (
@@ -127,63 +106,55 @@ function UpdateFeeModal({
       <DialogContent dividers>
         <Box
           component="form"
+          onSubmit={handleSubmit}
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
-          {/* Display Cooperative Name (Disabled) */}
+          {/* ⭐ DISPLAY: Cooperative Name (disabled field) */}
           <TextField
             label="Cooperative"
-            value={getCooperativeName(
-              feeToEdit.cooperativeId?._id || feeToEdit.cooperativeId
-            )}
+            value={cooperativeName || "N/A"}
             fullWidth
-            disabled
-            variant="outlined"
+            disabled // Make it read-only
+            sx={{ mb: 2 }}
           />
 
-          {/* Display User Name (Disabled) */}
+          {/* User Display (read-only in update) */}
           <TextField
             label="User"
-            value={getUserName(feeToEdit.userId?._id || feeToEdit.userId)}
+            value={users.find((u) => u._id === formData.userId)?.names || "N/A"}
             fullWidth
             disabled
-            variant="outlined"
           />
-
-          {/* Display Season Name (Disabled) */}
+          {/* Season Display (read-only in update) */}
           <TextField
             label="Season"
-            value={getSeasonName(feeToEdit.seasonId?._id || feeToEdit.seasonId)}
+            value={
+              seasons.find((s) => s._id === formData.seasonId)?.name || "N/A"
+            }
             fullWidth
             disabled
-            variant="outlined"
           />
-
-          {/* Display Fee Type Name (Disabled) */}
+          {/* Fee Type Display (read-only in update) */}
           <TextField
             label="Fee Type"
-            value={getFeeTypeName(
-              feeToEdit.feeTypeId?._id || feeToEdit.feeTypeId
-            )}
+            value={
+              feeTypes.find((ft) => ft._id === formData.feeTypeId)?.name ||
+              "N/A"
+            }
             fullWidth
             disabled
-            variant="outlined"
           />
 
-          {/* Amount Owed Input */}
+          {/* Amount Owed Display (read-only) */}
           <TextField
             label="Amount Owed"
             type="number"
-            id="amountOwed"
-            name="amountOwed"
             value={formData.amountOwed}
-            onChange={handleChange}
             fullWidth
-            required
-            inputProps={{ min: "0", step: "0.01" }}
-            variant="outlined"
+            disabled
           />
 
-          {/* Amount Paid Input */}
+          {/* Amount Paid Input (editable) */}
           <TextField
             label="Amount Paid"
             type="number"
@@ -194,11 +165,10 @@ function UpdateFeeModal({
             fullWidth
             required
             inputProps={{ min: "0", step: "0.01" }}
-            variant="outlined"
           />
 
-          {/* Status Selection */}
-          <FormControl fullWidth required variant="outlined">
+          {/* Status Selection (editable) */}
+          <FormControl fullWidth required>
             <InputLabel id="status-label">Status</InputLabel>
             <Select
               labelId="status-label"
@@ -208,9 +178,9 @@ function UpdateFeeModal({
               onChange={handleChange}
               label="Status"
             >
-              <MenuItem value="Paid">Paid</MenuItem>
-              <MenuItem value="Partially Paid">Partially Paid</MenuItem>
               <MenuItem value="Pending">Pending</MenuItem>
+              <MenuItem value="Partially Paid">Partially Paid</MenuItem>
+              <MenuItem value="Paid">Paid</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -220,7 +190,7 @@ function UpdateFeeModal({
           Cancel
         </Button>
         <Button onClick={handleSubmit} variant="contained" color="primary">
-          Save Changes
+          Update Fee
         </Button>
       </DialogActions>
     </Dialog>

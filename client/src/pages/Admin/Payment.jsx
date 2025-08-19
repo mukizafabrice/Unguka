@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchPayments } from "../../services/paymentService";
 import {
   Box,
   Card,
@@ -8,7 +7,6 @@ import {
   CardContent,
   Typography,
   Button,
-  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -20,76 +18,54 @@ import {
   Stack,
   CircularProgress,
   Pagination,
-  useMediaQuery,
-  styled,
   TextField,
   MenuItem,
-  InputAdornment, // Added for search icon
+  InputAdornment,
+  useMediaQuery,
+  styled,
 } from "@mui/material";
-import {
-  Add,
-  Search, // Imported Search icon
-  Visibility, // Imported Visibility icon for transactions button
-} from "@mui/icons-material";
-import { ToastContainer, toast } from "react-toastify";
+import { Add, Search, Visibility } from "@mui/icons-material";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import { fetchPayments } from "../../services/paymentService";
+import { useAuth } from "../../contexts/AuthContext";
 import AddPaymentModal from "../../features/modals/AddPaymentModal";
 
-// Styled components for a cleaner look consistent with other dashboards
+// Styled components
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
-  "& .MuiCardHeader-title": {
-    fontWeight: 600,
-  },
+  "& .MuiCardHeader-title": { fontWeight: 600 },
 }));
 
-// Styled component for table body cells - Adjusted padding for responsiveness
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  padding: "8px 16px", // Default padding
-  borderBottom: `1px solid ${theme.palette.divider}`, // Keep divider for row separation
-  backgroundColor: theme.palette.background.paper, // A slightly different background for body cells
-  color: theme.palette.text.primary, // Ensure text color is readable
-  wordWrap: "break-word", // Ensure text wraps naturally
+  padding: "8px 16px",
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  wordWrap: "break-word",
   whiteSpace: "normal",
-  [theme.breakpoints.down("sm")]: {
-    // Apply on small screens
-    padding: "6px 8px", // Reduced padding for mobile
-    fontSize: "0.75rem", // Slightly smaller font size
-  },
+  [theme.breakpoints.down("sm")]: { padding: "6px 8px", fontSize: "0.75rem" },
 }));
 
-// Styled component for table header cells (updated for no background)
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
-  padding: "12px 16px", // Slightly more padding for headers
-  backgroundColor: "transparent", // Removed background color
-  color: theme.palette.text.primary, // Set text color to primary text for readability
-  fontWeight: 600, // Bolder font weight
-  borderBottom: `2px solid ${theme.palette.divider}`, // Thicker border bottom, matching divider for subtlety
-  "&:first-of-type": {
-    borderTopLeftRadius: theme.shape.borderRadius,
-  },
-  "&:last-of-type": {
-    borderTopRightRadius: theme.shape.borderRadius,
-  },
-  wordWrap: "break-word", // Ensure text wraps naturally
+  padding: "12px 16px",
+  backgroundColor: "transparent",
+  color: theme.palette.text.primary,
+  fontWeight: 600,
+  borderBottom: `2px solid ${theme.palette.divider}`,
+  "&:first-of-type": { borderTopLeftRadius: theme.shape.borderRadius },
+  "&:last-of-type": { borderTopRightRadius: theme.shape.borderRadius },
+  wordWrap: "break-word",
   whiteSpace: "normal",
-  [theme.breakpoints.down("sm")]: {
-    // Apply on small screens
-    padding: "8px 8px", // Reduced padding for mobile
-    fontSize: "0.75rem", // Slightly smaller font size
-  },
+  [theme.breakpoints.down("sm")]: { padding: "8px 8px", fontSize: "0.75rem" },
 }));
 
-// Helper function for status chip color
 const getStatusColor = (status) => {
-  switch (
-    status?.toLowerCase() // Ensure case-insensitivity
-  ) {
+  switch (status?.toLowerCase()) {
     case "paid":
       return "success";
-    case "pending": // Changed from "unpaid" to "pending" for consistency with Fee/Loan Statuses
+    case "partial":
+    case "pending":
       return "warning";
     default:
       return "default";
@@ -98,155 +74,122 @@ const getStatusColor = (status) => {
 
 const Payment = () => {
   const [payments, setPayments] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Increased rows per page for consistency with other tables
-
+  const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("user"); // Default search field
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter by status
-
+  const [searchField, setSearchField] = useState("user");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const rowsPerPage = 7;
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
   const navigate = useNavigate();
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useMediaQuery("(max-width:768px)");
 
-  // Load payments data
-  const loadData = useCallback(async () => {
+  // Load payments from backend
+  // Load payments from backend
+  const loadPayments = useCallback(async () => {
+    if (!cooperativeId) return; // do nothing until we have it
+
     setLoading(true);
     try {
-      const paymentsData = await fetchPayments();
-
-      // Map user info, assuming userId and createdAt are available
-      const mappedPayments = (paymentsData || []).map((payment) => {
-        const userName = payment.userId?.names || "N/A";
-        return {
-          ...payment,
-          userName,
-        };
-      });
-
-      setPayments(mappedPayments);
+      const data = await fetchPayments(cooperativeId); // pass cooperativeId here
+      const mapped = (data || []).map((p) => ({
+        ...p,
+        userName: p.userId?.names || "N/A",
+      }));
+      setPayments(mapped);
     } catch (error) {
-      console.error("Error loading payment data:", error);
-      toast.error(
-        "Error loading payment data. Please check console for details."
-      );
-      setPayments([]); // Ensure payments is reset on error
+      console.error("Error fetching payments:", error);
+      toast.error("Failed to load payments. Check console for details.");
+      setPayments([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadPayments();
+  }, [loadPayments]);
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-RW", {
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-RW", {
       style: "currency",
       currency: "RWF",
-    }).format(amount);
-  };
+    }).format(amount || 0);
 
-  const handlePaymentSubmissionSuccess = async () => {
+  const handlePaymentSuccess = useCallback(async () => {
     setShowAddModal(false);
-    toast.success("Payment recorded successfully!"); // Added success toast
-    await loadData();
-  };
+    toast.success("Payment recorded successfully!");
+    await loadPayments();
+  }, [loadPayments]);
 
-  const viewPaymentTransactions = () => {
+  const viewTransactions = () =>
     navigate("/admin/dashboard/payment-transaction");
-  };
 
-  // Memoized filtered and paginated payments
-  const filteredAndPaginatedPayments = useMemo(() => {
-    let currentFiltered = payments;
+  const filteredPayments = useMemo(() => {
+    let filtered = [...payments];
 
-    // Apply search filter
     if (searchTerm) {
-      currentFiltered = currentFiltered.filter((p) => {
-        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter((p) => {
         switch (searchField) {
           case "user":
-            return p.userName?.toLowerCase().includes(lowerCaseSearchTerm);
-          case "paymentDate": // Assuming payments have a 'createdAt' or 'paymentDate' field
-            return p.createdAt
-              ? new Date(p.createdAt)
-                  .toLocaleDateString()
-                  .includes(lowerCaseSearchTerm)
-              : false;
-          case "amountPaid":
-            return p.amountPaid?.toString().includes(lowerCaseSearchTerm);
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      currentFiltered = currentFiltered.filter(
-        (p) => p.status?.toLowerCase() === statusFilter.toLowerCase()
-      );
-    }
-
-    // Sort by date (createdAt) - newest first by default
-    currentFiltered.sort((a, b) => {
-      const dateA = new Date(a.createdAt);
-      const dateB = new Date(b.createdAt);
-      return dateB.getTime() - dateA.getTime();
-    });
-
-    // Pagination logic
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    return currentFiltered.slice(startIndex, startIndex + rowsPerPage);
-  }, [
-    payments,
-    currentPage,
-    rowsPerPage,
-    searchTerm,
-    searchField,
-    statusFilter,
-  ]);
-
-  const totalPages = useMemo(() => {
-    let currentFiltered = payments;
-    // Recalculate total pages based on filtered (not paginated) data
-    if (searchTerm) {
-      currentFiltered = currentFiltered.filter((p) => {
-        const lowerCaseSearchTerm = searchTerm.toLowerCase();
-        switch (searchField) {
-          case "user":
-            return p.userName?.toLowerCase().includes(lowerCaseSearchTerm);
+            return p.userName?.toLowerCase().includes(term);
           case "paymentDate":
             return p.createdAt
-              ? new Date(p.createdAt)
-                  .toLocaleDateString()
-                  .includes(lowerCaseSearchTerm)
+              ? new Date(p.createdAt).toLocaleDateString().includes(term)
               : false;
           case "amountPaid":
-            return p.amountPaid?.toString().includes(lowerCaseSearchTerm);
+            return p.amountPaid?.toString().includes(term);
+          default:
+            return true;
+        }
+      });
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (p) => p.status?.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const start = (currentPage - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [payments, currentPage, searchTerm, searchField, statusFilter]);
+
+  const totalPages = useMemo(() => {
+    let filtered = [...payments];
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter((p) => {
+        switch (searchField) {
+          case "user":
+            return p.userName?.toLowerCase().includes(term);
+          case "paymentDate":
+            return p.createdAt
+              ? new Date(p.createdAt).toLocaleDateString().includes(term)
+              : false;
+          case "amountPaid":
+            return p.amountPaid?.toString().includes(term);
           default:
             return true;
         }
       });
     }
     if (statusFilter !== "all") {
-      currentFiltered = currentFiltered.filter(
+      filtered = filtered.filter(
         (p) => p.status?.toLowerCase() === statusFilter.toLowerCase()
       );
     }
-    return Math.ceil(currentFiltered.length / rowsPerPage);
-  }, [payments, rowsPerPage, searchTerm, searchField, statusFilter]);
+    return Math.ceil(filtered.length / rowsPerPage);
+  }, [payments, searchTerm, searchField, statusFilter]);
 
-  // Reset page to 1 whenever filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, searchField, statusFilter]);
+  useEffect(() => setCurrentPage(1), [searchTerm, searchField, statusFilter]);
 
-  const handlePageChange = useCallback((event, newPage) => {
-    setCurrentPage(newPage);
-  }, []);
+  const handlePageChange = useCallback((_, page) => setCurrentPage(page), []);
 
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
@@ -257,7 +200,6 @@ const Payment = () => {
             <Stack direction={isMobile ? "column" : "row"} spacing={1}>
               <Button
                 variant="contained"
-                size="medium"
                 startIcon={<Add />}
                 onClick={() => setShowAddModal(true)}
                 disabled={loading}
@@ -271,9 +213,8 @@ const Payment = () => {
               </Button>
               <Button
                 variant="outlined"
-                size="medium"
-                startIcon={<Visibility />} // Use Material-UI icon
-                onClick={viewPaymentTransactions}
+                startIcon={<Visibility />}
+                onClick={viewTransactions}
                 sx={{ minWidth: { xs: "100%", sm: "auto" } }}
               >
                 View Transactions
@@ -283,26 +224,18 @@ const Payment = () => {
         />
         <CardContent
           sx={{
-            maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflow: "hidden", // Hide overflow on CardContent itself
+            maxHeight: isMobile ? "calc(100vh-200px)" : "calc(100vh-150px)",
             display: "flex",
             flexDirection: "column",
+            overflow: "hidden",
           }}
         >
-          <Box mb={3} sx={{ flexShrink: 0 }}>
-            <Typography variant="body2" color="text.secondary">
-              Manage and track all payment records, including amounts paid,
-              amounts due, and payment status.
-            </Typography>
-          </Box>
-
-          {/* Search and Filter Section */}
+          {/* Search & Filter */}
           <Stack
             direction={isMobile ? "column" : "row"}
             spacing={2}
             mb={3}
             alignItems={isMobile ? "stretch" : "center"}
-            sx={{ flexShrink: 0 }}
           >
             <TextField
               select
@@ -310,7 +243,7 @@ const Payment = () => {
               size="small"
               value={searchField}
               onChange={(e) => setSearchField(e.target.value)}
-              sx={{ minWidth: 120, flexShrink: 0 }}
+              sx={{ minWidth: 120 }}
             >
               <MenuItem value="user">User Name</MenuItem>
               <MenuItem value="paymentDate">Payment Date</MenuItem>
@@ -321,10 +254,9 @@ const Payment = () => {
                 searchField === "user"
                   ? "User Name"
                   : searchField === "paymentDate"
-                  ? "Payment Date (e.g., 2/15/2023)"
+                  ? "Payment Date"
                   : "Amount Paid"
               }`}
-              variant="outlined"
               size="small"
               fullWidth={isMobile}
               value={searchTerm}
@@ -339,7 +271,7 @@ const Payment = () => {
             />
             <TextField
               select
-              label="Status Filter"
+              label="Status"
               size="small"
               fullWidth={isMobile}
               value={statusFilter}
@@ -348,6 +280,7 @@ const Payment = () => {
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="paid">Paid</MenuItem>
+              <MenuItem value="partial">Partial</MenuItem>
               <MenuItem value="pending">Pending</MenuItem>
             </TextField>
           </Stack>
@@ -370,8 +303,6 @@ const Payment = () => {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
@@ -383,46 +314,34 @@ const Payment = () => {
               >
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                      <StyledTableHeaderCell sx={{ width: "5%" }}>
-                        ID
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>
-                        User
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        Paid Amount
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        Amount Due
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        Remaining
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        Status
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                    <TableRow>
+                      <StyledTableHeaderCell>ID</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>User</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Paid Amount</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Amount Due</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Remaining</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Status</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>
                         Payment Date
                       </StyledTableHeaderCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredAndPaginatedPayments.length > 0 ? (
-                      filteredAndPaginatedPayments.map((p, index) => (
-                        <TableRow hover key={p._id || index}>
+                    {filteredPayments.length ? (
+                      filteredPayments.map((p, i) => (
+                        <TableRow hover key={p._id}>
                           <StyledTableCell>
-                            {(currentPage - 1) * rowsPerPage + index + 1}
+                            {(currentPage - 1) * rowsPerPage + i + 1}
                           </StyledTableCell>
-                          <StyledTableCell>{p.userName}</StyledTableCell>
+                          <StyledTableCell>{p.userId?.names}</StyledTableCell>
                           <StyledTableCell>
-                            {formatCurrency(p.amountPaid || 0)}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {formatCurrency(p.amountDue || 0)}
+                            {formatCurrency(p.amountPaid)}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {formatCurrency(p.amountRemainingToPay || 0)}
+                            {formatCurrency(p.amountDue)}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {formatCurrency(p.amountRemainingToPay)}
                           </StyledTableCell>
                           <StyledTableCell>
                             <Chip
@@ -441,7 +360,7 @@ const Payment = () => {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                          <Typography variant="body1" color="text.secondary">
+                          <Typography color="text.secondary">
                             No payments found.
                           </Typography>
                         </TableCell>
@@ -454,12 +373,7 @@ const Payment = () => {
           )}
 
           {totalPages > 1 && (
-            <Box
-              mt={3}
-              display="flex"
-              justifyContent="center"
-              sx={{ flexShrink: 0 }}
-            >
+            <Box mt={3} display="flex" justifyContent="center">
               <Pagination
                 count={totalPages}
                 page={currentPage}
@@ -474,12 +388,12 @@ const Payment = () => {
           )}
         </CardContent>
       </Card>
+
       <AddPaymentModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSave={handlePaymentSubmissionSuccess}
+        onSave={handlePaymentSuccess}
       />
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );
 };

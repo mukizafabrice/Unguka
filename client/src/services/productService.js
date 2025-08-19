@@ -1,6 +1,6 @@
-import axiosInstance from "../api/axiosInstance"; // Ensure this path is correct
+import axiosInstance from "../api/axiosInstance"; 
 
-const API_URL = "/products"; // Base URL for product endpoints
+const API_URL = "/products"; 
 
 // Helper to handle successful API responses consistently
 const handleResponse = (response) => {
