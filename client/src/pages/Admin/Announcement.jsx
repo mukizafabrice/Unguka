@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
   fetchAnnouncements,
   createAnnouncement,
 } from "../../services/announcementService";
-
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Box,
   Card,
@@ -40,7 +40,7 @@ const StyledListGroupItem = styled(ListItem)(({ theme }) => ({
   "&:last-child": {
     borderBottom: "none",
   },
-  padding: theme.spacing(2, 3), // 
+  padding: theme.spacing(2, 3), //
   flexDirection: "column",
   alignItems: "flex-start",
   backgroundColor: theme.palette.background.paper,
@@ -59,13 +59,16 @@ function Announcement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
+
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const fetchAllAnnouncements = useCallback(async () => {
     setLoading(true);
     setError(""); // Clear previous errors
     try {
-      const data = await fetchAnnouncements();
+      const data = await fetchAnnouncements(cooperativeId);
       setAnnouncements(data ? data.reverse() : []); // Ensure data is an array
     } catch (err) {
       console.error("Error fetching announcements:", err);
@@ -74,7 +77,7 @@ function Announcement() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]);
 
   useEffect(() => {
     fetchAllAnnouncements();
@@ -95,7 +98,7 @@ function Announcement() {
       const user = JSON.parse(localStorage.getItem("user"));
       const userId = user?.id; // Get userId if available
 
-      await createAnnouncement({ title, description, userId });
+      await createAnnouncement({ title, description, userId, cooperativeId });
 
       setTitle("");
       setDescription("");
@@ -281,7 +284,6 @@ function Announcement() {
           </StyledCard>
         </Box>
       </Stack>
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );
 }

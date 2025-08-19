@@ -3,14 +3,15 @@ import Announcements from "../models/Announcements.js";
 // Create new announcement
 export const createAnnouncement = async (req, res) => {
   try {
-    const { userId, title, description } = req.body;
+    const { userId, cooperativeId, title, description } = req.body;
 
-    if (!userId || !title || !description) {
+    if (!userId || !title || !description || !cooperativeId) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
     const newAnnouncement = await Announcements.create({
       userId,
+      cooperativeId,
       title,
       description,
     });
@@ -23,8 +24,20 @@ export const createAnnouncement = async (req, res) => {
 
 // Get all announcements
 export const getAnnouncements = async (req, res) => {
+  const { cooperativeId } = req.query;
+  let query = {};
+
+  // Filter by cooperativeId if provided
+  if (cooperativeId) {
+    query.cooperativeId = cooperativeId;
+  } else {
+    return res.status(400).json({
+      success: false,
+      message: "cooperativeId is required to fetch products.",
+    });
+  }
   try {
-    const announcements = await Announcements.find().populate(
+    const announcements = await Announcements.find(query).populate(
       "userId",
       "names profilePicture"
     );

@@ -2,15 +2,21 @@ import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import axiosInstance from "../api/axiosInstance";
 import "../assets/styles/NotificationBell.css";
+import { useAuth } from "../contexts/AuthContext";
 
 function NotificationBell() {
   const [announcements, setAnnouncements] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
 
   useEffect(() => {
+    if (!cooperativeId) return; // Prevent request without cooperativeId
+
     const fetchAnnouncements = async () => {
       try {
-        const res = await axiosInstance.get("/announcements");
+        const res = await axiosInstance.get(
+          `/announcements?cooperativeId=${cooperativeId}`
+        );
         const storedRead =
           JSON.parse(localStorage.getItem("readAnnouncements")) || [];
 
@@ -26,22 +32,20 @@ function NotificationBell() {
     };
 
     fetchAnnouncements();
-  }, []);
+  }, [cooperativeId]);
 
   const unreadCount = announcements.filter((a) => !a.isRead).length;
 
-  const handleOpenDropdown = () => {
-    setShowDropdown(!showDropdown);
-
+  // Mark all announcements as read when the icon is clicked
+  const handleMarkRead = () => {
     const readIds = announcements.map((a) => a._id);
     localStorage.setItem("readAnnouncements", JSON.stringify(readIds));
-
     setAnnouncements((prev) => prev.map((a) => ({ ...a, isRead: true })));
   };
 
   return (
     <div className="notification-wrapper">
-      <div className="icon-container" onClick={handleOpenDropdown}>
+      <div className="icon-container" onClick={handleMarkRead}>
         <Bell className="notification-bell" />
         {unreadCount > 0 && (
           <span className="notification-badge">{unreadCount}</span>

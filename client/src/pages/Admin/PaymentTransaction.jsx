@@ -27,10 +27,7 @@ import {
   MenuItem,
   InputAdornment,
 } from "@mui/material";
-import {
-  ArrowBack as ArrowLeft,
-  Search,
-} from "@mui/icons-material";
+import { ArrowBack as ArrowLeft, Search } from "@mui/icons-material";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -114,7 +111,9 @@ function PaymentTransaction() {
   const getTransactions = useCallback(async () => {
     // Only proceed if cooperativeId is available
     if (!cooperativeId) {
-      console.log("[PaymentTransaction] Skipping transaction fetch: cooperativeId is undefined.");
+      console.log(
+        "[PaymentTransaction] Skipping transaction fetch: cooperativeId is undefined."
+      );
       setLoading(false); // Stop loading if no cooperativeId
       setTransactions([]); // Clear transactions if no cooperativeId
       return;
@@ -137,9 +136,14 @@ function PaymentTransaction() {
       });
 
       setTransactions(mappedPayments);
-      console.log(`[PaymentTransaction] Fetched ${mappedPayments.length} transactions for cooperativeId: ${cooperativeId}`);
+      console.log(
+        `[PaymentTransaction] Fetched ${mappedPayments.length} transactions for cooperativeId: ${cooperativeId}`
+      );
     } catch (error) {
-      console.error("[PaymentTransaction] Failed to fetch payment transactions:", error);
+      console.error(
+        "[PaymentTransaction] Failed to fetch payment transactions:",
+        error
+      );
       toast.error("Failed to load payment transactions.");
       setTransactions([]); // Ensure transactions is reset on error
     } finally {
@@ -386,9 +390,9 @@ function PaymentTransaction() {
                           </StyledTableCell>
                           <StyledTableCell>
                             <Chip
-                              label={tx.status || "N/A"}
+                              label={tx.paymentId?.status || "N/A"}
                               size="small"
-                              color={getStatusColor(tx.status)}
+                              color={getStatusColor(tx.paymentId?.status)}
                             />
                           </StyledTableCell>
                           <StyledTableCell>

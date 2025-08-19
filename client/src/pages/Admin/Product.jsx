@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// ⭐ NEW: Import useAuth to get the current user's cooperativeId
+
 import { useAuth } from "../../contexts/AuthContext";
 
 import {
@@ -92,9 +92,9 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 }));
 
 function Product() {
-  // ⭐ Get user and cooperativeId from AuthContext
+  
   const { user } = useAuth();
-  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+  const cooperativeId = user?.cooperativeId;
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);

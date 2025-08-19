@@ -2,15 +2,13 @@ import mongoose from "mongoose";
 
 const feeTypeSchema = new mongoose.Schema(
   {
-    // ⭐ NEW: Add cooperativeId to link fee types to a specific cooperative
     cooperativeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Cooperative", // Refers to your Cooperative model
-      required: true, // Assuming every fee type must belong to a cooperative
+      ref: "Cooperative", 
+      required: true,
     },
     name: {
       type: String,
-      // Removed 'unique: true' from here, as uniqueness is now compound with cooperativeId
       required: true,
       trim: true,
     },

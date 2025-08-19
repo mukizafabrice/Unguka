@@ -1,8 +1,10 @@
 import axiosInstance from "../api/axiosInstance";
 
 // Fetch all announcements
-export const fetchAnnouncements = async () => {
-  const response = await axiosInstance.get("/announcements");
+export const fetchAnnouncements = async (cooperativeId) => {
+  const response = await axiosInstance.get(
+    `/announcements?cooperativeId=${cooperativeId}`
+  );
   return response.data;
 };
 
