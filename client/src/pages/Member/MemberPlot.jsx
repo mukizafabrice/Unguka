@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { toast } from "react-toastify"; // Keep toast for error messages
 import "react-toastify/dist/ReactToastify.css";
-// ⭐ Import useAuth to get the current user's ID and cooperative ID
-import { useAuth } from "../../contexts/AuthContext";
 
-// ⭐ Import fetchPlots from the plotService (now plural and accepts filters)
-import { fetchPlots } from "../../services/plotService";
+import { fetchPlotById } from "../../services/plotService";
 
 import {
   Box,
@@ -26,9 +22,9 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress,
-  MenuItem,
-  Button,
+  CircularProgress, // Added CircularProgress for loading state
+  MenuItem, // Added MenuItem for dropdowns
+  Button, // Added Button for sort control
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
@@ -58,7 +54,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "#f5f5f5", // Explicit background for header
+  backgroundColor: "transparent",
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -77,59 +73,46 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 }));
 
 function Plot() {
-  // ⭐ Get current user's ID and cooperative ID from AuthContext
-  const { user } = useAuth();
-  const currentUserId = user?._id;
-  const currentCooperativeId = user?.cooperativeId;
-
   const [plots, setPlots] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Added loading state
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7;
+  const rowsPerPage = 7; // Consistent rows per page
 
   const [searchTerm, setSearchTerm] = useState("");
-  // ⭐ UPDATED searchField options for member view
-  const [searchField, setSearchField] = useState("upi"); // Default search by UPI
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [searchField, setSearchField] = useState("member"); // Default search field
+  const [sortOrder, setSortOrder] = useState("asc"); // Default sort by member name ascending
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to fetch plots for the current member and cooperative
+  // Function to load plots (can be called after add/update/delete)
   const loadPlots = useCallback(async () => {
-    // ⭐ Ensure both userId and cooperativeId are available before fetching
-    if (!currentUserId || !currentCooperativeId) {
-      toast.error("User or cooperative ID not available. Cannot load plots.");
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      // ⭐ Pass both userId and cooperativeId to fetchPlots
-      const response = await fetchPlots(currentUserId, currentCooperativeId);
-      if (response.success && Array.isArray(response.data)) {
-        setPlots(response.data);
+      const user = JSON.parse(localStorage.getItem("user"));
+      const userId = user?.id;
+
+      // Only fetch if userId is available
+      if (userId) {
+        const plotsData = await fetchPlotById(userId);
+        console.log(plotsData);
+        // Assuming plotsData.data is the array of plots
+        setPlots(plotsData.data || []);
       } else {
-        console.error("Failed to fetch plots:", response.message);
-        toast.error(response.message || "Failed to load plots.");
+        console.warn("User ID not found in localStorage. Cannot fetch plots.");
         setPlots([]);
       }
     } catch (error) {
-      console.error("Failed to fetch plots (catch block):", error);
-      toast.error("An unexpected error occurred while loading plots.");
-      setPlots([]);
+      console.error("Failed to fetch plots:", error);
+      setPlots([]); // Reset plots on error
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, currentCooperativeId]); // Dependencies for useCallback
+  }, []);
 
-  // Initial data load on component mount and when user/coop IDs change
+  // Fetch plots on component mount
   useEffect(() => {
-    if (currentUserId && currentCooperativeId) {
-      // Only load if IDs are ready
-      loadPlots();
-    }
-  }, [currentUserId, currentCooperativeId, loadPlots]);
+    loadPlots();
+  }, [loadPlots]);
 
   // Filter and sort plots based on search and sort order
   const filteredAndSortedPlots = useMemo(() => {
@@ -139,23 +122,33 @@ function Plot() {
     if (searchTerm) {
       filtered = filtered.filter((plot) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
-        // ⭐ Search only by UPI or size as these are direct plot properties
         switch (searchField) {
+          case "member":
+            return plot.userId?.names
+              ?.toLowerCase()
+              .includes(lowerCaseSearchTerm);
+          case "productName":
+            return plot.productId?.productName
+              ?.toLowerCase()
+              .includes(lowerCaseSearchTerm);
+          case "area":
+            return plot.area
+              ?.toString()
+              .toLowerCase()
+              .includes(lowerCaseSearchTerm);
           case "upi":
             return plot.upi?.toLowerCase().includes(lowerCaseSearchTerm);
-          case "size": // Search by size (numeric property)
-            return String(plot.size)?.includes(lowerCaseSearchTerm);
           default:
             return true;
         }
       });
     }
 
-    // Apply sorting by chosen field (UPI or Size)
+    // Apply sorting by member name
     filtered.sort((a, b) => {
-      const valA = a[searchField] || "";
-      const valB = b[searchField] || "";
-      const comparison = String(valA).localeCompare(String(valB));
+      const nameA = a.userId?.names || "";
+      const nameB = b.userId?.names || "";
+      const comparison = nameA.localeCompare(nameB);
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
@@ -187,19 +180,20 @@ function Plot() {
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         <StyledCardHeader
-          title={<Typography variant="h6">My Plots</Typography>} // ⭐ Updated title for member view
+          title={<Typography variant="h6">Plots Dashboard</Typography>}
         />
         <CardContent
           sx={{
             maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflow: "hidden",
+            overflow: "hidden", // Hide overflow on CardContent itself
             display: "flex",
             flexDirection: "column",
           }}
         >
           <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
-              Here is a list of your registered plots within your cooperative.
+              This is your Plots Dashboard, where you can see all the land plots
+              you own and their details.
             </Typography>
           </Box>
 
@@ -219,12 +213,18 @@ function Plot() {
               onChange={(e) => setSearchField(e.target.value)}
               sx={{ minWidth: 120, flexShrink: 0 }}
             >
+              <MenuItem value="member">Member</MenuItem>
+              <MenuItem value="area">Size</MenuItem>
               <MenuItem value="upi">UPI</MenuItem>
-              <MenuItem value="size">Size</MenuItem>{" "}
-              {/* ⭐ Changed from 'area' to 'size' */}
             </TextField>
             <TextField
-              label={`Search ${searchField === "upi" ? "UPI" : "Size"}`}
+              label={`Search ${
+                searchField === "member"
+                  ? "Member"
+                  : searchField === "area"
+                  ? "Area"
+                  : "UPI"
+              }`}
               variant="outlined"
               size="small"
               fullWidth={isMobile}
@@ -251,9 +251,7 @@ function Plot() {
               }
               sx={{ minWidth: { xs: "100%", sm: "auto" } }}
             >
-              Sort by {searchField === "upi" ? "UPI" : "Size"}{" "}
-              {sortOrder === "asc" ? "(Asc)" : "(Desc)"}{" "}
-              {/* ⭐ Dynamic sort button text */}
+              Sort by Member {sortOrder === "asc" ? "(Asc)" : "(Desc)"}
             </Button>
           </Stack>
 
@@ -275,6 +273,8 @@ function Plot() {
                 flexDirection: "column",
               }}
             >
+              {" "}
+              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
@@ -286,22 +286,20 @@ function Plot() {
               >
                 <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
-                    <TableRow>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        No.
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "30%" }}>
-                        UPI
+                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>
+                        ID
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "20%" }}>
-                        Size
-                      </StyledTableHeaderCell>{" "}
-                      {/* ⭐ Changed 'Area' to 'Size' */}
-                      <StyledTableHeaderCell sx={{ width: "40%" }}>
-                        Cooperative
-                      </StyledTableHeaderCell>{" "}
-                      {/* ⭐ Added Cooperative column */}
-                      {/* ⭐ Removed "Product Name" and "Action" columns */}
+                        Member
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Size(ms)
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                        UPI
+                      </StyledTableHeaderCell>
+                      {/* Removed Action column as it was empty */}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -311,25 +309,24 @@ function Plot() {
                           <StyledTableCell>
                             {(currentPage - 1) * rowsPerPage + index + 1}
                           </StyledTableCell>
-                          <StyledTableCell>{plot.upi || "N/A"}</StyledTableCell>
+                          <StyledTableCell>
+                            {plot.userId?.names || "N/A"}
+                          </StyledTableCell>
+
                           <StyledTableCell>
                             {plot.size || "N/A"}
-                          </StyledTableCell>{" "}
-                          {/* ⭐ Changed plot.area to plot.size */}
-                          <StyledTableCell>
-                            {plot.cooperativeId?.name || "N/A"}
-                          </StyledTableCell>{" "}
-                          {/* ⭐ Display cooperative name */}
-                          {/* ⭐ Removed Product Name and Action cells */}
+                          </StyledTableCell>
+                          <StyledTableCell>{plot.upi || "N/A"}</StyledTableCell>
+                          {/* Removed corresponding empty action cell */}
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                           {" "}
-                          {/* ⭐ Adjusted colspan */}
+                          {/* Adjusted colspan */}
                           <Typography variant="body1" color="text.secondary">
-                            No plots found for you in this cooperative.
+                            No plots found.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -361,23 +358,6 @@ function Plot() {
           )}
         </CardContent>
       </Card>
-
-      {/* ⭐ Removed AddPlotModal and UpdatePlotModal as members cannot add/update */}
-      {/* <AddPlotModal /> */}
-      {/* <UpdatePlotModal /> */}
-
-      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
-      {/* <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      /> */}
     </Box>
   );
 }

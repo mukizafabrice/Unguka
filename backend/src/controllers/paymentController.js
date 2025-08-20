@@ -406,65 +406,15 @@ export const getAllPayments = async (req, res) => {
   }
 };
 
-// ====================================================================
-// --- Fetch Payment by User ID ---
-// ====================================================================
 export const getPaymentById = async (req, res) => {
-  console.log(
-    `[${new Date().toISOString()}] DEBUG: getPaymentById Controller START`
-  );
-  const { userId: paramUserId } = req.params;
-  // --- MODIFIED: Correctly destructure _id as authenticatedUserId ---
-  const { _id: authenticatedUserId, cooperativeId, role } = req.user;
-  // --- END MODIFIED ---
-
-  if (
-    role !== "superadmin" &&
-    (!authenticatedUserId || paramUserId !== authenticatedUserId.toString())
-  ) {
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentById - Unauthorized attempt or missing authenticatedUserId.`
-    );
-    return res.status(403).json({
-      message: "You are not authorized to view payments for this user.",
-    });
-  }
-
+  const { userId } = req.params;
   try {
-    const filter = getCooperativeQueryFilter(req);
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentById - Applied filter: ${JSON.stringify(
-        { ...filter, userId: paramUserId }
-      )}`
-    );
-
-    // --- TEMPORARILY REMOVED .populate("userId", "names") FOR DIAGNOSIS ---
-    // This could also be a bottleneck if User model's _id is not indexed.
-    // Re-add this after resolving the timeout and ensuring User model's _id is indexed.
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentById - DB Query START: Payment.find(...)`
-    );
-    const payments = await Payment.find({
-      ...filter,
-      userId: paramUserId,
-    }).sort({ createdAt: -1 });
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentById - DB Query END. Fetched ${
-        payments.length
-      } payments.`
-    );
+    const payments = await Payment.find({ userId })
+      .populate("userId", "names")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(payments);
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentById Controller END (Success)`
-    );
   } catch (error) {
-    console.error(
-      `[${new Date().toISOString()}] ERROR: Error fetching payment by ID: ${
-        error.message
-      }`,
-      error
-    );
     res.status(500).json({ message: error.message });
   }
 };

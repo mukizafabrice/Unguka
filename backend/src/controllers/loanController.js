@@ -5,9 +5,6 @@ import LoanTransaction from "../models/LoanTransaction.js";
 import User from "../models/User.js";
 import Season from "../models/Season.js";
 
-// @desc    Create a new loan
-// @route   POST /api/loans
-// @access  Private (Manager)
 export const createLoan = async (req, res) => {
   const { userId, seasonId, amountOwed, interest } = req.body;
   const { role, cooperativeId } = req.user;
@@ -104,34 +101,24 @@ export const getAllLoans = async (req, res) => {
 // @route   GET /api/loans/:id
 // @access  Private (Member, Manager, Superadmin)
 export const getLoanById = async (req, res) => {
-  const { id } = req.params;
-  const { role, cooperativeId, id: userId } = req.user;
+  const { userId } = req.params;
+  const { role, cooperativeId } = req.user;
 
   try {
     // CRITICAL: Find the loan by ID AND cooperativeId
-    const loan = await Loan.findOne({ _id: id, cooperativeId })
+    const loan = await Loan.find({ userId, cooperativeId })
       .populate("purchaseInputId")
+      .populate("userId", "names")
+      .populate("seasonId", "name year")
       .populate({
         path: "purchaseInputId",
-        populate: [
-          { path: "userId", select: "names" },
-          { path: "productId", select: "productName" },
-          { path: "seasonId", select: "name year" },
-        ],
-      })
-      .populate("userId", "names");
+        populate: [{ path: "productId", select: "productName" }],
+      });
 
     if (!loan) {
       return res
         .status(404)
         .json({ message: "Loan not found in your cooperative." });
-    }
-
-    // Additional security for members
-    if (role === "member" && loan.userId.toString() !== userId.toString()) {
-      return res
-        .status(403)
-        .json({ message: "Access denied. You can only view your own loans." });
     }
 
     res.status(200).json(loan);

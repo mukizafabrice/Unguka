@@ -8,6 +8,8 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
+import StatCard from "../../components/StatCard";
+import { Users, Layers, Group, Info } from "lucide-react";
 import {
   People as PeopleIcon,
   Business as BusinessIcon,
@@ -149,79 +151,44 @@ const Dashboard = () => {
       <Box
         sx={{ p: { xs: 2, sm: 4 }, bgcolor: theme.palette.background.default }}
       >
-        <Typography
-          variant="h4"
-          gutterBottom
-          sx={{
-            fontWeight: "bold",
-            mb: { xs: 3, sm: 5 },
-            color: theme.palette.text.primary,
-          }}
-        >
-          Superadmin Dashboard
-        </Typography>
-
-        {/* Stats Cards */}
-        <Grid container spacing={3}>
-          {[
-            {
-              title: "Total Users",
-              value: stats.totalUsers,
-              icon: (
-                <PeopleIcon
-                  sx={{ fontSize: 50, color: theme.palette.primary.main }}
+        <div className=" mb-4 border-bottom border-secondary-subtle">
+          <div className="dashboard-content-area">
+            <h4 className="fs-4 fw-medium mb-3" style={{ color: "black" }}>
+              Dashboard
+            </h4>
+            <div className="row flex-nowrap overflow-auto pb-2 gx-3">
+              <div className="col-lg-3 col-md-4 col-sm-6 mb-3 p-3">
+                <StatCard
+                  title="Total Cooperatives"
+                  value={stats.totalCooperatives}
+                  color="orange"
+                  icon={Group}
                 />
-              ),
-              borderColor: theme.palette.primary.main,
-            },
-            {
-              title: "Total Cooperatives",
-              value: stats.totalCooperatives,
-              icon: (
-                <BusinessIcon
-                  sx={{ fontSize: 50, color: theme.palette.secondary.main }}
+              </div>
+              <div className="col-lg-3 col-md-4 col-sm-6 mb-3 p-3">
+                <StatCard
+                  title="Total Members"
+                  value={stats.totalUsers}
+                  color="red"
+                  icon={Users}
                 />
-              ),
-              borderColor: theme.palette.secondary.main,
-            },
-          ].map((card, i) => (
-            <Grid item xs={12} md={6} key={i}>
-              <Paper
-                sx={{
-                  p: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                  borderLeft: `6px solid ${card.borderColor}`,
-                  boxShadow: "0px 8px 24px rgba(0,0,0,0.05)",
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    transform: "translateY(-4px)",
-                    boxShadow: "0px 12px 30px rgba(0,0,0,0.08)",
-                  },
-                }}
-              >
-                {card.icon}
-                <Box>
-                  <Typography variant="h3" sx={{ fontWeight: "bold" }}>
-                    {card.value}
-                  </Typography>
-                  <Typography variant="h6" color="text.secondary">
-                    {card.title}
-                  </Typography>
-                </Box>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Charts */}
-        <Grid container spacing={3} sx={{ mt: 4 }}>
+        <Grid
+          container
+          spacing={3}
+          sx={{ mt: 4, maxHeight: 400, overflow: "auto" }}
+        >
           <Grid item xs={12} md={6}>
             <Paper
               sx={{
                 p: 3,
                 height: 400,
+                width: 500,
                 display: "flex",
                 flexDirection: "column",
               }}
@@ -253,6 +220,7 @@ const Dashboard = () => {
               sx={{
                 p: 3,
                 height: 400,
+                width: 500,
                 display: "flex",
                 flexDirection: "column",
               }}

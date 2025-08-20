@@ -159,6 +159,13 @@ function Stock() {
     setPage(newPage);
   }, []);
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
+
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
@@ -254,8 +261,9 @@ function Stock() {
                             {stock.productId?.productName || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>{stock.quantity}</StyledTableCell>
-                          <StyledTableCell>{stock.totalPrice}</StyledTableCell>
-                          {/* Removed corresponding action cell */}
+                          <StyledTableCell>
+                            {formatCurrency(stock.totalPrice)}
+                          </StyledTableCell>
                         </TableRow>
                       ))
                     ) : (

@@ -65,26 +65,9 @@ export const fetchProductionsByUserSeason = async (
 };
 
 // Get all productions for a specific user (by ID) within a cooperative
-export const fetchProductionsByUserId = async (userId, cooperativeId) => {
-  // Renamed from fetchProductionsById
-  if (!userId || !cooperativeId) {
-    return {
-      success: false,
-      message:
-        "User ID and Cooperative ID are required to fetch productions by user.",
-    };
-  }
-  try {
-    const response = await axiosInstance.get(`${API_URL}/by-user/${userId}`, {
-      params: { cooperativeId },
-    });
-    return handleResponse(response);
-  } catch (error) {
-    return handleError(
-      error,
-      `Failed to fetch productions for user with ID ${userId}.`
-    );
-  }
+export const fetchProductionsById = async (id) => {
+  const response = await axiosInstance.get(`/productions/${id}`);
+  return response.data;
 };
 
 // Create a new production

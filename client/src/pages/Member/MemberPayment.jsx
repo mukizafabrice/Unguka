@@ -3,7 +3,7 @@ import { fetchPaymentById } from "../../services/paymentService"; // Changed fro
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Box,
   Card,
@@ -107,9 +107,10 @@ function Payment() {
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       const userId = user?.id;
+      const cooperativeId = user?.cooperativeId;
 
       if (userId) {
-        const paymentsData = await fetchPaymentById(userId); // Changed to fetchPaymentById
+        const paymentsData = await fetchPaymentById(userId, cooperativeId); // Changed to fetchPaymentById
         const mappedPayments = (paymentsData || []).map((payment) => {
           const userName = payment.userId?.names || "N/A";
           return {

@@ -8,14 +8,10 @@ const handleServerError = (res, error, message) => {
   res.status(500).json({ message: "Internal server error" });
 };
 
-// ----------------------------------------------------
-// ✅ REVISED: recordPayment
-// No change needed here, it already uses the token's cooperativeId.
-// ----------------------------------------------------
 export const recordPayment = async (req, res) => {
   try {
     const { userId, seasonId, feeTypeId, paymentAmount } = req.body;
-    const { cooperativeId } = req.user; // 🔑 Correctly uses cooperativeId from the token.
+    const { cooperativeId } = req.user;
 
     if (
       !userId ||
@@ -74,9 +70,6 @@ export const recordPayment = async (req, res) => {
   }
 };
 
-// ----------------------------------------------------
-// ✅ REVISED: getFeesByUserAndSeason
-// ----------------------------------------------------
 export const getFeesByUserAndSeason = async (req, res) => {
   try {
     const { userId, seasonId } = req.params; // 🔑 Simplified: Directly use the cooperativeId from the token.
@@ -100,18 +93,10 @@ export const getFeesByUserAndSeason = async (req, res) => {
   }
 };
 
-// ----------------------------------------------------
-// ✅ REVISED: getAllFees
-// ----------------------------------------------------
 export const getAllFees = async (req, res) => {
   try {
-    const { cooperativeId, role } = req.user; // 🔑 The single source of truth
+    const { cooperativeId, role } = req.user;
 
-    // 💡 Logic Simplified:
-    // If the user is a manager, they can ONLY see their own coop's data.
-    // If the user is a superadmin, they can see a specific coop's data
-    // if a `cooperativeId` is provided in the URL, otherwise, they can
-    // see all data.
     let query = {};
     if (role === "manager") {
       query.cooperativeId = cooperativeId;
@@ -120,11 +105,8 @@ export const getAllFees = async (req, res) => {
     }
 
     if (Object.keys(query).length === 0 && role === "superadmin") {
-      // Superadmin can see all fees if no cooperativeId is specified.
-      // This is a special case for superadmins.
       query = {};
     } else if (Object.keys(query).length === 0) {
-      // For any other role without a specified cooperativeId.
       return res
         .status(403)
         .json({ message: "Forbidden: Not authorized to view this data." });
@@ -145,43 +127,26 @@ export const getAllFees = async (req, res) => {
   }
 };
 
-// ----------------------------------------------------
-// ✅ REVISED: getAllFeesById
-// ----------------------------------------------------
 export const getAllFeesById = async (req, res) => {
+  const { userId } = req.params;
   try {
-    const { userId } = req.params; // 🔑 Simplified: Directly use the cooperativeId from the token.
-    const { cooperativeId } = req.user;
-
-    const fees = await Fees.find({ cooperativeId, userId })
+    const fees = await Fees.find({ userId })
       .populate("userId", "names")
       .populate("seasonId", "name year")
       .populate("feeTypeId", "name amount")
       .sort({ createdAt: -1 })
       .exec();
 
-    if (!fees || fees.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No fees found for this user in your cooperative." });
-    }
-
     res.status(200).json(fees);
   } catch (error) {
-    handleServerError(
-      res,
-      error,
-      "Error fetching fees by user ID and cooperative:"
-    );
+    console.error("Error fetching fees by user ID:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// ----------------------------------------------------
-// ✅ REVISED: updateFee
-// ----------------------------------------------------
 export const updateFee = async (req, res) => {
   try {
-    const feeId = req.params.id; // 🔑 Correctly uses cooperativeId from the token for the query
+    const feeId = req.params.id;
     const { cooperativeId } = req.user;
     const updates = req.body;
 

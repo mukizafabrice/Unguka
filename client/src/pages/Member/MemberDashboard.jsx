@@ -9,8 +9,8 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import StatCard from "../../components/StatCard";
-import { fetchPurchaseInputById } from "../../services/purchaseInputsService";
-import { fetchProductionsByUserId } from "../../services/productionService";
+import { fetchPurchaseInputsById } from "../../services/purchaseInputsService";
+import { fetchProductionsById } from "../../services/productionService";
 import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 
@@ -21,7 +21,7 @@ function MemberDashboard() {
   useEffect(() => {
     const countSales = async () => {
       try {
-        const response = await fetchPurchaseInputById();
+        const response = await fetchPurchaseInputsById();
 
         setCountSales(response.data.length);
       } catch (error) {
@@ -70,7 +70,7 @@ function MemberDashboard() {
       try {
         const user = JSON.parse(localStorage.getItem("user"));
         const userId = user?.id;
-        const purchasesData = await fetchPurchaseInputById(userId);
+        const purchasesData = await fetchPurchaseInputsById(userId);
         setRecentPurchases(purchasesData);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
@@ -86,7 +86,7 @@ function MemberDashboard() {
       try {
         const user = JSON.parse(localStorage.getItem("user"));
         const userId = user?.id;
-        const productionsData = await fetchProductionsByUserId(userId);
+        const productionsData = await fetchProductionsById(userId);
         setRecentProductions(productionsData);
       } catch (error) {
         console.error("Failed to fetch sales:", error);

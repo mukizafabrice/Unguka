@@ -14,15 +14,17 @@ import { fetchAllProductions } from "../../services/productionService";
 import { fetchCash } from "../../services/cashService";
 import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
-
+import { useAuth } from "../../contexts/AuthContext";
 function AdminDashboard() {
   //fetch sales
   const [countSales, setCountSales] = useState(0);
 
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
   useEffect(() => {
     const countSales = async () => {
       try {
-        const response = await fetchAllSales();
+        const response = await fetchAllSales(cooperativeId);
 
         setCountSales(response.data.length);
       } catch (error) {
@@ -30,7 +32,7 @@ function AdminDashboard() {
       }
     };
     countSales();
-  }, []);
+  }, [cooperativeId]);
 
   // Fetch members
 
@@ -40,7 +42,7 @@ function AdminDashboard() {
       try {
         const response = await fetchUsers();
 
-        setMembers(response.length);
+        setMembers(response.data.length);
       } catch (error) {
         console.error("Failed to fetch low stock count:", error);
       }
@@ -55,24 +57,23 @@ function AdminDashboard() {
   useEffect(() => {
     const fetchProductCount = async () => {
       try {
-        const response = await fetchProducts();
-        setCountProducts(response.length);
+        const response = await fetchProducts(cooperativeId);
+        setCountProducts(response.data.length);
       } catch (error) {
         console.error("Failed to fetch low stock count:", error);
       }
     };
     fetchProductCount();
-  }, []);
+  }, [cooperativeId]);
   //Fetch money
-  // ⭐ FIX: Initialize cash as an object with a default amount
+
   const [cash, setCash] = useState({ amount: 0 });
   useEffect(() => {
     const loadCash = async () => {
       try {
-        const cashData = await fetchCash();
-        // ⭐ OPTIONAL: Use optional chaining to prevent errors if cashData is null
-        setCash(cashData || { amount: 0 });
+        const cashData = await fetchCash(cooperativeId);
         console.log("Cash data:", cashData);
+        setCash(cashData.data || { amount: 0 });
       } catch (error) {
         console.error("Failed to fetch cash:", error);
         setCash({ amount: 0 }); // Fallback to a default value on error
@@ -80,14 +81,14 @@ function AdminDashboard() {
     };
 
     loadCash();
-  }, []);
+  }, [cooperativeId]);
 
   // Fetch recent sales and productions
   const [recentSales, setRecentSales] = useState([]);
   useEffect(() => {
     const loadSales = async () => {
       try {
-        const salesData = await fetchAllSales();
+        const salesData = await fetchAllSales(cooperativeId);
         setRecentSales(salesData.data);
       } catch (error) {
         console.error("Failed to fetch sales:", error);
@@ -95,21 +96,28 @@ function AdminDashboard() {
     };
 
     loadSales();
-  }, []);
+  }, [cooperativeId]);
 
   const [recentProductions, setRecentProductions] = useState([]);
   useEffect(() => {
     const loadProductions = async () => {
       try {
-        const productionsData = await fetchAllProductions();
-        setRecentProductions(productionsData);
+        const productionsData = await fetchAllProductions(cooperativeId);
+        setRecentProductions(productionsData.data);
       } catch (error) {
         console.error("Failed to fetch productions:", error);
       }
     };
 
     loadProductions();
-  }, []);
+  }, [cooperativeId]);
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-RW", {
+      style: "currency",
+      currency: "RWF",
+    }).format(amount);
+  };
 
   return (
     <div className="p-4 text-white">
@@ -119,12 +127,10 @@ function AdminDashboard() {
             Dashboard
           </h4>
           <div className="row flex-nowrap overflow-auto pb-2 gx-3">
-            {" "}
             <div className="col-lg-3 col-md-4 col-sm-6 mb-3">
               <StatCard
                 title="CASH IN HAND"
-                // ⭐ CORRECTED: The value is now safely accessed
-                value={`${cash.amount} rwf`}
+                value={formatCurrency(cash.amount)}
                 color="black"
                 icon={Wallet}
               />

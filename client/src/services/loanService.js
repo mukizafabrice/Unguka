@@ -1,14 +1,5 @@
 import axiosInstance from "../api/axiosInstance";
 
-/**
- * Creates a new loan entry. The backend will automatically link the loan
- * to the authenticated manager's cooperative.
- * @param {object} loanData - The data for the new loan.
- * @param {string} loanData.userId - The ID of the user receiving the loan.
- * @param {number} loanData.amountOwed - The amount of the loan.
- * @param {number} loanData.interest - The interest rate.
- * @returns {Promise<object>} The created loan data.
- */
 export const createLoan = async (loanData) => {
   // We don't send `cooperativeId` from the frontend.
   // The backend securely gets it from the user's token.
@@ -44,7 +35,7 @@ export const fetchLoansById = async (id) => {
  * @returns {Promise<Array<object>>} A list of the user's loan entries.
  */
 export const fetchUserLoans = async (userId) => {
-  const response = await axiosInstance.get(`/loans/user/${userId}`);
+  const response = await axiosInstance.get(`/loans/${userId}`);
   return response.data;
 };
 

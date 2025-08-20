@@ -20,21 +20,9 @@ export const fetchPayments = async (cooperativeId) => {
 };
 
 // Fetch all payments for a specific user
-export const fetchPaymentById = async (userId, cooperativeId) => {
-  if (!cooperativeId) throw new Error("Cooperative ID is required");
-
-  try {
-    const response = await axiosInstance.get(`/payments/${userId}`, {
-      headers: { "x-cooperative-id": cooperativeId },
-    });
-    return response.data;
-  } catch (error) {
-    console.error(
-      `Error fetching payments for user ${userId}:`,
-      error.response?.data || error.message
-    );
-    throw error;
-  }
+export const fetchPaymentById = async (id) => {
+  const response = await axiosInstance.get(`/payments/${id}`);
+  return response.data;
 };
 
 // Process a new payment
@@ -105,9 +93,13 @@ export const createPayment = async (paymentData, cooperativeId) => {
   if (!cooperativeId) throw new Error("Cooperative ID is required");
 
   try {
-    const response = await axiosInstance.post("/payments/process", paymentData, {
-      headers: { "x-cooperative-id": cooperativeId },
-    });
+    const response = await axiosInstance.post(
+      "/payments/process",
+      paymentData,
+      {
+        headers: { "x-cooperative-id": cooperativeId },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error(

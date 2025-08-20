@@ -1,5 +1,5 @@
 // Example of your routes
-import express from "express";// Your existing middleware
+import express from "express"; // Your existing middleware
 
 import {
   recordPayment,
@@ -9,9 +9,9 @@ import {
   updateFee,
   deleteFee,
 } from "../controllers/feesController.js";
-import { protect } from '../middleware/authMiddleware.js';
-import { authorizeRoles } from '../middleware/roleMiddleware.js';
-import { checkCooperativeAccess } from '../middleware/coopAccessMiddleware.js';
+import { protect } from "../middleware/authMiddleware.js";
+import { authorizeRoles } from "../middleware/roleMiddleware.js";
+import { checkCooperativeAccess } from "../middleware/coopAccessMiddleware.js";
 const router = express.Router();
 
 // Route to record a new payment
@@ -32,12 +32,7 @@ router.get(
 );
 
 // Get fees by user ID and a specific cooperative
-router.get(
-  "/:cooperativeId/user/:userId",
-  protect,
-  authorizeRoles(["superadmin", "manager"]),
-  getAllFeesById
-);
+router.get("/user/:userId", getAllFeesById);
 
 // Get fees by user and season in a specific cooperative
 router.get(
@@ -47,7 +42,6 @@ router.get(
   getFeesByUserAndSeason
 );
 
-// ⚠️ CHANGE: Removed cooperativeId from body for security and simplicity
 router.put(
   "/:id",
   protect,
@@ -55,7 +49,6 @@ router.put(
   updateFee
 );
 
-// ⚠️ CHANGE: Removed cooperativeId from body for security and simplicity
 router.delete(
   "/:id",
   protect,

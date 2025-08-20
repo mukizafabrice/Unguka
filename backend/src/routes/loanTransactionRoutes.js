@@ -13,12 +13,7 @@ router.get(
   authorizeRoles(["superadmin", "manager"]),
   getAllLoanTransactions
 );
-router.get(
-  "/:userId",
-  protect,
-  authorizeRoles(["superadmin", "manager", "member"]),
-  getAllLoanTransactionsByUserId
-);
+router.get("/:userId", getAllLoanTransactionsByUserId);
 // router.get("/:id", getLoanTransactionById);
 // router.put("/:id", updateLoanTransaction);
 // router.delete("/:id", deleteLoanTransaction);

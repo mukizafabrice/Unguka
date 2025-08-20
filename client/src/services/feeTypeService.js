@@ -18,10 +18,7 @@ const handleError = (error, defaultMessage = "An unexpected error occurred.") =>
   };
 };
 
-// --- Fee Type Management Functions ---
 
-// Fetch all fee types
-// Can accept a cooperativeId to filter fee types specific to a cooperative
 export const fetchFeeTypes = async (cooperativeId = null) => {
   try {
     const params = cooperativeId ? { params: { cooperativeId } } : {};

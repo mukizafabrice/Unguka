@@ -34,11 +34,10 @@ import {
   Pagination, // Keeping Pagination for now, will replace with TablePagination if needed
   CircularProgress,
   MenuItem,
-  // Chip // Uncomment if paymentStatus needs chipping as in other tables
-  Dialog, // ⭐ Added for confirmation dialog
-  DialogTitle, // ⭐ Added for confirmation dialog
-  DialogContent, // ⭐ Added for confirmation dialog
-  DialogActions, // ⭐ Added for confirmation dialog
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -102,7 +101,6 @@ function Production() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedProduction, setSelectedProduction] = useState(null);
 
-  // ⭐ NEW STATE FOR CONFIRMATION DIALOG
   const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
   const [productionToDeleteId, setProductionToDeleteId] = useState(null);
 
@@ -196,26 +194,29 @@ function Production() {
     setShowUpdateModal(true);
   };
 
-  // ⭐ NEW FUNCTION: Open confirmation dialog for deletion
   const handleOpenConfirmDeleteDialog = (id) => {
     setProductionToDeleteId(id);
     setShowConfirmDeleteDialog(true);
   };
 
-  // ⭐ NEW FUNCTION: Close confirmation dialog (cancel deletion)
+  // NEW FUNCTION: Close confirmation dialog (cancel deletion)
   const handleCancelDelete = () => {
     setProductionToDeleteId(null);
     setShowConfirmDeleteDialog(false);
   };
 
-  // ⭐ NEW FUNCTION: Confirm and proceed with deletion
   const confirmDeleteProduction = async () => {
     if (!cooperativeId || !productionToDeleteId) {
-      toast.error("Cooperative ID or Production ID is missing. Cannot delete production.");
+      toast.error(
+        "Cooperative ID or Production ID is missing. Cannot delete production."
+      );
       return;
     }
     try {
-      const response = await deleteProduction(productionToDeleteId, cooperativeId);
+      const response = await deleteProduction(
+        productionToDeleteId,
+        cooperativeId
+      );
       if (response.success) {
         toast.success(response.message || "Production deleted successfully!");
         await loadProductions();
@@ -238,11 +239,9 @@ function Production() {
     }
   };
 
-  // ⭐ MODIFIED handleDeleteProduction to use the confirmation dialog
   const handleDeleteProduction = (id) => {
     handleOpenConfirmDeleteDialog(id);
   };
-
 
   const filteredAndSortedProductions = useMemo(() => {
     let filtered = productions;
@@ -317,9 +316,9 @@ function Production() {
   };
 
   const handleClearFilters = () => {
-    setSearchTerm('');
-    setSearchField('productName');
-    setSortOrder('desc');
+    setSearchTerm("");
+    setSearchField("productName");
+    setSortOrder("desc");
     setCurrentPage(1);
   };
 
@@ -335,12 +334,12 @@ function Production() {
               onClick={() => setShowAddModal(true)}
               sx={{
                 minWidth: { xs: "100%", sm: "auto" },
-                bgcolor: '#1976d2',
-                '&:hover': { bgcolor: '#115293' },
-                borderRadius: '8px',
-                py: '8px',
-                px: '12px',
-                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                bgcolor: "#1976d2",
+                "&:hover": { bgcolor: "#115293" },
+                borderRadius: "8px",
+                py: "8px",
+                px: "12px",
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
               }}
             >
               Add Production
@@ -362,8 +361,26 @@ function Production() {
             </Typography>
           </Box>
 
-          <Paper sx={{ mb: 3, p: { xs: 1.5, sm: 2 }, display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 }, borderRadius: '8px', boxShadow: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}>
+          <Paper
+            sx={{
+              mb: 3,
+              p: { xs: 1.5, sm: 2 },
+              display: "flex",
+              flexDirection: "column",
+              gap: { xs: 1.5, sm: 2 },
+              borderRadius: "8px",
+              boxShadow: 3,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: { xs: 1, sm: 2 },
+              }}
+            >
               {/* Search Bar */}
               <TextField
                 variant="outlined"
@@ -372,25 +389,32 @@ function Production() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 sx={{
-                  width: { xs: '100%', sm: '300px', md: '350px' },
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '25px',
-                    '& fieldset': { borderColor: '#e0e0e0' },
-                    '&:hover fieldset': { borderColor: '#bdbdbd' },
-                    '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: '2px' },
+                  width: { xs: "100%", sm: "300px", md: "350px" },
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "25px",
+                    "& fieldset": { borderColor: "#e0e0e0" },
+                    "&:hover fieldset": { borderColor: "#bdbdbd" },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#1976d2",
+                      borderWidth: "2px",
+                    },
                   },
-                  '& .MuiInputBase-input': { padding: '8px 12px' },
+                  "& .MuiInputBase-input": { padding: "8px 12px" },
                 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: '#757575' }} />
+                      <SearchIcon sx={{ color: "#757575" }} />
                     </InputAdornment>
                   ),
                 }}
               />
               {/* Search By Select (re-arranged into a Stack) */}
-              <Stack direction={isMobile ? "column" : "row"} spacing={2} alignItems={isMobile ? "stretch" : "center"}>
+              <Stack
+                direction={isMobile ? "column" : "row"}
+                spacing={2}
+                alignItems={isMobile ? "stretch" : "center"}
+              >
                 <TextField
                   select
                   label="Search By"
@@ -418,13 +442,15 @@ function Production() {
                 >
                   Sort by Date {sortOrder === "asc" ? "(Oldest)" : "(Newest)"}
                 </Button>
-                {(searchTerm || searchField !== 'productName' || sortOrder !== 'desc') && (
+                {(searchTerm ||
+                  searchField !== "productName" ||
+                  sortOrder !== "desc") && (
                   <Button
                     variant="outlined"
                     onClick={handleClearFilters}
                     startIcon={<ClearIcon />}
                     size="small"
-                    sx={{ ml: { xs: 0, md: 'auto' }, mt: { xs: 1, md: 0 } }}
+                    sx={{ ml: { xs: 0, md: "auto" }, mt: { xs: 1, md: 0 } }}
                   >
                     Clear Filters
                   </Button>
@@ -441,38 +467,63 @@ function Production() {
             <>
               <TableContainer
                 component={Paper}
-                sx={{ boxShadow: 3, borderRadius: 2, overflowX: "auto", maxHeight: { xs: '50vh', md: '70vh' } }}
+                sx={{
+                  boxShadow: 3,
+                  borderRadius: 2,
+                  overflowX: "auto",
+                  maxHeight: { xs: "50vh", md: "70vh" },
+                }}
               >
-                <Table stickyHeader size="small" sx={{ minWidth: 900, tableLayout: "fixed" }}> {/* Increased minWidth */}
+                <Table
+                  stickyHeader
+                  size="small"
+                  sx={{ minWidth: 900, tableLayout: "fixed" }}
+                >
+                  {" "}
+                  {/* Increased minWidth */}
                   <TableHead>
                     <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%", minWidth: '120px' }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "15%", minWidth: "120px" }}
+                      >
                         Member
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%", minWidth: '120px' }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "15%", minWidth: "120px" }}
+                      >
                         Product Name
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%", minWidth: '120px' }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "15%", minWidth: "120px" }}
+                      >
                         Season
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "8%", minWidth: '80px' }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "8%", minWidth: "80px" }}
+                      >
                         Quantity
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "12%", minWidth: '100px' }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "12%", minWidth: "100px" }}
+                      >
                         Unit Price
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "12%", minWidth: '100px' }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "12%", minWidth: "100px" }}
+                      >
                         Amount
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%", minWidth: '90px' }}>
+                      <StyledTableHeaderCell
+                        sx={{ width: "10%", minWidth: "90px" }}
+                      >
                         Date
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell
                         align="center"
-                        sx={{ width: "8%", minWidth: '80px' }}
+                        sx={{ width: "8%", minWidth: "80px" }}
                       >
                         Action
                       </StyledTableHeaderCell>
@@ -601,18 +652,30 @@ function Production() {
         aria-describedby="confirm-delete-dialog-description"
       >
         <DialogTitle id="confirm-delete-dialog-title">
-          <Typography variant="h6" color="error">Confirm Deletion</Typography>
+          <Typography variant="h6" color="error">
+            Confirm Deletion
+          </Typography>
         </DialogTitle>
         <DialogContent>
           <Typography id="confirm-delete-dialog-description">
-            Are you sure you want to permanently delete this production record? This action cannot be undone.
+            Are you sure you want to permanently delete this production record?
+            This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelDelete} variant="outlined" color="secondary">
+          <Button
+            onClick={handleCancelDelete}
+            variant="outlined"
+            color="secondary"
+          >
             Cancel
           </Button>
-          <Button onClick={confirmDeleteProduction} variant="contained" color="error" autoFocus>
+          <Button
+            onClick={confirmDeleteProduction}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
             Delete
           </Button>
         </DialogActions>

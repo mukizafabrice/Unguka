@@ -94,24 +94,35 @@ function Loan() {
   const rowsPerPage = 7; // Consistent rows per page, changed from 6
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("member"); // Default search field
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter by loan status
-  const [sortOrder, setSortOrder] = useState("desc"); // Default sort by date descending
+  const [searchField, setSearchField] = useState("member");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("desc");
 
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  // Inside your loadLoans function
   const loadLoans = useCallback(async () => {
     setLoading(true);
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       const userId = user?.id;
-      if (userId) {
-        const loansData = await fetchLoansById(userId);
-        setLoans(loansData || []);
-      } else {
+
+      if (!userId) {
         console.warn("User ID not found in localStorage. Cannot fetch loans.");
         setLoans([]);
+        return; // Exit early if no user ID
+      }
+
+      const loansData = await fetchLoansById(userId);
+      console.log("Fetched loans data:", loansData); // Is this an empty array?
+
+      if (loansData && loansData.length > 0) {
+        setLoans(loansData);
+        console.log("Loans state updated with data.");
+      } else {
+        setLoans([]);
+        console.log("No loans found for this user.");
       }
     } catch (error) {
       console.error("Failed to fetch loans:", error);
@@ -362,9 +373,6 @@ function Loan() {
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Season
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        Quantity
-                      </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Amount Owed
                       </StyledTableHeaderCell>
@@ -384,18 +392,16 @@ function Loan() {
                             {(currentPage - 1) * rowsPerPage + index + 1}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {loan.purchaseInputId?.userId?.names || "N/A"}
+                            {loan.purchaseInputId?.userId?.names ||
+                              loan.userId?.names}
                           </StyledTableCell>
                           <StyledTableCell>
                             {loan.purchaseInputId?.productId?.productName ||
-                              "N/A"}
+                              "money"}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {loan.purchaseInputId?.seasonId?.name || "N/A"} (
-                            {loan.purchaseInputId?.seasonId?.year || "N/A"})
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {loan.purchaseInputId?.quantity || "N/A"}kg
+                            {loan.seasonId?.name} (
+                            {loan.seasonId?.year || "N/A"})
                           </StyledTableCell>
                           <StyledTableCell>
                             {formatCurrency(loan.amountOwed)}

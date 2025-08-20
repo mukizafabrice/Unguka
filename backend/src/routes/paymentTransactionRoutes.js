@@ -11,6 +11,6 @@ import { checkCooperativeAccess } from "../middleware/coopAccessMiddleware.js"; 
 const router = express.Router();
 router.get("/", protect, getAllPaymentTransactions);
 
-router.get("/:userId", protect, getAllPaymentTransactionsById);
+router.get("/:userId", getAllPaymentTransactionsById);
 
 export default router;

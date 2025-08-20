@@ -50,23 +50,9 @@ export const fetchPurchaseInputs = async (
   }
 };
 
-// Get a single purchase input by ID
-// Requires cooperativeId to be passed (e.g., from user context on frontend) for authorization
-export const fetchPurchaseInputById = async (id, cooperativeId) => {
-  if (!cooperativeId) {
-    return {
-      success: false,
-      message: "Cooperative ID is required to fetch purchase input details.",
-    };
-  }
-  try {
-    const response = await axiosInstance.get(`${API_URL}/${id}`, {
-      params: { cooperativeId },
-    });
-    return handleResponse(response);
-  } catch (error) {
-    return handleError(error, `Failed to fetch purchase input with ID ${id}.`);
-  }
+export const fetchPurchaseInputsById = async (id) => {
+  const response = await axiosInstance.get(`/purchaseInputs/${id}`);
+  return response.data;
 };
 
 // Create a new purchase input

@@ -28,11 +28,8 @@ router.get(
   authorizeRoles(["manager", "superadmin", "member"]),
   getPaymentSummary
 );
-router.get(
-  "/:userId",
-  authorizeRoles("manager", "superadmin", "member"),
-  getPaymentById
-);
+router.get("/:userId", getPaymentById);
+
 router.put("/:id", authorizeRoles("manager"), updatePayment);
 router.delete("/:id", authorizeRoles("manger"), deletePayment);
 

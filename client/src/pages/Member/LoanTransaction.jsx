@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchLoanTransactions } from "../../services/loanTransactionService";
+import { fetchLoanTransactionsById } from "../../services/loanTransactionService";
 import {
   Box,
   Card,
@@ -45,23 +45,22 @@ const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
 // Styled component for table body cells
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   padding: "8px 16px", // Consistent row padding
-  borderBottom: `1px solid ${theme.palette.divider}`, // Keep divider for row separation
-  backgroundColor: theme.palette.background.paper, // A slightly different background for body cells
-  color: theme.palette.text.primary, // Ensure text color is readable
-  wordWrap: "break-word", // Ensure text wraps
-  whiteSpace: "normal", // Allow normal whitespace handling
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  backgroundColor: theme.palette.background.paper,
+  color: theme.palette.text.primary,
+  wordWrap: "break-word",
+  whiteSpace: "normal",
   [theme.breakpoints.down("sm")]: {
     padding: "4px 6px",
     fontSize: "0.65rem",
   },
 }));
 
-// Styled component for table header cells (updated for no background)
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
-  padding: "12px 16px", // Slightly more padding for headers
-  backgroundColor: "transparent", // Removed background color
-  color: theme.palette.text.primary, // Set text color to primary text for readability
-  fontWeight: 600, // Bolder font weight
+  padding: "12px 16px",
+  backgroundColor: "transparent",
+  color: theme.palette.text.primary,
+  fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`, // Thicker border bottom, matching divider for subtlety
   "&:first-of-type": {
     borderTopLeftRadius: theme.shape.borderRadius,
@@ -113,7 +112,7 @@ function LoanTransactions() {
       const userId = user?.id;
       if (userId) {
         // Ensure userId exists before fetching
-        const res = await fetchLoanTransactions(userId); // Assuming fetchLoanTransactions now takes userId
+        const res = await fetchLoanTransactionsById(userId); // Assuming fetchLoanTransactions now takes userId
         setTransactions(res.transactions || []);
       } else {
         console.warn(
@@ -455,7 +454,6 @@ function LoanTransactions() {
           )}
         </CardContent>
       </Card>
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );
 }

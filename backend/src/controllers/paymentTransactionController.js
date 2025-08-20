@@ -39,8 +39,9 @@ export const getAllPaymentTransactionsById = async (req, res) => {
   }
 
   try {
-    const PaymentTransactions = await PaymentTransaction.find(userId)
+    const PaymentTransactions = await PaymentTransaction.find({ userId })
       .populate("userId", "names")
+      .populate("paymentId", "status")
       .sort({ transactionDate: -1 });
     res.status(200).json(PaymentTransactions);
   } catch (error) {

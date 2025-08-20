@@ -37,13 +37,7 @@ router.get(
   getProductions
 );
 
-router.get(
-  "/by-user/:id",
-  protect,
-  authorizeRoles(["superadmin", "manager", "member"]),
-  checkCooperativeAccess("query"),
-  getProductionsByUserId
-);
+router.get("/:id", getProductionsByUserId);
 
 router.put(
   "/:id",

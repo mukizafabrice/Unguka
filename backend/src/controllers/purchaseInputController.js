@@ -166,11 +166,11 @@ export const getAllPurchaseInputs = async (req, res) => {
       query.userId = userId;
     }
 
-    const purchases = await PurchaseInput.find(query) // ⭐ UPDATED: Apply filter
+    const purchases = await PurchaseInput.find(query)
       .populate("userId", "names phoneNumber")
       .populate("productId", "productName")
       .populate("seasonId", "name year")
-      .populate("cooperativeId", "name registrationNumber") // ⭐ NEW: Populate cooperative info
+      .populate("cooperativeId", "name registrationNumber")
       .sort({ createdAt: -1 });
 
     res.status(200).json(purchases);
@@ -180,32 +180,18 @@ export const getAllPurchaseInputs = async (req, res) => {
   }
 };
 
-export const getPurchaseInputById = async (req, res) => {
+export const getPurchaseInputByUserId = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ messages: "user is required" });
+  }
   try {
-    const { id } = req.params;
-    const { cooperativeId } = req.query;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid purchase input ID format." });
-    }
-    if (cooperativeId && !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid cooperative ID format." });
-    }
-
-    let query = { _id: id };
-    if (cooperativeId) {
-      query.cooperativeId = cooperativeId; // ⭐ NEW: Filter by cooperativeId
-    }
-
-    const purchase = await PurchaseInput.findOne(query) // ⭐ UPDATED: Use findOne with query
+    const purchase = await PurchaseInput.find({ userId })
       .populate("userId", "names phoneNumber")
       .populate("productId", "productName")
       .populate("seasonId", "name year")
-      .populate("cooperativeId", "name registrationNumber") // ⭐ NEW: Populate cooperative info
+      .populate("cooperativeId", "name registrationNumber")
       .sort({ createdAt: -1 });
 
     if (!purchase) {
@@ -214,7 +200,7 @@ export const getPurchaseInputById = async (req, res) => {
         .json({ message: "Purchase input not found or unauthorized access." });
     }
 
-    res.status(200).json(purchase); // Return single purchase object
+    res.status(200).json(purchase);
   } catch (error) {
     console.error("Error fetching purchase input by ID:", error);
     if (error.name === "CastError") {

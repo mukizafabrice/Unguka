@@ -1,11 +1,10 @@
 import axiosInstance from "../api/axiosInstance";
 
-// ⭐ UPDATED: fetchCash now accepts a cooperativeId
 export const fetchCash = async (cooperativeId) => {
   try {
-    // If cooperativeId is provided, add it as a query parameter
-    const params = cooperativeId ? { params: { cooperativeId } } : {};
-    const response = await axiosInstance.get("/cash", params);
+    const response = await axiosInstance.get(
+      `/cash?cooperativeId=${cooperativeId}`
+    );
     return {
       success: true,
       data: response.data.data,

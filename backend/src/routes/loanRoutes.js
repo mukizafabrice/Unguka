@@ -26,7 +26,7 @@ router.get(
 // Get a specific loan by ID. Access is restricted to members, managers, and superadmins,
 // but the controller ensures they can only view loans within their cooperative.
 router.get(
-  "/:id",
+  "/:userId",
   protect,
   authorizeRoles(["member", "manager", "superadmin"]),
   getLoanById

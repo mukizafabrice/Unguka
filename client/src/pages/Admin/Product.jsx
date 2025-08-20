@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-
 import { useAuth } from "../../contexts/AuthContext";
 
 import {
@@ -14,9 +13,9 @@ import {
 
 import {
   Box,
-  Card, // Added Card import to match Loan.jsx structure
-  CardHeader, // Added CardHeader import to match Loan.jsx structure
-  CardContent, // Added CardContent import to match Loan.jsx structure
+  Card,
+  CardHeader,
+  CardContent,
   Typography,
   Button,
   Table,
@@ -92,7 +91,6 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 }));
 
 function Product() {
-  
   const { user } = useAuth();
   const cooperativeId = user?.cooperativeId;
 

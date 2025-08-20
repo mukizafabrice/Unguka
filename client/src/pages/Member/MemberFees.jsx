@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { toast } from "react-toastify"; // Keep toast import for calling toast functions
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import { fetchAllFeesById } from "../../services/feesService";
 
@@ -78,8 +79,6 @@ const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
     case "paid":
       return "success";
-    case "partially paid": // Use "partially paid" as the status string
-      return "info"; // New color for partially paid
     case "pending": // Assuming "pending" for remaining amount > 0
       return "warning";
     default:
@@ -108,6 +107,7 @@ function Fees() {
       const userId = user?.id;
       if (userId) {
         const feesData = await fetchAllFeesById(userId);
+
         setFees(feesData || []); // Ensure data is an array
       } else {
         console.warn("User ID not found in localStorage. Cannot fetch fees.");
@@ -146,10 +146,6 @@ function Fees() {
             );
           case "feeType":
             return fee.feeTypeId?.name
-              ?.toLowerCase()
-              .includes(lowerCaseSearchTerm);
-          case "cooperative": // New search field for cooperative
-            return fee.cooperativeId?.name
               ?.toLowerCase()
               .includes(lowerCaseSearchTerm);
           default:
@@ -241,21 +237,12 @@ function Fees() {
               onChange={(e) => setSearchField(e.target.value)}
               sx={{ minWidth: 120, flexShrink: 0 }}
             >
-              <MenuItem value="user">User</MenuItem>
               <MenuItem value="season">Season</MenuItem>
               <MenuItem value="feeType">Fee Type</MenuItem>
-              <MenuItem value="cooperative">Cooperative</MenuItem>{" "}
-              {/* New search option */}
             </TextField>
             <TextField
               label={`Search ${
-                searchField === "user"
-                  ? "User Name"
-                  : searchField === "season"
-                  ? "Season/Year"
-                  : searchField === "feeType"
-                  ? "Fee Type Name"
-                  : "Cooperative Name" // Dynamic label for cooperative
+                searchField === "season" ? "Season/Year" : "Fee Type Name"
               }`}
               variant="outlined"
               size="small"
@@ -281,8 +268,6 @@ function Fees() {
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="paid">Paid</MenuItem>
-              <MenuItem value="partially paid">Partially Paid</MenuItem>{" "}
-              {/* Updated status */}
               <MenuItem value="pending">Pending</MenuItem>
             </TextField>
             <Button
@@ -338,10 +323,7 @@ function Fees() {
                         ID
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        User
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        Cooperative {/* New table header for Cooperative */}
+                        Member
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Season
@@ -349,13 +331,13 @@ function Fees() {
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Fee Type
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Amount Owed
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Amount Paid
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Remaining Amount
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "10%" }}>
@@ -372,11 +354,6 @@ function Fees() {
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.userId?.names || "N/A"}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {" "}
-                            {/* New table cell for Cooperative */}
-                            {fee.cooperativeId?.name || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.seasonId?.name || "N/A"} (
@@ -413,9 +390,7 @@ function Fees() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                          {" "}
-                          {/* Increased colspan */}
+                        <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
                             No fee records found.
                           </Typography>

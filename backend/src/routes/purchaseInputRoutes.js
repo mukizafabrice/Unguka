@@ -3,7 +3,7 @@ import express from "express";
 import {
   createPurchaseInput,
   getAllPurchaseInputs,
-  getPurchaseInputById,
+  getPurchaseInputByUserId,
   updatePurchaseInput,
   deletePurchaseInput,
 } from "../controllers/purchaseInputController.js";
@@ -29,13 +29,7 @@ router.get(
   getAllPurchaseInputs
 );
 
-router.get(
-  "/:id",
-  protect,
-  authorizeRoles(["superadmin", "manager", "member"]),
-  checkCooperativeAccess("query"),
-  getPurchaseInputById
-);
+router.get("/:userId", protect, getPurchaseInputByUserId);
 
 router.put(
   "/:id",

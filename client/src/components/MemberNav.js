@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import Logout from "./Logout";
-
+import { useAuth } from "../contexts/AuthContext";
 import {
   Home,
   Package,
@@ -32,19 +32,20 @@ function SideNav({ isHide }) {
     financials: false,
     admin: false,
   });
-
+  const { user } = useAuth();
+  const names = user?.names;
   const toggleMenu = (menu) => {
     setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
   };
 
   return (
     <div className={`sidebar ${isHide ? "hide" : ""}`}>
-      <div className="sidebar-header">Unguka CO</div>
+      <div className="sidebar-header">{names}</div>
       <ul className="sidebar-menu">
         <li>
           <NavLink
-            to="/member/memberDashbord"
-            end
+            to="/member/dashboard"
+            en
             className={({ isActive }) =>
               `sidebar-link ${isActive ? "active" : ""}`
             }

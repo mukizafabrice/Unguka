@@ -2,11 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import { useAuth } from "../../contexts/AuthContext"; // To get user's cooperativeId
-
-import {
-  fetchProductionsByUserId, // Specific function for fetching a member's productions
-} from "../../services/productionService";
+import { fetchProductionsById } from "../../services/productionService";
 
 import {
   Box,
@@ -20,23 +16,22 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper, // Added for search/filter section styling
+  Paper,
   TextField,
   InputAdornment,
   Stack,
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress,
-  MenuItem,
-  Button,
+  CircularProgress, // Added CircularProgress for loading state
+  MenuItem, // Added MenuItem for dropdowns
+  Button, // Added Button for sort control
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import ClearIcon from "@mui/icons-material/Clear"; // For Clear Filters button
 
-// Styled components consistent with ManagerTable.jsx design
+// Styled components consistent with other dashboards
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -60,7 +55,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "#f5f5f5", // Explicit background for header
+  backgroundColor: "transparent",
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -79,58 +74,47 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 }));
 
 function Production() {
-  // Get current user's ID and cooperative ID from AuthContext
-  const { user } = useAuth();
-  const userId = user?._id; // The logged-in member's ID
-  const cooperativeId = user?.cooperativeId; // The logged-in member's cooperative ID
-
   const [productions, setProductions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Added loading state
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 7; // Consistent rows per page
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("productName"); // Default search field
-  const [sortOrder, setSortOrder] = useState("desc"); // Default sort by creation date descending
+  const [sortOrder, setSortOrder] = useState("desc"); // Default sort by date descending
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to load production data for the specific user and cooperative
+  // Function to fetch productions from the backend
   const loadProductions = useCallback(async () => {
-    if (!userId || !cooperativeId) {
-      toast.error(
-        "User ID or Cooperative ID is not available. Cannot load productions."
-      );
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      // Fetch productions specific to this user and cooperative
-      const response = await fetchProductionsByUserId(userId, cooperativeId);
-      if (response.success && Array.isArray(response.data)) {
-        setProductions(response.data);
+      const user = JSON.parse(localStorage.getItem("user"));
+      const userId = user?.id; // Get userId safely
+
+      // Only fetch if userId is available
+      if (userId) {
+        const productionsData = await fetchProductionsById(userId);
+        setProductions(productionsData || []); // Ensure data is an array
       } else {
-        console.error("Failed to fetch productions:", response.message);
-        toast.error(response.message || "Failed to load productions.");
+        console.warn(
+          "User ID not found in localStorage. Cannot fetch productions."
+        );
         setProductions([]);
       }
     } catch (error) {
-      console.error("Failed to fetch productions (catch block):", error);
-      toast.error("An unexpected error occurred while loading productions.");
-      setProductions([]);
+      console.error("Failed to fetch productions:", error);
+      toast.error("Failed to load productions.");
+      setProductions([]); // Reset productions on error
     } finally {
       setLoading(false);
     }
-  }, [userId, cooperativeId]);
+  }, []);
 
+  // Initial data load on component mount
   useEffect(() => {
-    if (userId && cooperativeId) {
-      // Only load if both IDs are available
-      loadProductions();
-    }
-  }, [userId, cooperativeId, loadProductions]);
+    loadProductions();
+  }, [loadProductions]);
 
   // Filter and sort productions based on search and sort order
   const filteredAndSortedProductions = useMemo(() => {
@@ -141,7 +125,7 @@ function Production() {
       filtered = filtered.filter((production) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
         switch (searchField) {
-          case "member": // For member view, this typically searches the logged-in user's name
+          case "member":
             return production.userId?.names
               ?.toLowerCase()
               .includes(lowerCaseSearchTerm);
@@ -214,19 +198,11 @@ function Production() {
     }).format(amount || 0); // Handle null/undefined amount gracefully
   };
 
-  const handleClearFilters = () => {
-    setSearchTerm("");
-    setSearchField("productName");
-    setSortOrder("desc");
-    setCurrentPage(1);
-  };
-
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         <StyledCardHeader
-          title={<Typography variant="h6">My Productions</Typography>}
-          // Removed "Add Production" button as this is a member's read-only view
+          title={<Typography variant="h6">Productions </Typography>}
         />
         <CardContent
           sx={{
@@ -239,109 +215,70 @@ function Production() {
           <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
               This is your Productions Dashboard, showing all the products
-              you’ve produced and their details within your cooperative.
+              you’ve produced and their details.
             </Typography>
           </Box>
 
-          {/* Search and Sort Section - Styled like ManagersTable's filter area */}
-          <Paper
-            sx={{
-              mb: 3,
-              p: { xs: 1.5, sm: 2 },
-              display: "flex",
-              flexDirection: "column",
-              gap: { xs: 1.5, sm: 2 },
-              borderRadius: "8px",
-              boxShadow: 3,
-            }}
+          {/* Search and Sort Section */}
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={2}
+            mb={3}
+            alignItems={isMobile ? "stretch" : "center"}
+            sx={{ flexShrink: 0 }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: { xs: 1, sm: 2 },
-              }}
+            <TextField
+              select
+              label="Search By"
+              size="small"
+              value={searchField}
+              onChange={(e) => setSearchField(e.target.value)}
+              sx={{ minWidth: 120, flexShrink: 0 }}
             >
-              {/* Search Bar */}
-              <TextField
-                variant="outlined"
-                size="small"
-                placeholder="Search productions..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{
-                  width: { xs: "100%", sm: "300px", md: "350px" },
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "25px",
-                    "& fieldset": { borderColor: "#e0e0e0" },
-                    "&:hover fieldset": { borderColor: "#bdbdbd" },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#1976d2",
-                      borderWidth: "2px",
-                    },
-                  },
-                  "& .MuiInputBase-input": { padding: "8px 12px" },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ color: "#757575" }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              {/* Search By and Sort Button */}
-              <Stack
-                direction={isMobile ? "column" : "row"}
-                spacing={2}
-                alignItems={isMobile ? "stretch" : "center"}
-              >
-                <TextField
-                  select
-                  label="Search By"
-                  size="small"
-                  value={searchField}
-                  onChange={(e) => setSearchField(e.target.value)}
-                  sx={{ minWidth: 120, flexShrink: 0 }}
-                >
-                  {/* For members, 'Member' search would effectively be searching their own name if populated */}
-                  <MenuItem value="productName">Product Name</MenuItem>
-                  <MenuItem value="season">Season/Year</MenuItem>
-                  <MenuItem value="date">Date</MenuItem>
-                </TextField>
-                <Button
-                  variant="outlined"
-                  size="medium"
-                  onClick={handleSort}
-                  startIcon={
-                    sortOrder === "asc" ? (
-                      <ArrowUpwardIcon />
-                    ) : (
-                      <ArrowDownwardIcon />
-                    )
-                  }
-                  sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-                >
-                  Sort by Date {sortOrder === "asc" ? "(Oldest)" : "(Newest)"}
-                </Button>
-                {(searchTerm ||
-                  searchField !== "productName" ||
-                  sortOrder !== "desc") && (
-                  <Button
-                    variant="outlined"
-                    onClick={handleClearFilters}
-                    startIcon={<ClearIcon />}
-                    size="small"
-                    sx={{ ml: { xs: 0, md: "auto" }, mt: { xs: 1, md: 0 } }}
-                  >
-                    Clear Filters
-                  </Button>
-                )}
-              </Stack>
-            </Box>
-          </Paper>
+              <MenuItem value="member">Member</MenuItem>
+              <MenuItem value="productName">Product Name</MenuItem>
+              <MenuItem value="season">Season</MenuItem>
+              <MenuItem value="date">Date</MenuItem>
+            </TextField>
+            <TextField
+              label={`Search ${
+                searchField === "member"
+                  ? "Member"
+                  : searchField === "productName"
+                  ? "Product Name"
+                  : searchField === "season"
+                  ? "Season/Year"
+                  : "Date (e.g., 2/15/2023)"
+              }`}
+              variant="outlined"
+              size="small"
+              fullWidth={isMobile}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={handleSort}
+              startIcon={
+                sortOrder === "asc" ? (
+                  <ArrowUpwardIcon />
+                ) : (
+                  <ArrowDownwardIcon />
+                )
+              }
+              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
+            >
+              Sort by Date {sortOrder === "asc" ? "(Oldest)" : "(Newest)"}
+            </Button>
+          </Stack>
 
           {loading ? (
             <Box
@@ -361,64 +298,44 @@ function Production() {
                 flexDirection: "column",
               }}
             >
+              {" "}
+              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
-                  boxShadow: 3, // Consistent shadow
-                  borderRadius: 2, // Consistent border radius
                   overflowX: "auto",
+                  borderRadius: 2,
+                  boxShadow: 2,
                   flexGrow: 1,
-                  maxHeight: { xs: "50vh", md: "70vh" }, // Responsive max height for table scroll
                 }}
               >
-                <Table
-                  stickyHeader
-                  size="small"
-                  sx={{ minWidth: 900, tableLayout: "fixed" }}
-                >
-                  {" "}
-                  {/* stickyHeader and minWidth */}
+                <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
-                    <TableRow>
+                    <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        sx={{ width: "15%", minWidth: "120px" }}
-                      >
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Member
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        sx={{ width: "15%", minWidth: "120px" }}
-                      >
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Product Name
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        sx={{ width: "15%", minWidth: "120px" }}
-                      >
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Season
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        sx={{ width: "10%", minWidth: "80px" }}
-                      >
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
                         Quantity
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        sx={{ width: "10%", minWidth: "100px" }}
-                      >
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
                         Unit Price
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        sx={{ width: "10%", minWidth: "100px" }}
-                      >
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
                         Amount
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        sx={{ width: "10%", minWidth: "90px" }}
-                      >
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
                         Date
                       </StyledTableHeaderCell>
-                      {/* Removed Action Header Cell */}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -454,14 +371,11 @@ function Production() {
                                 ).toLocaleDateString()
                               : "N/A"}
                           </StyledTableCell>
-                          {/* Removed Action Cells */}
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
                         <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                          {" "}
-                          {/* Adjusted colSpan */}
                           <Typography variant="body1" color="text.secondary">
                             No production found.
                           </Typography>
@@ -495,6 +409,18 @@ function Production() {
           )}
         </CardContent>
       </Card>
+
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </Box>
   );
 }

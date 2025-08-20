@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import { fetchPurchaseInputById } from "../../services/purchaseInputsService";
+import { fetchPurchaseInputsById } from "../../services/purchaseInputsService";
 
 import {
   Box,
@@ -23,10 +23,10 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Button, // Added Button for sort control
-  Chip, // Added Chip for status display
+  CircularProgress,
+  MenuItem,
+  Button,
+  Chip,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
@@ -88,14 +88,14 @@ const getStatusColor = (status) => {
 
 function PurchaseInputs() {
   const [purchaseInputs, setPurchaseInputs] = useState([]);
-  const [loading, setLoading] = useState(true); // Added loading state, default true
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Consistent rows per page, changed from 6
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("member"); // Default search field
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter by status
-  const [sortOrder, setSortOrder] = useState("desc"); // Default sort by date, newest first
+  const [searchField, setSearchField] = useState("member");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("desc");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -103,7 +103,7 @@ function PurchaseInputs() {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
       currency: "RWF",
-    }).format(amount || 0); // Handle null/undefined amount gracefully
+    }).format(amount || 0);
   };
 
   const loadPurchaseInputs = useCallback(async () => {
@@ -111,9 +111,23 @@ function PurchaseInputs() {
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       const userId = user?.id;
+
       if (userId) {
-        const data = await fetchPurchaseInputById(userId);
-        setPurchaseInputs(data || []); // Ensure data is an array
+        const res = await fetchPurchaseInputsById(userId);
+        console.log(res);
+
+        // Check if the response is a single object.
+        // If so, wrap it in an array before setting state.
+        // If it's already an array, use it directly.
+        if (res && typeof res === "object" && !Array.isArray(res)) {
+          setPurchaseInputs([res]);
+        } else if (Array.isArray(res)) {
+          setPurchaseInputs(res);
+        } else {
+          // Fallback for unexpected data format
+          console.warn("API response was not a purchase object or array:", res);
+          setPurchaseInputs([]);
+        }
       } else {
         console.warn(
           "User ID not found in localStorage. Cannot fetch purchase inputs."
@@ -135,7 +149,8 @@ function PurchaseInputs() {
 
   // Filter and sort purchase inputs based on search, filter, and sort order
   const filteredAndSortedPurchaseInputs = useMemo(() => {
-    let filtered = purchaseInputs;
+    // 💡 FIX: Create a shallow copy of the array to ensure `.sort()` is called on an array
+    let filtered = Array.isArray(purchaseInputs) ? [...purchaseInputs] : [];
 
     // Apply search filter
     if (searchTerm) {
@@ -220,7 +235,7 @@ function PurchaseInputs() {
         <CardContent
           sx={{
             maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflow: "hidden", // Hide overflow on CardContent itself
+            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
@@ -324,8 +339,6 @@ function PurchaseInputs() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
@@ -432,8 +445,6 @@ function PurchaseInputs() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
-                          {" "}
-                          {/* Adjusted colspan */}
                           <Typography variant="body1" color="text.secondary">
                             No purchases found.
                           </Typography>
@@ -445,7 +456,6 @@ function PurchaseInputs() {
               </TableContainer>
             </Box>
           )}
-
           {totalPages > 1 && (
             <Box
               mt={3}
@@ -467,7 +477,6 @@ function PurchaseInputs() {
           )}
         </CardContent>
       </Card>
-
       <ToastContainer
         position="bottom-right"
         autoClose={3000}

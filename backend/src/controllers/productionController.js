@@ -1,17 +1,15 @@
 import Production from "../models/Production.js";
 import mongoose from "mongoose";
 import Stock from "../models/Stock.js";
-import Product from "../models/Product.js"; // Assuming Product model also has cooperativeId
-import User from "../models/User.js"; // Import User model to populate user details
-import Season from "../models/Season.js"; // ⭐ ADD THIS LINE: Import the Season model
+import Product from "../models/Product.js";
+import User from "../models/User.js";
+import Season from "../models/Season.js";
 
 export const createProduction = async (req, res) => {
   try {
     const { userId, productId, seasonId, quantity, unitPrice, cooperativeId } =
       req.body;
 
-    // --- Input Validation and Type Conversion ---
-    // Ensure IDs are valid Mongoose ObjectIds
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(productId) ||
@@ -70,7 +68,6 @@ export const createProduction = async (req, res) => {
       });
     }
 
-    // ⭐ CORRECTED LINE: Use the 'Season' model to find the season
     const season = await Season.findOne({ _id: seasonId, cooperativeId });
     if (!season) {
       return res.status(404).json({
@@ -84,7 +81,7 @@ export const createProduction = async (req, res) => {
       userId,
       productId,
       seasonId,
-      cooperativeId, // Include cooperativeId
+      cooperativeId,
       quantity: parsedQuantity,
       unitPrice: parsedUnitPrice,
       totalPrice,
@@ -131,7 +128,7 @@ export const createProduction = async (req, res) => {
 // Get all productions (can be filtered by cooperativeId)
 export const getAllProductions = async (req, res) => {
   try {
-    const { cooperativeId } = req.query; // ⭐ Get cooperativeId from query
+    const { cooperativeId } = req.query;
     let query = {};
 
     if (cooperativeId) {
@@ -140,7 +137,7 @@ export const getAllProductions = async (req, res) => {
           .status(400)
           .json({ success: false, message: "Invalid cooperative ID format." });
       }
-      query.cooperativeId = cooperativeId; // ⭐ Apply filter
+      query.cooperativeId = cooperativeId;
     }
 
     const productions = await Production.find(query) // ⭐ Apply query filter
@@ -212,49 +209,27 @@ export const getProductions = async (req, res) => {
   }
 };
 
-// Get productions for a specific user (scoped by cooperativeId)
+// Get one production by ID
 export const getProductionsByUserId = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { cooperativeId } = req.query; // ⭐ Get cooperativeId from query for authorization
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid user ID format." });
-    }
-    if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Cooperative ID is required and must be valid.",
-      });
-    }
-
-    const productions = await Production.find({ userId, cooperativeId }) // ⭐ Filter by cooperativeId
+    const productions = await Production.find({ userId })
       .populate("userId", "names")
       .populate("productId", "productName")
       .populate("seasonId", "name year")
-      .populate("cooperativeId", "name") // ⭐ Populate cooperative info
       .sort({ createdAt: -1 })
       .exec();
 
     if (!productions || productions.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No productions found for this user in this cooperative",
-      }); // Consistent response
+      return res
+        .status(404)
+        .json({ message: "No productions found for this user" });
     }
 
-    res.status(200).json({
-      success: true,
-      data: productions,
-      message: "Productions fetched successfully",
-    });
+    res.status(200).json(productions);
   } catch (error) {
-    console.error("Error fetching productions by user ID:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 

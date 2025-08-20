@@ -48,22 +48,9 @@ export const fetchPlots = async (userId = null, cooperativeId = null) => {
 };
 
 // Get a single plot by ID
-// Requires cooperativeId to be passed (e.g., from user context on frontend) for authorization
-export const fetchPlotById = async (id, cooperativeId) => {
-  if (!cooperativeId) {
-    return {
-      success: false,
-      message: "Cooperative ID is required to fetch plot details.",
-    };
-  }
-  try {
-    const response = await axiosInstance.get(`${API_URL}/${id}`, {
-      params: { cooperativeId },
-    });
-    return handleResponse(response);
-  } catch (error) {
-    return handleError(error, `Failed to fetch plot with ID ${id}.`);
-  }
+export const fetchPlotById = async (id) => {
+  const response = await axiosInstance.get(`/plots/${id}`);
+  return response.data;
 };
 
 // Create a new plot

@@ -80,41 +80,25 @@ export const getAllPlots = async (req, res) => {
   }
 };
 
-// Get one Plot by ID with populated fields
 export const getPlotById = async (req, res) => {
   try {
-    const { id } = req.params;
-    // ⭐ NEW: Expect cooperativeId in query for authorization
-    const { cooperativeId } = req.query;
+    const { userId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid plot ID" });
     }
 
-    let query = { _id: id };
-    if (cooperativeId) {
-      query.cooperativeId = cooperativeId; // Ensure plot belongs to the specified cooperative
-    }
-
-    // ⭐ UPDATED: Removed productId population as it's no longer in the model
-    const plot = await Plot.findOne(query) // Use findOne with the combined query
+    const plot = await Plot.find({ userId })
       .populate("userId", "names phoneNumber")
-      .populate("cooperativeId", "name registrationNumber") // Populate cooperative info
       .sort({ createdAt: -1 });
 
     if (!plot) {
-      return res
-        .status(404)
-        .json({ message: "Plot not found or unauthorized access" });
+      return res.status(404).json({ message: "Plot not found" });
     }
 
     res.status(200).json({ data: plot });
   } catch (error) {
     console.error("Error fetching plot:", error);
-    // Handle invalid ID format
-    if (error.name === "CastError") {
-      return res.status(400).json({ message: "Invalid plot ID format." });
-    }
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -255,4 +239,3 @@ export const deletePlot = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-  

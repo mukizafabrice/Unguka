@@ -2,15 +2,15 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "react-toastify"; // Keep toast for individual notifications
 import "react-toastify/dist/ReactToastify.css";
 
-// ⭐ NEW: Import useAuth to get the current user's cooperativeId
+
 import { useAuth } from "../../contexts/AuthContext";
 
 import {
-  fetchAllSales, // ⭐ CORRECTED: Renamed from fetchSales to fetchAllSales
-  deleteSale, // ⭐ CORRECTED: Renamed from deleteSales to deleteSale
-  updateSale, // ⭐ CORRECTED: Renamed from updateSales to updateSale
-  createSale, // ⭐ CORRECTED: Renamed from createSales to createSale
-} from "../../services/salesService"; // Ensure named imports match the service file
+  fetchAllSales, 
+  deleteSale,
+  updateSale, 
+  createSale, 
+} from "../../services/salesService";
 
 import {
   Box,
@@ -106,9 +106,9 @@ const getStatusColor = (status) => {
 };
 
 function Sales() {
-  // ⭐ Get user and cooperativeId from AuthContext
+
   const { user } = useAuth();
-  const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the manager belongs to
+  const cooperativeId = user?.cooperativeId;
 
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -116,7 +116,7 @@ function Sales() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // ⭐ NEW STATE FOR CONFIRMATION DIALOG
+
   const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
   const [saleToDeleteId, setSaleToDeleteId] = useState(null);
 

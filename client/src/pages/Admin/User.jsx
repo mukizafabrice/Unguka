@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { toast } from "react-toastify"; // Only import 'toast' here, not 'ToastContainer'
-// The following line is commented out to resolve a compilation error related to CSS imports in this environment.
-// If you are running this in a full React project, ensure your build setup (e.g., Webpack, Vite)
-// is configured to handle CSS imports, or consider importing your main CSS file globally.
-// import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
+
+import "react-toastify/dist/ReactToastify.css";
 import {
   fetchUsers,
   createUser,
@@ -134,7 +132,9 @@ function User() {
       } else {
         console.error("API returned invalid data format or failed:", response);
         setUsers([]);
-        toast.error(response.message || "Received invalid data from the server.");
+        toast.error(
+          response.message || "Received invalid data from the server."
+        );
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
@@ -165,13 +165,10 @@ function User() {
         toast.error(result.message);
       }
     } catch (error) {
-      // This catch block will now primarily handle network errors or unhandled exceptions
-      // from the service call itself, not necessarily backend validation errors.
       console.error("Unexpected error in handleAddUser:", error);
       toast.error("An unexpected error occurred during user creation.");
     }
   };
-
 
   const handleUserUpdated = async (id, updatedUserData) => {
     try {
@@ -361,7 +358,8 @@ function User() {
               sx={{ minWidth: isMobile ? "100%" : 180 }}
             >
               <MenuItem value="all">All</MenuItem>
-              <MenuItem value="superadmin">Superadmin</MenuItem> {/* Added superadmin */}
+              <MenuItem value="superadmin">Superadmin</MenuItem>{" "}
+              {/* Added superadmin */}
               <MenuItem value="manager">Manager</MenuItem> {/* Added manager */}
               <MenuItem value="member">Member</MenuItem>
               <MenuItem value="guest">Guest</MenuItem>

@@ -1,6 +1,5 @@
 import LoanTransaction from "../models/LoanTransaction.js";
 
-
 export const getAllLoanTransactions = async (req, res) => {
   const { cooperativeId } = req.user; // Get cooperativeId from the authenticated user
 
@@ -36,14 +35,11 @@ export const getAllLoanTransactions = async (req, res) => {
 
 export const getAllLoanTransactionsByUserId = async (req, res) => {
   const { userId } = req.params;
-  const { cooperativeId } = req.user; // Get cooperativeId from the authenticated user
-
   try {
-    const transactions = await LoanTransaction.find({ cooperativeId })
+    // Correct Approach: Find transactions that are related to a loan with the specific userId
+    const transactions = await LoanTransaction.find()
       .populate({
         path: "loanId",
-        // The match clause is now correctly filtering on the populated field.
-        match: { userId: userId },
         select: "amountOwed status purchaseInputId userId",
         populate: [
           { path: "userId", select: "names" },
@@ -60,8 +56,11 @@ export const getAllLoanTransactionsByUserId = async (req, res) => {
       })
       .sort({ transactionDate: -1 });
 
+    // Filter the transactions after population to get only those related to the user's loans
     const filteredTransactions = transactions.filter(
-      (transaction) => transaction.loanId !== null
+      (transaction) =>
+        transaction.loanId?.userId?._id?.toString() === userId ||
+        transaction.loanId?.userId?.toString() === userId
     );
 
     res.status(200).json({

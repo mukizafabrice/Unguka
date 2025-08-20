@@ -43,8 +43,6 @@ const handleServiceError = (
 export const fetchUsers = async () => {
   try {
     const response = await axiosInstance.get("/users");
-    // Assuming backend returns an array of users directly for /users endpoint
-    // We wrap it in our consistent response structure
     return {
       success: true,
       data: response.data,
