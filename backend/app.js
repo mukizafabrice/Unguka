@@ -20,12 +20,14 @@ import purchaseOutRoutes from "./src/routes/purchaseOutRoutes.js";
 import feeTypeRoutes from "./src/routes/feeTypeRoutes.js";
 import loanTransactionRoutes from "./src/routes/loanTransactionRoutes.js";
 import paymentTransactionRoutes from "./src/routes/paymentTransactionRoutes.js";
-import cooperativeRoutes from "./src/routes/cooperativeRoutes.js"; // <-- ADD THIS LINE
+import cooperativeRoutes from "./src/routes/cooperativeRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 connectDB();
+import dotenv from "dotenv";
+dotenv.config();
 
 // Middleware
 app.use(cors());

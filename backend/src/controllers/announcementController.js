@@ -1,4 +1,15 @@
 import Announcements from "../models/Announcements.js";
+import Users from "../models/User.js"; // assuming members are in Users model
+import nodemailer from "nodemailer";
+
+// Nodemailer setup
+const transporter = nodemailer.createTransport({
+  service: "gmail", // or your SMTP
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 // Create new announcement
 export const createAnnouncement = async (req, res) => {
@@ -9,6 +20,7 @@ export const createAnnouncement = async (req, res) => {
       return res.status(400).json({ message: "All fields are required." });
     }
 
+    // Save announcement
     const newAnnouncement = await Announcements.create({
       userId,
       cooperativeId,
@@ -16,8 +28,32 @@ export const createAnnouncement = async (req, res) => {
       description,
     });
 
+    // Find all users in that cooperative
+    const members = await Users.find({ cooperativeId }).select("email");
+
+    if (members.length > 0) {
+      // Collect emails
+      const emailList = members.map((m) => m.email);
+
+      // Prepare mail
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: emailList, // array works in nodemailer
+        subject: `New Announcement: ${title}`,
+        html: `
+          <h3>${title}</h3>
+          <p>${description}</p>
+          <small>Sent by your cooperative</small>
+        `,
+      };
+
+      // Send emails
+      await transporter.sendMail(mailOptions);
+    }
+
     res.status(201).json(newAnnouncement);
   } catch (error) {
+    console.error("Error creating announcement:", error);
     res.status(500).json({ message: "Failed to create announcement", error });
   }
 };
