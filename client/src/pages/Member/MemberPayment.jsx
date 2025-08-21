@@ -152,6 +152,11 @@ function Payment() {
     navigate("/member/dashboard/payment-transaction");
   };
 
+  // Add the new function to navigate to the payment summary page
+  const viewPaymentSummary = () => {
+    navigate("/member/dashboard/payment-summary");
+  };
+
   // Filter and sort payments based on search, status filter, and sort order
   const filteredAndSortedPayments = useMemo(() => {
     let filtered = payments;
@@ -225,14 +230,24 @@ function Payment() {
         <StyledCardHeader
           title={<Typography variant="h6">Payments Dashboard</Typography>}
           action={
-            <Button
-              variant="outlined"
-              size="medium"
-              startIcon={<VisibilityIcon />} // Material-UI Eye icon
-              onClick={viewPaymentTransaction}
-            >
-              View Payment Transactions
-            </Button>
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant="outlined"
+                size="medium"
+                startIcon={<VisibilityIcon />} // Material-UI Eye icon
+                onClick={viewPaymentTransaction}
+              >
+                View Payment Transactions
+              </Button>
+              <Button
+                variant="outlined"
+                size="medium"
+                startIcon={<VisibilityIcon />}
+                onClick={viewPaymentSummary}
+              >
+                Payment Summary
+              </Button>
+            </Stack>
           }
         />
         <CardContent
@@ -448,18 +463,6 @@ function Payment() {
           )}
         </CardContent>
       </Card>
-
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
     </Box>
   );
 }

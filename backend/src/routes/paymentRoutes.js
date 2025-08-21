@@ -6,6 +6,7 @@ import {
   updatePayment,
   deletePayment,
   getPaymentSummary,
+  getPaymentSummaryByUserId,
 } from "../controllers/paymentController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -29,7 +30,7 @@ router.get(
   getPaymentSummary
 );
 router.get("/:userId", getPaymentById);
-
+router.get("/details/:userId", getPaymentSummaryByUserId);
 router.put("/:id", authorizeRoles("manager"), updatePayment);
 router.delete("/:id", authorizeRoles("manger"), deletePayment);
 

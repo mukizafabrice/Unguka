@@ -1,4 +1,3 @@
-// src/pages/Super/Dashboard.jsx
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -60,44 +59,126 @@ const Dashboard = () => {
     coopGrowthData: [],
   });
 
-  const mockUserGrowthData = [
-    { name: "Jan", users: 400 },
-    { name: "Feb", users: 600 },
-    { name: "Mar", users: 800 },
-    { name: "Apr", users: 1000 },
-    { name: "May", users: 1200 },
-    { name: "Jun", users: 1500 },
-  ];
+  // Helper function to generate growth data dynamically
+  const generateGrowthData = (dataArray, dataKey, totalCount) => {
+    const today = new Date();
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const growthMap = new Map(); // Stores cumulative count for each month
 
-  const mockCoopGrowthData = [
-    { name: "Jan", cooperatives: 10 },
-    { name: "Feb", cooperatives: 12 },
-    { name: "Mar", cooperatives: 15 },
-    { name: "Apr", cooperatives: 18 },
-    { name: "May", cooperatives: 20 },
-    { name: "Jun", cooperatives: 25 },
-  ];
+    // Initialize map for the last 6 months with 0
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const yearMonth = `${date.getFullYear()}-${date.getMonth()}`;
+      growthMap.set(yearMonth, {
+        name: monthNames[date.getMonth()],
+        [dataKey]: 0,
+      });
+    }
+
+    // Sort data by creation date
+    const sortedData = [...dataArray].sort(
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    );
+
+    // Populate growth data cumulatively
+    let cumulativeCount = 0;
+    sortedData.forEach((item) => {
+      const itemDate = new Date(item.createdAt);
+      const itemYearMonth = `${itemDate.getFullYear()}-${itemDate.getMonth()}`;
+
+      // Find the corresponding month in the growth map, or a later one if the item is too old
+      let foundKey = null;
+      for (const [key, value] of growthMap.entries()) {
+        const [year, month] = key.split("-").map(Number);
+        if (
+          itemDate.getFullYear() > year ||
+          (itemDate.getFullYear() === year && itemDate.getMonth() >= month)
+        ) {
+          foundKey = key;
+        } else {
+          break; // Optimization: if current item is older than this month, it's older than subsequent months too
+        }
+      }
+
+      if (foundKey) {
+        // Increment count for the month the item was created in
+        growthMap.get(foundKey)[dataKey]++;
+      }
+    });
+
+    // Convert map values to array and ensure cumulative sum
+    const chartData = Array.from(growthMap.values());
+    let currentCumulative = 0;
+
+    // Filter to last 6 months and calculate cumulative sum
+    const filteredChartData = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const yearMonth = `${date.getFullYear()}-${date.getMonth()}`;
+      const dataPoint = chartData.find((d) => {
+        const [dataYear, dataMonth] = d.name.split("-"); // Assuming 'name' is in 'MMM-YY' or similar
+        // Simple comparison for now, needs more robust date parsing if 'name' is complex
+        return d.name === monthNames[date.getMonth()]; // Matches 'name' property as month abbreviation
+      });
+
+      if (dataPoint) {
+        currentCumulative += dataPoint[dataKey];
+      }
+      filteredChartData.push({
+        name: monthNames[date.getMonth()],
+        [dataKey]: currentCumulative,
+      });
+    }
+
+    return filteredChartData;
+  };
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const usersResponse = await fetchUsers();
-      let allUsers = usersResponse.success ? usersResponse.data : [];
+      const allUsers = usersResponse.success ? usersResponse.data : [];
 
       const cooperativesResponse = await getCooperatives();
-      let allCooperatives = cooperativesResponse.success
+      const allCooperatives = cooperativesResponse.success
         ? cooperativesResponse.data
         : [];
+
+      // Generate dynamic growth data
+      const userGrowthData = generateGrowthData(
+        allUsers,
+        "users",
+        allUsers.length
+      );
+      const coopGrowthData = generateGrowthData(
+        allCooperatives,
+        "cooperatives",
+        allCooperatives.length
+      );
 
       setStats({
         totalUsers: allUsers.length,
         totalCooperatives: allCooperatives.length,
-        userGrowthData: mockUserGrowthData,
-        coopGrowthData: mockCoopGrowthData,
+        userGrowthData,
+        coopGrowthData,
       });
     } catch (err) {
       setError("An unexpected error occurred while fetching dashboard data.");
+      console.error("Dashboard data fetch error:", err);
     } finally {
       setLoading(false);
     }

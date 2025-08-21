@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import PaymentTransaction from "./PaymentTransaction.js";
 const paymentSchema = new mongoose.Schema(
   {
     cooperativeId: {
@@ -56,6 +56,20 @@ const paymentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+paymentSchema.post("findOneAndDelete", async function (doc) {
+  if (!doc) return;
 
+  const paymentId = doc._id;
+
+  try {
+    // Delete all documents from other collections where the userId field matches.
+    await Promise.all([
+  
+      mongoose.model("PaymentTransaction").deleteMany({paymentId }),
+    ]);
+  } catch (err) {
+    console.error(`Error during cascading delete for user ${paymentId}:`, err);
+  }
+});
 const Payment = mongoose.model("Payment", paymentSchema);
 export default Payment;

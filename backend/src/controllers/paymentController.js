@@ -7,8 +7,6 @@ import PurchaseInput from "../models/PurchaseInput.js";
 import PaymentTransaction from "../models/PaymentTransaction.js";
 import mongoose from "mongoose"; // Ensure mongoose is imported for ObjectId validation
 
-// Helper to construct query filter based on user role and cooperativeId
-// This function is robust and should remain as is for security and multi-tenancy.
 const getCooperativeQueryFilter = (req) => {
   const { role, cooperativeId } = req.user;
 
@@ -49,16 +47,10 @@ const getCooperativeQueryFilter = (req) => {
 };
 
 export const processMemberPayment = async (req, res) => {
-  console.log(
-    `[${new Date().toISOString()}] DEBUG: processMemberPayment START`
-  );
   const { userId, amountPaid } = req.body;
-  const { cooperativeId, role } = req.user; // Get cooperativeId and role from authenticated user
+  const { cooperativeId, role } = req.user;
 
   if (!userId || amountPaid === undefined || amountPaid === null) {
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Invalid input: userId or amountPaid missing.`
-    );
     return res
       .status(400)
       .json({ message: "userId and amountPaid are required" });
@@ -66,9 +58,6 @@ export const processMemberPayment = async (req, res) => {
 
   const paymentAmount = parseFloat(amountPaid);
   if (isNaN(paymentAmount) || paymentAmount <= 0) {
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Invalid amountPaid: ${amountPaid}`
-    );
     return res
       .status(400)
       .json({ message: "Amount paid must be a positive number." });
@@ -83,9 +72,6 @@ export const processMemberPayment = async (req, res) => {
 
   try {
     // --- DATABASE QUERIES START ---
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Querying Productions...`
-    );
     const productions = await Production.find({
       ...memberPaymentFilter,
       paymentStatus: "pending",
@@ -94,39 +80,20 @@ export const processMemberPayment = async (req, res) => {
       (sum, p) => sum + (p.totalPrice || 0),
       0
     );
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Productions fetched. Gross Amount: ${grossAmount}`
-    );
 
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Querying Unpaid Fees...`
-    );
     const unpaidFees = await Fee.find({
       ...memberPaymentFilter,
       status: { $ne: "paid" },
     });
+
     const totalFeesOutstanding = unpaidFees.reduce(
       (sum, fee) => sum + (fee.amountOwed - (fee.amountPaid || 0)),
       0
     );
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Unpaid Fees fetched. Outstanding: ${totalFeesOutstanding}`
-    );
 
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Querying PurchaseInputs...`
-    );
     const purchaseInputs = await PurchaseInput.find({ ...memberPaymentFilter });
     const purchaseInputIds = purchaseInputs.map((p) => p._id);
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - PurchaseInputs fetched. IDs: ${
-        purchaseInputIds.length
-      }`
-    );
 
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Querying Unpaid Loans...`
-    );
     const unpaidLoans = await Loan.find({
       ...memberPaymentFilter,
       purchaseInputId: { $in: purchaseInputIds },
@@ -173,25 +140,19 @@ export const processMemberPayment = async (req, res) => {
       });
     }
 
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Updating Cooperative Cash...`
-    );
     const coopCash = await CooperativeCash.findOne({ cooperativeId });
     if (!coopCash) {
-      console.error(
-        `[${new Date().toISOString()}] ERROR: Cooperative cash record not found for cooperativeId: ${cooperativeId}`
-      );
       return res.status(500).json({
         message: "Cooperative cash record not found for this cooperative.",
       });
     }
-    coopCash.balance += paymentAmount;
+    if (coopCash.amount < paymentAmount) {
+      return res
+        .status(400)
+        .json({ message: " we have less cash in cooperative" });
+    }
+    coopCash.amount -= paymentAmount;
     await coopCash.save();
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Cooperative Cash updated. New balance: ${
-        coopCash.balance
-      }`
-    );
 
     // Payment Record Handling
     console.log(
@@ -204,63 +165,39 @@ export const processMemberPayment = async (req, res) => {
 
     if (paymentRecord) {
       console.log(
-        `[${new Date().toISOString()}] DEBUG: processMemberPayment - Existing partial payment found.`
+        `[${new Date().toISOString()}] DEBUG: Existing partial payment found.`
       );
-      if (amountDue > paymentAmount) {
-        // This logic creates a new payment record if a new "partial" state is needed
-        paymentRecord.amountRemainingToPay = 0; // The old partial payment is now considered fully paid towards its original amount
-        paymentRecord.status = "paid";
-        if (!paymentRecord.transactions) paymentRecord.transactions = [];
-        paymentRecord.transactions.push({
-          date: new Date(),
-          amount: paymentAmount,
-        });
-        await paymentRecord.save();
-        console.log(
-          `[${new Date().toISOString()}] DEBUG: processMemberPayment - Old partial record marked paid.`
-        );
 
-        const newAmountRemainingToPay = amountDue - paymentAmount;
-        const newGrossAmount = paymentRecord.grossAmount + grossAmount; // Accumulating previous gross with new
-        const newtotalDeductions =
-          paymentRecord.totalDeductions + totalDeductions; // Accumulating previous deductions with new
+      // Update payment record fields
+      paymentRecord.amountPaid += paymentAmount;
+      paymentRecord.amountRemainingToPay = Math.max(
+        amountDue - paymentRecord.amountPaid,
+        0
+      );
+      paymentRecord.status =
+        paymentRecord.amountRemainingToPay === 0 ? "paid" : "partial";
 
-        const newRecord = new Payment({
-          cooperativeId,
-          userId,
-          grossAmount: newGrossAmount,
-          totalDeductions: newtotalDeductions,
-          amountDue, // This amountDue is based on the current calculation, not the previous record's. Review if this is desired.
-          amountPaid: paymentAmount,
-          amountRemainingToPay: newAmountRemainingToPay,
-          status: "partial",
-          transactions: [{ date: new Date(), amount: paymentAmount }],
-        });
-        await newRecord.save();
-        paymentRecord = newRecord; // Set paymentRecord to the newly created partial record
-        console.log(
-          `[${new Date().toISOString()}] DEBUG: processMemberPayment - New partial record created.`
-        );
-      } else {
-        // Payment covers outstanding amount of existing partial record or more
-        paymentRecord.amountPaid += paymentAmount;
-        paymentRecord.amountRemainingToPay = 0;
-        paymentRecord.status = "paid";
-        if (!paymentRecord.transactions) paymentRecord.transactions = [];
-        paymentRecord.transactions.push({
-          date: new Date(),
-          amount: paymentAmount,
-        });
-        await paymentRecord.save();
-        console.log(
-          `[${new Date().toISOString()}] DEBUG: processMemberPayment - Existing partial record fully paid.`
-        );
-      }
-    } else {
-      // Create new payment record (no previous partial payment found)
+      if (!paymentRecord.transactions) paymentRecord.transactions = [];
+      paymentRecord.transactions.push({
+        date: new Date(),
+        amount: paymentAmount,
+      });
+
+      // Optionally update grossAmount and totalDeductions if you want to accumulate
+      paymentRecord.grossAmount += grossAmount;
+      paymentRecord.totalDeductions += totalDeductions;
+
+      await paymentRecord.save();
+
       console.log(
-        `[${new Date().toISOString()}] DEBUG: processMemberPayment - Creating new payment record.`
+        `[${new Date().toISOString()}] DEBUG: Payment record updated.`
       );
+    } else {
+      // Create new payment record if none exists
+      console.log(
+        `[${new Date().toISOString()}] DEBUG: Creating new payment record.`
+      );
+
       paymentRecord = new Payment({
         cooperativeId,
         userId,
@@ -272,21 +209,24 @@ export const processMemberPayment = async (req, res) => {
         status: amountDue - paymentAmount === 0 ? "paid" : "partial",
         transactions: [{ date: new Date(), amount: paymentAmount }],
       });
+
       await paymentRecord.save();
       console.log(
-        `[${new Date().toISOString()}] DEBUG: processMemberPayment - New payment record saved.`
+        `[${new Date().toISOString()}] DEBUG: New payment record saved.`
       );
     }
 
+    // Always create a PaymentTransaction log
     console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Creating Payment Transaction Log...`
+      `[${new Date().toISOString()}] DEBUG: Creating Payment Transaction Log...`
     );
+
     await PaymentTransaction.create({
       cooperativeId,
       userId,
       paymentId: paymentRecord._id,
       amountPaid: paymentAmount,
-      amountRemainingToPay: amountDue - paymentAmount,
+      amountRemainingToPay: paymentRecord.amountRemainingToPay,
       transactionDate: new Date(),
     });
 
@@ -547,17 +487,10 @@ export const deletePayment = async (req, res) => {
   }
 };
 
-// ====================================================================
-// --- Payment Summary (Complex Calculations, Requires Indexing) ---
-// ====================================================================
 export const getPaymentSummary = async (req, res) => {
-  console.log(
-    `[${new Date().toISOString()}] DEBUG: getPaymentSummary Controller START`
-  );
-  const { userId: paramUserId } = req.query; // userId for whom summary is requested
-  // --- MODIFIED: Correctly destructure _id as authenticatedUserId ---
+  const { userId: paramUserId } = req.query;
+
   const { _id: authenticatedUserId, cooperativeId, role } = req.user;
-  // --- END MODIFIED ---
 
   // Basic authorization check: non-superadmin can only query their own user ID
   // MODIFIED: Added defensive check for authenticatedUserId before calling .toString()
@@ -594,30 +527,10 @@ export const getPaymentSummary = async (req, res) => {
       (sum, prod) => sum + (prod.totalPrice || 0),
       0
     );
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentSummary - Productions fetched. Count: ${
-        productions.length
-      }`
-    );
 
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentSummary - Querying PurchaseInputs with filter: ${JSON.stringify(
-        finalFilter
-      )}`
-    );
     const purchaseInputs = await PurchaseInput.find({ ...finalFilter });
     const purchaseInputIds = purchaseInputs.map((p) => p._id);
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentSummary - PurchaseInputs fetched. Count: ${
-        purchaseInputs.length
-      }`
-    );
 
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentSummary - Querying Loans with filter: ${JSON.stringify(
-        finalFilter
-      )}`
-    );
     const loans = await Loan.find({
       ...finalFilter,
       purchaseInputId: { $in: purchaseInputIds },
@@ -671,6 +584,79 @@ export const getPaymentSummary = async (req, res) => {
       }`,
       error
     );
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+export const getPaymentSummaryByUserId = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ message: "userId is required" });
+  }
+
+  try {
+    const productions = await Production.find({
+      userId,
+      paymentStatus: "pending",
+    });
+    const totalProduction = productions.reduce(
+      (sum, prod) => sum + (prod.totalPrice || 0),
+      0
+    );
+
+    const purchaseInputs = await PurchaseInput.find({ userId });
+    const purchaseInputIds = purchaseInputs.map((p) => p._id);
+
+    // ✅ Fetch ALL pending loans
+    const loans = await Loan.find({
+      ...userId,
+      purchaseInputId: { $in: purchaseInputIds },
+      status: "pending",
+    });
+    const totalLoans = loans.reduce(
+      (sum, loan) => sum + (loan.amountOwed - (loan.amountPaid || 0)),
+      0
+    );
+
+    // ✅ Fetch ALL unpaid fees
+    const fees = await Fee.find({ userId, status: { $ne: "paid" } });
+    const totalUnpaidFees = fees.reduce(
+      (sum, fee) => sum + (fee.amountOwed - (fee.amountPaid || 0)),
+      0
+    );
+
+    // ✅ Get all partial payments for this user (across all time)
+    const allPartialPaymentsForUser = await Payment.find({
+      userId,
+      status: "partial",
+    });
+
+    const previousRemaining = allPartialPaymentsForUser.reduce(
+      (sum, p) => sum + (p.amountRemainingToPay || 0),
+      0
+    );
+
+    // ✅ Final computation
+    const currentDeductions = totalLoans + totalUnpaidFees;
+    const currentNet = totalProduction - currentDeductions;
+    const netPayable = currentNet + previousRemaining;
+
+    return res.status(200).json({
+      totalProduction,
+      totalLoans,
+      totalUnpaidFees,
+      previousRemaining,
+      currentNet,
+      netPayable: netPayable > 0 ? netPayable : 0,
+      loans,
+      fees,
+      payments: allPartialPaymentsForUser,
+    });
+  } catch (error) {
+    console.error("Error fetching payment summary:", error);
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });

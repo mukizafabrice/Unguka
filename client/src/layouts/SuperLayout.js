@@ -1,16 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SuperNav from "../components/SuperNav";
 import TopNav from "../components/TopNav";
 import { Outlet } from "react-router-dom";
 import "../assets/styles/dashboard.css";
-
+import { useNavigate } from "react-router-dom";
 function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
   };
+  const navigate = useNavigate();
 
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("token"); // or your auth state
+    if (!isLoggedIn) {
+      navigate("/");
+    }
+  }, [navigate]);
   return (
     <div className="app-layout">
       <TopNav onMenuClick={toggleSidebar} />

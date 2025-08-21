@@ -18,8 +18,8 @@ const purchaseInputSchema = new mongoose.Schema({
   },
   cooperativeId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Cooperative", // Refers to your Cooperative model
-    required: true, // Assuming every purchase input must belong to a cooperative
+    ref: "Cooperative",
+    required: true,
   },
   quantity: {
     type: Number,
@@ -77,5 +77,20 @@ purchaseInputSchema.post("findOneAndDelete", async function (doc) {
   }
 });
 
+purchaseInputSchema.post("findOneAndDelete", async function (doc) {
+  if (!doc) return;
+
+  const purchaseInputId = doc._id;
+
+  try {
+    // Delete all documents from other collections where the userId field matches.
+    await Promise.all([mongoose.model("Loan").deleteMany({ purchaseInputId })]);
+  } catch (err) {
+    console.error(
+      `Error during cascading delete for user ${purchaseInputId}:`,
+      err
+    );
+  }
+});
 const PurchaseInput = mongoose.model("PurchaseInput", purchaseInputSchema);
 export default PurchaseInput;

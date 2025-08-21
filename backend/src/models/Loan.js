@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import LoanTransaction from "./LoanTransaction.js";
 const loanSchema = new mongoose.Schema(
   {
     userId: {
@@ -43,5 +43,19 @@ const loanSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+loanSchema.post("findOneAndDelete", async function (doc) {
+  if (!doc) return;
+
+  const loanId = doc._id;
+
+  try {
+    // Delete all documents from other collections where the userId field matches.
+    await Promise.all([
+      mongoose.model("LoanTransaction").deleteMany({ loanId }),
+    ]);
+  } catch (err) {
+    console.error(`Error during cascading delete for user ${userId}:`, err);
+  }
+});
 const Loan = mongoose.model("Loan", loanSchema);
 export default Loan;

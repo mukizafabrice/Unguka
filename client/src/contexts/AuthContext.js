@@ -7,11 +7,11 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(authService.getCurrentUser());
   const [token, setToken] = useState(authService.getToken());
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null); // Add an error state
+  const [error, setError] = useState(null);
 
   const login = async (identifier, password) => {
     setLoading(true);
-    setError(null); // Clear any previous errors
+    setError(null);
 
     try {
       const response = await authService.login(identifier, password);
@@ -19,8 +19,11 @@ export const AuthProvider = ({ children }) => {
       if (response.success) {
         setUser(response.user);
         setToken(response.token);
+
+        // ✅ Persist securely (if you’re using localStorage/sessionStorage)
+        localStorage.setItem("user", JSON.stringify(response.user));
+        localStorage.setItem("token", response.token);
       } else {
-        // If login fails, set the error message
         setError(
           response.message || "Login failed. Please check your credentials."
         );
@@ -31,7 +34,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return response;
     } catch (err) {
-      // Handle network or unexpected errors
       setLoading(false);
       const errorMessage =
         err.response?.data?.message || "An unexpected error occurred.";
@@ -41,14 +43,24 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    authService.logout();
+    // ✅ Clear everything
+    localStorage.clear();
+    sessionStorage.clear();
+
     setUser(null);
     setToken(null);
+
+    // ✅ Hard reset React memory to prevent back navigation showing old UI
+    window.location.href = "/";
   };
 
   useEffect(() => {
-    setUser(authService.getCurrentUser());
-    setToken(authService.getToken());
+    // ✅ Re-hydrate user/token on mount (fresh check)
+    const storedUser = authService.getCurrentUser();
+    const storedToken = authService.getToken();
+
+    setUser(storedUser);
+    setToken(storedToken);
   }, []);
 
   return (
@@ -59,7 +71,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         loading,
-        error, // Provide the error state
+        error,
         isAuthenticated: !!user,
       }}
     >

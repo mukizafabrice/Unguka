@@ -8,6 +8,7 @@ import PaymentTransaction from "./PaymentTransaction.js";
 import Plot from "./Plot.js";
 import Production from "./Production.js";
 import Cooperative from "./Cooperative.js";
+import Announcements from "./Announcements.js";
 
 const userSchema = new mongoose.Schema({
   names: {
@@ -94,6 +95,7 @@ userSchema.post("findOneAndDelete", async function (doc) {
       mongoose.model("PaymentTransaction").deleteMany({ userId }),
       mongoose.model("Plot").deleteMany({ userId }),
       mongoose.model("Production").deleteMany({ userId }),
+      mongoose.model("Announcements").deleteMany({ userId }),
     ]);
   } catch (err) {
     console.error(`Error during cascading delete for user ${userId}:`, err);

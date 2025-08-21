@@ -28,7 +28,7 @@ const paymentTransactionSchema = new mongoose.Schema(
     transactionDate: { type: Date, default: Date.now },
     cooperativeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Cooperative", // Assuming you have a Cooperative model
+      ref: "Cooperative", 
       required: true,
     },
   },

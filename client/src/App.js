@@ -6,6 +6,7 @@ import LoginPage from "./pages/Auth/LoginPage";
 import { ToastContainer } from "react-toastify"; // ⭐ CRUCIAL: Import ToastContainer
 import "react-toastify/dist/ReactToastify.css"; //
 import ProtectedRoute from "./components/ProtectedRoute";
+import usePreventBack from "./components/usePreventBack";
 import Profile from "./pages/Profile";
 //Admin imports
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -38,6 +39,7 @@ import MemberLoan from "./pages/Member/MemberLoan";
 import MemberPayment from "./pages/Member/MemberPayment";
 import MemberPaymentTransaction from "./pages/Member/PaymentTransaction";
 import MemberLoanTransaction from "./pages/Member/LoanTransaction";
+import PaymentSummary from "./pages/Member/PaymentSummary";
 import MemberLayout from "./layouts/MemberLayout";
 import User from "./pages/Admin/User";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -55,10 +57,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <PreventBackWrapper />
         <Routes>
           <Route path="/" element={<LoginPage />} />
-
-          {/* TEMPORARY TEST: Render Profile DIRECTLY under ProtectedRoute, WITHOUT DashboardLayout */}
           <Route
             path="/profile"
             element={
@@ -121,6 +122,7 @@ function App() {
             <Route path="purchase-inputs" element={<MemberPurchaseInput />} />
             <Route path="loan" element={<MemberLoan />} />
             <Route path="payment" element={<MemberPayment />} />
+            <Route path="payment-summary" element={<PaymentSummary />} />
             <Route
               path="payment-transaction"
               element={<MemberPaymentTransaction />}
@@ -159,5 +161,8 @@ function App() {
     </BrowserRouter>
   );
 }
-
+function PreventBackWrapper() {
+  usePreventBack();
+  return null;
+}
 export default App;

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { toast } from "react-toastify";
 import {
   Dialog,
   DialogTitle,
@@ -8,22 +7,21 @@ import {
   TextField,
   Button,
   MenuItem,
-  Stack, // ⭐ Import Stack for vertical layout
+  Stack,
   Typography,
-  CircularProgress, // For loading state
+  CircularProgress,
+  IconButton,
+  Box,
+  styled,
 } from "@mui/material";
-import { styled } from "@mui/system"; // Import styled for custom components
+import { Add as AddIcon, Remove as RemoveIcon } from "@mui/icons-material";
+import { toast } from "react-toastify";
 
-// ⭐ Updated import paths to ensure consistency.
-// Assuming these service functions can accept a cooperativeId to filter results.
 import { fetchSeasons } from "../../services/seasonService";
 import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 
-// Styled components for consistent modal header
 const StyledDialogTitle = styled(DialogTitle)(({ theme }) => {
-  // ⭐ Defensive check: If theme or its required properties are undefined,
-  //    use hardcoded fallback values to prevent runtime error.
   if (
     !theme ||
     !theme.palette ||
@@ -31,14 +29,13 @@ const StyledDialogTitle = styled(DialogTitle)(({ theme }) => {
     !theme.palette.divider
   ) {
     return {
-      backgroundColor: "#fafafa", // Fallback for theme.palette.grey[50]
-      borderBottom: `1px solid #e0e0e0`, // Fallback for theme.palette.divider
+      backgroundColor: "#fafafa",
+      borderBottom: `1px solid #e0e0e0`,
       "& .MuiTypography-root": {
         fontWeight: 600,
       },
     };
   }
-  // If theme is properly provided, use its values
   return {
     backgroundColor: theme.palette.grey[50],
     borderBottom: `1px solid ${theme.palette.divider}`,
@@ -48,346 +45,419 @@ const StyledDialogTitle = styled(DialogTitle)(({ theme }) => {
   };
 });
 
+const getInitialPurchaseState = () => ({
+  userId: "",
+  productId: "",
+  seasonId: "",
+  quantity: "",
+  unitPrice: "",
+  amountPaid: "",
+  interest: "",
+  totalAmount: 0,
+});
+
 export default function AddPurchaseInputModal({
   show,
   onClose,
-  onSubmit,
+  onSubmit, // This should now handle a single purchase object
   cooperativeId,
 }) {
-  const [formData, setFormData] = useState({
-    userId: "",
-    productId: "",
-    seasonId: "",
-    quantity: "", // Changed to empty string for better controlled input
-    unitPrice: "", // Changed to empty string
-    amountPaid: "", // Changed to empty string
-    interest: "", // Changed to empty string
-  });
-
+  const [purchases, setPurchases] = useState([getInitialPurchaseState()]);
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [seasons, setSeasons] = useState([]);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [loading, setLoading] = useState(false); // Loading state for form data
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  // Calculate total amount based on quantity and unit price
-  useEffect(() => {
-    const quantity = parseFloat(formData.quantity) || 0;
-    const unitPrice = parseFloat(formData.unitPrice) || 0;
-    setTotalAmount(quantity * unitPrice);
-    // If total amount is less than or equal to amount paid, reset interest
-    if (quantity * unitPrice <= (parseFloat(formData.amountPaid) || 0)) {
-      setFormData((prevData) => ({ ...prevData, interest: "" }));
+  // Load data (users, products, seasons) when the modal opens
+  const loadModalData = useCallback(async () => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is missing. Cannot load form data.");
+      return;
     }
-  }, [formData.quantity, formData.unitPrice, formData.amountPaid]);
+    setLoading(true);
+    try {
+      const [usersResponse, productsResponse, seasonsResponse] =
+        await Promise.all([
+          fetchUsers(cooperativeId),
+          fetchProducts(cooperativeId),
+          fetchSeasons(cooperativeId),
+        ]);
 
-  // Load data (users, products, seasons) when the modal opens or cooperativeId changes
+      if (usersResponse.success && Array.isArray(usersResponse.data)) {
+        setUsers(usersResponse.data);
+      } else {
+        toast.error(usersResponse.message || "Failed to load users.");
+        setUsers([]);
+      }
+
+      if (productsResponse.success && Array.isArray(productsResponse.data)) {
+        setProducts(productsResponse.data);
+      } else {
+        toast.error(productsResponse.message || "Failed to load products.");
+        setProducts([]);
+      }
+
+      if (seasonsResponse.success && Array.isArray(seasonsResponse.data)) {
+        setSeasons(seasonsResponse.data);
+      } else {
+        toast.error(seasonsResponse.message || "Failed to load seasons.");
+        setSeasons([]);
+      }
+    } catch (error) {
+      console.error("Failed to load modal data:", error);
+      toast.error("An unexpected error occurred while loading form data.");
+    } finally {
+      setLoading(false);
+    }
+  }, [cooperativeId]);
+
   useEffect(() => {
-    const loadModalData = async () => {
-      if (!cooperativeId) {
-        toast.error("Cooperative ID is missing. Cannot load form data.");
-        return;
-      }
-
-      setLoading(true);
-      try {
-        // ⭐ Pass cooperativeId to fetch functions for multi-cooperative filtering
-        const [usersResponse, productsResponse, seasonsResponse] =
-          await Promise.all([
-            fetchUsers(cooperativeId), // Assuming fetchUsers can filter by cooperativeId
-            fetchProducts(cooperativeId), // Assuming fetchProduct can filter by cooperativeId
-            fetchSeasons(cooperativeId), // Assuming fetchSeasons can filter by cooperativeId
-          ]);
-
-        // ⭐ Enhanced error handling for each fetch operation
-        if (usersResponse.success && Array.isArray(usersResponse.data)) {
-          setUsers(usersResponse.data);
-        } else {
-          toast.error(usersResponse.message || "Failed to load users.");
-          setUsers([]);
-        }
-
-        if (productsResponse.success && Array.isArray(productsResponse.data)) {
-          setProducts(productsResponse.data);
-        } else {
-          toast.error(productsResponse.message || "Failed to load products.");
-          setProducts([]);
-        }
-
-        if (seasonsResponse.success && Array.isArray(seasonsResponse.data)) {
-          setSeasons(seasonsResponse.data);
-        } else {
-          toast.error(seasonsResponse.message || "Failed to load seasons.");
-          setSeasons([]);
-        }
-      } catch (error) {
-        console.error("Failed to load modal data:", error);
-        toast.error("An unexpected error occurred while loading form data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (show) {
       loadModalData();
+      setPurchases([getInitialPurchaseState()]); // Reset to a single empty form
+      setErrors({}); // Clear errors
     }
-  }, [show, cooperativeId]); // Re-run effect if show or cooperativeId changes
+  }, [show, loadModalData]);
 
-  // Reset form data when the modal closes
-  useEffect(() => {
-    if (!show) {
-      setFormData({
-        userId: "",
-        productId: "",
-        seasonId: "",
-        quantity: "",
-        unitPrice: "",
-        amountPaid: "",
-        interest: "",
-      });
-      setTotalAmount(0); // Also reset total amount
-    }
-  }, [show]);
+  const handleChange = useCallback(
+    (e, index) => {
+      const { name, value } = e.target;
+      const list = [...purchases];
+      list[index][name] = value;
 
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value, // MUI TextField returns value directly
-    }));
-  }, []);
+      const quantity = parseFloat(list[index].quantity) || 0;
+      const unitPrice = parseFloat(list[index].unitPrice) || 0;
+      const amountPaid = parseFloat(list[index].amountPaid) || 0;
 
-  const handleSubmit = useCallback(
-    (e) => {
-      e.preventDefault();
-
-      if (!formData.userId || !formData.productId || !formData.seasonId) {
-        toast.error("Please select a user, product, and season.");
-        return;
-      }
-      const quantityNum = parseFloat(formData.quantity);
-      const unitPriceNum = parseFloat(formData.unitPrice);
-      const amountPaidNum = parseFloat(formData.amountPaid);
-      const interestNum = parseFloat(formData.interest) || 0; // Default to 0 if not entered
-
-      if (isNaN(quantityNum) || quantityNum <= 0) {
-        toast.error("Quantity must be a number greater than 0.");
-        return;
-      }
-      if (isNaN(unitPriceNum) || unitPriceNum <= 0) {
-        toast.error("Unit Price must be a number greater than 0.");
-        return;
+      list[index].totalAmount = quantity * unitPrice;
+      if (list[index].totalAmount <= amountPaid) {
+        list[index].interest = "";
       }
 
-      const calculatedTotalPrice = quantityNum * unitPriceNum;
+      setPurchases(list);
 
-      if (isNaN(amountPaidNum) || amountPaidNum < 0) {
-        toast.error("Amount paid must be a non-negative number.");
-        return;
+      if (errors[`${name}-${index}`]) {
+        setErrors((prevErrors) => {
+          const newErrors = { ...prevErrors };
+          delete newErrors[`${name}-${index}`];
+          return newErrors;
+        });
       }
-
-      if (amountPaidNum > calculatedTotalPrice) {
-        toast.error("Amount paid cannot exceed the total price.");
-        return;
-      }
-
-      // Determine status
-      let status = "paid";
-      if (calculatedTotalPrice > amountPaidNum) {
-        status = "loan";
-      }
-
-      // Prepare data to submit, including cooperativeId and calculated fields
-      const dataToSubmit = {
-        ...formData,
-        quantity: quantityNum,
-        unitPrice: unitPriceNum,
-        amountPaid: amountPaidNum,
-        totalPrice: calculatedTotalPrice,
-        amountRemaining: calculatedTotalPrice - amountPaidNum,
-        status: status,
-        interest: status === "loan" ? interestNum : 0, // Only include interest if status is 'loan'
-        cooperativeId: cooperativeId, // ⭐ Crucially, add cooperativeId here
-      };
-
-      onSubmit(dataToSubmit);
     },
-    [formData, onSubmit, cooperativeId]
+    [purchases, errors]
   );
 
-  const formatCurrency = useCallback((amount) => {
-    return new Intl.NumberFormat("en-RW", {
-      style: "currency",
-      currency: "RWF",
-    }).format(amount);
-  }, []);
+  const handleAddPurchase = useCallback(() => {
+    setPurchases([...purchases, getInitialPurchaseState()]);
+  }, [purchases]);
+
+  const handleRemovePurchase = useCallback(
+    (index) => {
+      if (purchases.length === 1) {
+        toast.info("At least one purchase entry is required.");
+        return;
+      }
+      const list = [...purchases];
+      list.splice(index, 1);
+      setPurchases(list);
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        Object.keys(newErrors).forEach((key) => {
+          if (key.endsWith(`-${index}`)) {
+            delete newErrors[key];
+          }
+        });
+        return newErrors;
+      });
+    },
+    [purchases]
+  );
+
+  const validate = useCallback(() => {
+    let tempErrors = {};
+    let isValid = true;
+    purchases.forEach((purchase, index) => {
+      if (!purchase.userId) {
+        tempErrors[`userId-${index}`] = "Member is required.";
+        isValid = false;
+      }
+      if (!purchase.productId) {
+        tempErrors[`productId-${index}`] = "Product is required.";
+        isValid = false;
+      }
+      if (!purchase.seasonId) {
+        tempErrors[`seasonId-${index}`] = "Season is required.";
+        isValid = false;
+      }
+      const quantityNum = parseFloat(purchase.quantity);
+      if (isNaN(quantityNum) || quantityNum <= 0) {
+        tempErrors[`quantity-${index}`] = "Quantity must be a positive number.";
+        isValid = false;
+      }
+      const unitPriceNum = parseFloat(purchase.unitPrice);
+      if (isNaN(unitPriceNum) || unitPriceNum <= 0) {
+        tempErrors[`unitPrice-${index}`] =
+          "Unit price must be a positive number.";
+        isValid = false;
+      }
+      const amountPaidNum = parseFloat(purchase.amountPaid);
+      if (isNaN(amountPaidNum) || amountPaidNum < 0) {
+        tempErrors[`amountPaid-${index}`] =
+          "Amount paid must be a non-negative number.";
+        isValid = false;
+      }
+      if (amountPaidNum > quantityNum * unitPriceNum) {
+        tempErrors[`amountPaid-${index}`] =
+          "Amount paid cannot exceed total price.";
+        isValid = false;
+      }
+    });
+
+    setErrors(tempErrors);
+    return isValid;
+  }, [purchases]);
+
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!validate()) {
+        toast.error("Please fill in all required fields and correct errors.");
+        return;
+      }
+      const purchasesToSubmit = purchases.map((purchase) => {
+        const calculatedTotalPrice =
+          parseFloat(purchase.quantity) * parseFloat(purchase.unitPrice);
+        const amountPaidNum = parseFloat(purchase.amountPaid) || 0;
+        const status = calculatedTotalPrice > amountPaidNum ? "loan" : "paid";
+        return {
+          ...purchase,
+          quantity: parseFloat(purchase.quantity),
+          unitPrice: parseFloat(purchase.unitPrice),
+          amountPaid: amountPaidNum,
+          totalPrice: calculatedTotalPrice,
+          amountRemaining: calculatedTotalPrice - amountPaidNum,
+          status,
+          interest: status === "loan" ? parseFloat(purchase.interest) || 0 : 0,
+          cooperativeId,
+        };
+      });
+
+      console.log("Submitting purchases:", purchasesToSubmit);
+      try {
+        // ⭐ THE KEY FIX: Loop through each purchase and call onSubmit individually
+        for (const purchase of purchasesToSubmit) {
+          await onSubmit(purchase);
+        }
+
+        toast.success("All purchases saved successfully!");
+        onClose();
+      } catch (error) {
+        toast.error(error.message || "Failed to save one or more purchases.");
+        console.error("Error saving purchases:", error);
+      }
+    },
+    [purchases, cooperativeId, onSubmit, onClose, validate]
+  );
 
   return (
     <Dialog open={show} onClose={onClose} fullWidth maxWidth="sm">
-      <StyledDialogTitle onClose={onClose}>Add New Purchase</StyledDialogTitle>
-      <DialogContent dividers>
-        {loading ? (
-          <Stack // ⭐ Replaced Grid with Stack for loading state
-            justifyContent="center"
-            alignItems="center"
-            sx={{ height: 200 }}
-          >
-            <CircularProgress />
-            <Typography variant="subtitle1" sx={{ ml: 2 }}>
-              Loading data...
-            </Typography>
-          </Stack>
-        ) : (
-          <form>
-            {/* ⭐ Replaced Grid container with Stack for vertical layout */}
-            <Stack spacing={2} sx={{ width: "100%" }}>
-              <TextField
-                select
-                label="Member"
-                name="userId"
-                value={formData.userId}
-                onChange={handleChange}
-                fullWidth
-                required
-                margin="normal"
-                variant="outlined"
-                size="small"
-              >
-                <MenuItem value="">Select a member</MenuItem>
-                {users.map((user) => (
-                  <MenuItem key={user._id} value={user._id}>
-                    {user.names}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                select
-                label="Product"
-                name="productId"
-                value={formData.productId}
-                onChange={handleChange}
-                fullWidth
-                required
-                margin="normal"
-                variant="outlined"
-                size="small"
-              >
-                <MenuItem value="">Select a product</MenuItem>
-                {products.map((product) => (
-                  <MenuItem key={product._id} value={product._id}>
-                    {product.productName}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                select
-                label="Season"
-                name="seasonId"
-                value={formData.seasonId}
-                onChange={handleChange}
-                fullWidth
-                required
-                margin="normal"
-                variant="outlined"
-                size="small"
-              >
-                <MenuItem value="">Select a season</MenuItem>
-                {seasons.map((season) => (
-                  <MenuItem key={season._id} value={season._id}>
-                    {season.name} ({season.year})
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                label="Quantity"
-                type="number"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleChange}
-                fullWidth
-                required
-                margin="normal"
-                variant="outlined"
-                size="small"
-                inputProps={{ min: "0" }}
-              />
-
-              <TextField
-                label="Unit Price"
-                type="number"
-                name="unitPrice"
-                value={formData.unitPrice}
-                onChange={handleChange}
-                fullWidth
-                required
-                margin="normal"
-                variant="outlined"
-                size="small"
-                inputProps={{ min: "0" }}
-              />
-
-              <TextField
-                label="Total Amount"
-                value={formatCurrency(totalAmount)}
-                fullWidth
-                margin="normal"
-                variant="outlined"
-                size="small"
-                InputProps={{
-                  readOnly: true,
-                }}
-              />
-
-              <TextField
-                label="Amount Paid"
-                type="number"
-                name="amountPaid"
-                value={formData.amountPaid}
-                onChange={handleChange}
-                fullWidth
-                required
-                margin="normal"
-                variant="outlined"
-                size="small"
-                inputProps={{ min: "0" }}
-              />
-
-              {totalAmount > (parseFloat(formData.amountPaid) || 0) && (
-                <TextField // ⭐ No Grid wrapper needed here, Stack handles spacing
-                  label="Loan Interest (%)"
-                  type="number"
-                  name="interest"
-                  value={formData.interest}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  margin="normal"
-                  variant="outlined"
-                  size="small"
-                  inputProps={{ min: "0", max: "100" }}
-                  helperText="Enter interest rate if a balance remains (loan)"
-                />
-              )}
+      <StyledDialogTitle>Add New Purchases</StyledDialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers sx={{ maxHeight: "70vh", overflowY: "auto" }}>
+          {loading ? (
+            <Stack
+              justifyContent="center"
+              alignItems="center"
+              sx={{ height: 200 }}
+            >
+              <CircularProgress />
+              <Typography variant="subtitle1" sx={{ ml: 2 }}>
+                Loading data...
+              </Typography>
             </Stack>
-          </form>
-        )}
-      </DialogContent>
-      <DialogActions
-        sx={{
-          padding: 2,
-          borderTop: `1px solid ${(theme) => theme.palette.divider}`,
-        }}
-      >
-        <Button onClick={onClose} variant="outlined" color="secondary">
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} variant="contained" color="primary">
-          Add Purchase
-        </Button>
-      </DialogActions>
+          ) : (
+            purchases.map((purchase, index) => (
+              <Box
+                key={index}
+                sx={{
+                  border: "1px solid #e0e0e0",
+                  p: 2,
+                  mb: 3,
+                  borderRadius: "8px",
+                  position: "relative",
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: "text.primary", fontWeight: "bold", mb: 1 }}
+                >
+                  Purchase #{index + 1}
+                </Typography>
+                {purchases.length > 1 && (
+                  <IconButton
+                    aria-label="remove purchase"
+                    color="error"
+                    size="small"
+                    onClick={() => handleRemovePurchase(index)}
+                    sx={{ position: "absolute", top: 8, right: 8 }}
+                  >
+                    <RemoveIcon />
+                  </IconButton>
+                )}
+                <Stack spacing={2} sx={{ width: "100%" }}>
+                  <TextField
+                    select
+                    label="Member"
+                    name="userId"
+                    value={purchase.userId}
+                    onChange={(e) => handleChange(e, index)}
+                    fullWidth
+                    required
+                    size="small"
+                    error={!!errors[`userId-${index}`]}
+                    helperText={errors[`userId-${index}`]}
+                  >
+                    <MenuItem value="">Select a member</MenuItem>
+                    {users.map((user) => (
+                      <MenuItem key={user._id} value={user._id}>
+                        {user.names}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    select
+                    label="Product"
+                    name="productId"
+                    value={purchase.productId}
+                    onChange={(e) => handleChange(e, index)}
+                    fullWidth
+                    required
+                    size="small"
+                    error={!!errors[`productId-${index}`]}
+                    helperText={errors[`productId-${index}`]}
+                  >
+                    <MenuItem value="">Select a product</MenuItem>
+                    {products.map((product) => (
+                      <MenuItem key={product._id} value={product._id}>
+                        {product.productName}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    select
+                    label="Season"
+                    name="seasonId"
+                    value={purchase.seasonId}
+                    onChange={(e) => handleChange(e, index)}
+                    fullWidth
+                    required
+                    size="small"
+                    error={!!errors[`seasonId-${index}`]}
+                    helperText={errors[`seasonId-${index}`]}
+                  >
+                    <MenuItem value="">Select a season</MenuItem>
+                    {seasons.map((season) => (
+                      <MenuItem key={season._id} value={season._id}>
+                        {season.name} ({season.year})
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    label="Quantity"
+                    type="number"
+                    name="quantity"
+                    value={purchase.quantity}
+                    onChange={(e) => handleChange(e, index)}
+                    fullWidth
+                    required
+                    size="small"
+                    inputProps={{ min: "0" }}
+                    error={!!errors[`quantity-${index}`]}
+                    helperText={errors[`quantity-${index}`]}
+                  />
+
+                  <TextField
+                    label="Unit Price"
+                    type="number"
+                    name="unitPrice"
+                    value={purchase.unitPrice}
+                    onChange={(e) => handleChange(e, index)}
+                    fullWidth
+                    required
+                    size="small"
+                    inputProps={{ min: "0" }}
+                    error={!!errors[`unitPrice-${index}`]}
+                    helperText={errors[`unitPrice-${index}`]}
+                  />
+
+                  <TextField
+                    label="Total Amount"
+                    value={`RWF ${purchase.totalAmount.toFixed(2)}`}
+                    fullWidth
+                    size="small"
+                    InputProps={{ readOnly: true }}
+                  />
+
+                  <TextField
+                    label="Amount Paid"
+                    type="number"
+                    name="amountPaid"
+                    value={purchase.amountPaid}
+                    onChange={(e) => handleChange(e, index)}
+                    fullWidth
+                    required
+                    size="small"
+                    inputProps={{ min: "0" }}
+                    error={!!errors[`amountPaid-${index}`]}
+                    helperText={errors[`amountPaid-${index}`]}
+                  />
+
+                  {purchase.totalAmount >
+                    (parseFloat(purchase.amountPaid) || 0) && (
+                    <TextField
+                      label="Loan Interest (%)"
+                      type="number"
+                      name="interest"
+                      value={purchase.interest}
+                      onChange={(e) => handleChange(e, index)}
+                      fullWidth
+                      required
+                      size="small"
+                      inputProps={{ min: "0", max: "100" }}
+                      helperText="Enter interest rate if a balance remains (loan)"
+                    />
+                  )}
+                </Stack>
+              </Box>
+            ))
+          )}
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={handleAddPurchase}
+            sx={{ mt: 2 }}
+          >
+            Add Another Purchase
+          </Button>
+        </DialogContent>
+        <DialogActions
+          sx={{
+            padding: 2,
+            borderTop: `1px solid ${(theme) => theme.palette.divider}`,
+          }}
+        >
+          <Button onClick={onClose} variant="outlined" color="secondary">
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" color="primary">
+            Save All Purchases
+          </Button>
+        </DialogActions>
+      </form>
     </Dialog>
   );
 }

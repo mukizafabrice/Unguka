@@ -14,6 +14,8 @@ import Sales from "./Sales.js";
 import Season from "./Season.js";
 import Stock from "./Stock.js";
 import FeeType from "./FeeType.js";
+import Announcements from "./Announcements.js";
+import Cash from "./Cash.js";
 
 const cooperativeSchema = new mongoose.Schema({
   name: {
@@ -98,6 +100,8 @@ cooperativeSchema.post("findOneAndDelete", async function (doc) {
       mongoose.model("Sales").deleteMany({ cooperativeId: coopId }),
       mongoose.model("Season").deleteMany({ cooperativeId: coopId }),
       mongoose.model("Stock").deleteMany({ cooperativeId: coopId }),
+      mongoose.model("Announcements").deleteMany({ cooperativeId: coopId }),
+      mongoose.model("Cash").deleteMany({ cooperativeId: coopId }),
     ]);
   } catch (err) {
     console.error(

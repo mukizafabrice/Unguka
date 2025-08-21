@@ -25,6 +25,11 @@ export const fetchPaymentById = async (id) => {
   return response.data;
 };
 
+export const fetchSummaryById = async (id) => {
+  const response = await axiosInstance.get(`/payments/details/${id}`);
+  return response.data;
+};
+
 // Process a new payment
 // export const createPayment = async (paymentData, cooperativeId) => {
 //   if (!cooperativeId) throw new Error("Cooperative ID is required");

@@ -50,8 +50,8 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   borderBottom: `1px solid ${theme.palette.divider}`,
   backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.primary,
-  wordWrap: 'break-word',
-  whiteSpace: 'normal',
+  wordWrap: "break-word",
+  whiteSpace: "normal",
   [theme.breakpoints.down("sm")]: {
     padding: "4px 6px",
     fontSize: "0.65rem",
@@ -70,8 +70,8 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   "&:last-of-type": {
     borderTopRightRadius: theme.shape.borderRadius,
   },
-  wordWrap: 'break-word',
-  whiteSpace: 'normal',
+  wordWrap: "break-word",
+  whiteSpace: "normal",
   [theme.breakpoints.down("sm")]: {
     padding: "6px 6px",
     fontSize: "0.65rem",
@@ -79,7 +79,6 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 }));
 
 function Product() {
-  // ⭐ Get user and cooperativeId from AuthContext
   const { user } = useAuth();
   const cooperativeId = user?.cooperativeId; // This is the ID of the cooperative the member belongs to
 
@@ -97,7 +96,9 @@ function Product() {
   // ⭐ Modified loadProducts to fetch products for the specific cooperativeId
   const loadProducts = useCallback(async () => {
     if (!cooperativeId) {
-      toast.error("Member's cooperative ID is not available. Cannot load products.");
+      toast.error(
+        "Member's cooperative ID is not available. Cannot load products."
+      );
       setLoading(false);
       return;
     }
@@ -140,7 +141,9 @@ function Product() {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
         switch (searchField) {
           case "productName":
-            return product.productName?.toLowerCase().includes(lowerCaseSearchTerm);
+            return product.productName
+              ?.toLowerCase()
+              .includes(lowerCaseSearchTerm);
           default:
             return true;
         }
@@ -149,8 +152,8 @@ function Product() {
 
     // Apply sorting by product name
     filtered.sort((a, b) => {
-      const nameA = a.productName || '';
-      const nameB = b.productName || '';
+      const nameA = a.productName || "";
+      const nameB = b.productName || "";
       const comparison = nameA.localeCompare(nameB);
       return sortOrder === "asc" ? comparison : -comparison;
     });
@@ -161,7 +164,10 @@ function Product() {
   const totalPages = Math.ceil(filteredAndSortedProducts.length / rowsPerPage);
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = filteredAndSortedProducts.slice(indexOfFirstRow, indexOfLastRow);
+  const currentRows = filteredAndSortedProducts.slice(
+    indexOfFirstRow,
+    indexOfLastRow
+  );
 
   // Reset page to 1 whenever filters or sorting changes
   useEffect(() => {
@@ -184,10 +190,10 @@ function Product() {
         />
         <CardContent
           sx={{
-            maxHeight: isMobile ? 'calc(100vh - 200px)' : 'calc(100vh - 150px)',
-            overflow: 'hidden', // Hide overflow on CardContent itself
-            display: 'flex',
-            flexDirection: 'column',
+            maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
+            overflow: "hidden", // Hide overflow on CardContent itself
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <Box mb={3} sx={{ flexShrink: 0 }}>
@@ -234,7 +240,11 @@ function Product() {
               size="medium"
               onClick={handleSort}
               startIcon={
-                sortOrder === "asc" ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />
+                sortOrder === "asc" ? (
+                  <ArrowUpwardIcon />
+                ) : (
+                  <ArrowDownwardIcon />
+                )
               }
               sx={{ minWidth: { xs: "100%", sm: "auto" } }}
             >
@@ -243,20 +253,43 @@ function Product() {
           </Stack>
 
           {loading ? (
-            <Box display="flex" justifyContent="center" my={5} sx={{ flexGrow: 1 }}>
+            <Box
+              display="flex"
+              justifyContent="center"
+              my={5}
+              sx={{ flexGrow: 1 }}
+            >
               <CircularProgress color="primary" />
             </Box>
           ) : (
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}> {/* This box will scroll */}
+            <Box
+              sx={{
+                flexGrow: 1,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {" "}
+              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
-                sx={{ overflowX: "auto", borderRadius: 2, boxShadow: 2, flexGrow: 1 }}
+                sx={{
+                  overflowX: "auto",
+                  borderRadius: 2,
+                  boxShadow: 2,
+                  flexGrow: 1,
+                }}
               >
-                <Table size="small" sx={{ tableLayout: 'fixed' }}>
+                <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
                     <TableRow>
-                      <StyledTableHeaderCell sx={{ width: '10%' }}>ID</StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: '90%' }}>Product Name</StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                        ID
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "90%" }}>
+                        Product Name
+                      </StyledTableHeaderCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -266,7 +299,9 @@ function Product() {
                           <StyledTableCell>
                             {(currentPage - 1) * rowsPerPage + index + 1}
                           </StyledTableCell>
-                          <StyledTableCell>{product.productName || "N/A"}</StyledTableCell>
+                          <StyledTableCell>
+                            {product.productName || "N/A"}
+                          </StyledTableCell>
                         </TableRow>
                       ))
                     ) : (
@@ -285,7 +320,12 @@ function Product() {
           )}
 
           {totalPages > 1 && (
-            <Box mt={3} display="flex" justifyContent="center" sx={{ flexShrink: 0 }}>
+            <Box
+              mt={3}
+              display="flex"
+              justifyContent="center"
+              sx={{ flexShrink: 0 }}
+            >
               <Pagination
                 count={totalPages}
                 page={currentPage}
@@ -300,23 +340,6 @@ function Product() {
           )}
         </CardContent>
       </Card>
-
-      {/* ⭐ Removed AddProductModal and UpdateProductModal as members cannot add/update */}
-      {/* <AddProductModal /> */}
-      {/* <UpdateProductModal /> */}
-
-      {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
-      {/* <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      /> */}
     </Box>
   );
 }
