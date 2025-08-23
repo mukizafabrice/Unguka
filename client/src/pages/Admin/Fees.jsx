@@ -509,13 +509,17 @@ function Fees() {
               <TableContainer
                 component={Paper}
                 sx={{
-                  boxShadow: 2,
+                  boxShadow: 3,
                   borderRadius: 2,
-                  overflowX: "auto",
-                  flexGrow: 1,
+                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table
+                  size="small"
+                  // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
+                  sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
+                >
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>

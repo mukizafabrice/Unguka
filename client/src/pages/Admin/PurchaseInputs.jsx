@@ -208,7 +208,6 @@ function PurchaseInputs() {
     setShowUpdateModal(true);
   };
 
-  // ⭐ Modified handleUpdatePurchaseInput to include cooperativeId
   const handleUpdatePurchaseInput = async (updatedPurchaseInputData) => {
     if (!cooperativeId) {
       toast.error("Cooperative ID is missing. Cannot update purchase.");
@@ -246,13 +245,11 @@ function PurchaseInputs() {
     setShowConfirmDeleteDialog(true);
   };
 
-  // ⭐ NEW FUNCTION: Close confirmation dialog (cancel deletion)
   const handleCancelDelete = () => {
     setPurchaseInputToDeleteId(null);
     setShowConfirmDeleteDialog(false);
   };
 
-  // ⭐ NEW FUNCTION: Confirm and proceed with deletion
   const confirmDeletePurchaseInput = async () => {
     if (!cooperativeId || !purchaseInputToDeleteId) {
       toast.error(
@@ -288,7 +285,6 @@ function PurchaseInputs() {
     }
   };
 
-  // ⭐ MODIFIED handleDeletePurchaseInput to use the confirmation dialog
   const handleDeletePurchaseInput = (id) => {
     handleOpenConfirmDeleteDialog(id);
   };
@@ -497,13 +493,17 @@ function PurchaseInputs() {
               <TableContainer
                 component={Paper}
                 sx={{
-                  overflowX: "auto",
+                  boxShadow: 3,
                   borderRadius: 2,
-                  boxShadow: 2,
-                  flexGrow: 1,
+                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table
+                  size="small"
+                  // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
+                  sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
+                >
                   <TableHead>
                     <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>

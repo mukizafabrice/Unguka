@@ -111,7 +111,7 @@ export const deleteUser = async (id) => {
 export const changeProfileImage = async (id, formData) => {
   try {
     const response = await axiosInstance.put(
-      `/users/user/${id}/profile`,
+      `/users/${id}/profile-image`,
       formData,
       {
         headers: {
@@ -119,12 +119,13 @@ export const changeProfileImage = async (id, formData) => {
         },
       }
     );
-    return handleServiceResponse(response);
+    return response.data;
   } catch (error) {
-    return handleServiceError(
-      error,
-      `Error changing profile image for user with ID ${id}.`
+    console.error(
+      `Error changing profile image for user with ID ${id}:`,
+      error.response?.data || error.message
     );
+    throw error;
   }
 };
 
@@ -132,7 +133,8 @@ export const changeProfileImage = async (id, formData) => {
 export const changePassword = async (id, currentPassword, newPassword) => {
   const token = localStorage.getItem("token");
   if (!token) {
-    return { success: false, message: "No authentication token found." };
+    // It's good practice to throw a proper Error object.
+    throw new Error("No authentication token found.");
   }
 
   const config = {
@@ -153,8 +155,18 @@ export const changePassword = async (id, currentPassword, newPassword) => {
       body,
       config
     );
-    return handleServiceResponse(response);
+    // Return the successful response data.
+    return response.data;
   } catch (error) {
-    return handleServiceError(error, "Failed to change password.");
+    const errorMessage =
+      error.response?.data?.message || "Failed to change password.";
+
+    // Throw a new Error object with the specific message.
+    throw new Error(errorMessage);
   }
+};
+
+export const updateAdmin = async (id) => {
+  const response = await axiosInstance.put(`/users/${id}/admin`);
+  return response.data;
 };

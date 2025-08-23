@@ -118,7 +118,11 @@ function Announcement() {
   };
 
   return (
-    <Box px={isMobile ? 2 : 3} py={0}>
+    <Box
+      px={isMobile ? 2 : 3}
+      py={0}
+      sx={{ maxHeight: "100vh", overflowY: "auto" }}
+    >
       <Typography
         variant="h5"
         fontWeight="bold"
@@ -133,7 +137,7 @@ function Announcement() {
         direction={isMobile ? "column" : "row"}
         spacing={isMobile ? 3 : 4}
         justifyContent="center"
-        alignItems="stretch" // Ensures cards stretch to equal height
+        alignItems="stretch"
       >
         {/* Card for Create New Announcement */}
         <Box flex={1}>

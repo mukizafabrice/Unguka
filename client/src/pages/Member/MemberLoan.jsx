@@ -188,12 +188,8 @@ function Loan() {
         (loan) => loan.status?.toLowerCase() === statusFilter.toLowerCase()
       );
     }
-
-    // Apply sorting by amount owed (or product name as a fallback for consistency)
-    // For loans, sorting by amount owed or by a date would be more practical.
-    // Let's sort by creation date (implicitly, assuming loans are created over time) descending.
     filtered.sort((a, b) => {
-      const dateA = new Date(a.createdAt); // Assuming a 'createdAt' field
+      const dateA = new Date(a.createdAt);
       const dateB = new Date(b.createdAt);
       return sortOrder === "desc"
         ? dateB.getTime() - dateA.getTime()
@@ -347,18 +343,16 @@ function Loan() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
-                  overflowX: "auto",
+                  boxShadow: 3,
                   borderRadius: 2,
-                  boxShadow: 2,
-                  flexGrow: 1,
+                  overflowX: "auto",
+                  maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table size="small" sx={{ minWidth: 700, tableLayout: "auto" }}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>

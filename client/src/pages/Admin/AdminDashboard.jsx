@@ -15,6 +15,13 @@ import { fetchCash } from "../../services/cashService";
 import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
 import { useAuth } from "../../contexts/AuthContext";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Paper from "@mui/material/Paper";
 function AdminDashboard() {
   //fetch sales
   const [countSales, setCountSales] = useState(0);
@@ -162,119 +169,111 @@ function AdminDashboard() {
           </div>
         </div>
       </div>
-      <div className="mt-4 p-4  rounded-3">
+      <div
+        style={{
+          maxHeight: "67vh",
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}
+      >
         <h4 className="text-dark mb-3">Recent Activities</h4>
         <div className="row">
           <div className="col-md-6 mb-4">
-            <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark">
-              <h5 className="text-white mb-3">Recent Sales</h5>
-              <div className="table-responsive">
-                <table className="table table-dark table-striped table-hover mb-0">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Product</th>
-                      <th>Qty</th>
-                      <th>Amount</th>
-                      <th>Buyer</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            <div className="card p-4 shadow-sm rounded-3 h-100 ">
+              <h5 className="text-dark mb-3">Recent Sales</h5>
+              <TableContainer component={Paper}>
+                <Table size="small" aria-label="recent sales table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: "bold" }}>ID</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Product</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Qty</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Amount</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Buyer</TableCell>
+                      {/* <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell> */}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
                     {recentSales.length > 0 ? (
                       recentSales.slice(0, 3).map((sale, index) => (
-                        <tr key={sale.id}>
-                          <td>{index + 1}</td>
-                          <td>
+                        <TableRow key={sale.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>
                             {sale.stockId && sale.stockId.productId
                               ? sale.stockId.productId.productName
                               : "N/A"}
-                          </td>
-                          <td>
-                            {sale.quantity != null ? sale.quantity : "N/A"}
-                            <span className="fw-bold">kg</span>
-                          </td>
-                          <td>
-                            {sale.totalPrice}
-                            <span className="fw-bold">rwf</span>
-                          </td>
-                          <td>{sale.buyer}</td>
-                          <td>
+                          </TableCell>
+                          <TableCell>
+                            {sale.quantity != null ? sale.quantity : "N/A"} kg
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(`${sale.totalPrice}`)}
+                          </TableCell>
+                          <TableCell>{sale.buyer}</TableCell>
+                          {/* <TableCell>
                             {sale.createdAt
                               ? new Date(sale.createdAt).toLocaleDateString()
                               : "N/A"}
-                          </td>
-                        </tr>
+                          </TableCell> */}
+                        </TableRow>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center">
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
                           No sales found.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </div>
           </div>
           <div className="col-md-6 mb-4">
-            <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark">
-              <h5 className="text-white mb-3">Recent Productions</h5>
-              <div className="table-responsive">
-                <table className="table table-dark table-striped table-hover mb-0">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Member</th>
-                      <th>Product</th>
-                      <th>Quantity</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            <div className="card p-4 shadow-sm rounded-3 h-100 ">
+              <h5 className="text-dark mb-3">Recent Productions</h5>
+              <TableContainer component={Paper}>
+                <Table size="small" aria-label="recent productions table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: "bold" }}>ID</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Member</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Product</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>
+                        Quantity
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
                     {recentProductions.length > 0 ? (
                       recentProductions.slice(0, 3).map((prod, index) => (
-                        <tr key={prod.id}>
-                          <td>{index + 1}</td>
-                          <td>{prod.userId.names}</td>
-                          <td>
+                        <TableRow key={prod.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{prod.userId.names}</TableCell>
+                          <TableCell>
                             {prod.productId
                               ? prod.productId.productName
                               : "N/A"}
-                          </td>
-                          <td>
-                            {prod.quantity}
-                            <span className="fw-bold">kg</span>
-                          </td>
-                          {/* <td>
-                              <span
-                                className={`badge ${
-                                  prod.status === "Completed"
-                                    ? "bg-success"
-                                    : "bg-warning"
-                                }`}
-                              >
-                                {prod.status}
-                              </span>
-                            </td> */}
-                          <td>
+                          </TableCell>
+                          <TableCell>{prod.quantity} kg</TableCell>
+                          <TableCell>
                             {prod.createdAt
                               ? new Date(prod.createdAt).toLocaleDateString()
                               : "N/A"}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center">
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">
                           No productions found.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </div>
           </div>
         </div>

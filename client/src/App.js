@@ -49,6 +49,7 @@ import SuperDashboard from "./pages/Super/SuperDashboard";
 import Cooperatives from "./pages/Super/Cooperatives";
 import Managers from "./pages/Super/Managers";
 import Analytics from "./pages/Super/Analytics";
+import Settings from "./pages/Super/Settings";
 import SuperLayout from "./layouts/SuperLayout";
 
 import "./assets/styles/dashboard.css";
@@ -144,11 +145,12 @@ function App() {
             <Route path="cooperatives" element={<Cooperatives />} />
             <Route path="managers" element={<Managers />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
         <ToastContainer
-          position="top-right" // You can change this position (e.g., "bottom-left", "top-center")
-          autoClose={5000} // Toasts will automatically close after 5 seconds
+          position="top-right"
+          autoClose={5000}
           hideProgressBar={false}
           newestOnTop={false}
           closeOnClick

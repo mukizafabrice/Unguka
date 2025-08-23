@@ -474,13 +474,7 @@ function Production() {
                   maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table
-                  stickyHeader
-                  size="small"
-                  sx={{ minWidth: 900, tableLayout: "fixed" }}
-                >
-                  {" "}
-                  {/* Increased minWidth */}
+                <Table size="small" sx={{ tableLayout: "fixed" }}>
                   <TableHead>
                     <TableRow>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>

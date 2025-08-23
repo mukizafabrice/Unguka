@@ -89,14 +89,14 @@ const getStatusColor = (status) => {
 
 function Payment() {
   const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7; // Consistent rows per page, changed from 5
+  const rowsPerPage = 7;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("user"); // Default search field
-  const [statusFilter, setStatusFilter] = useState("all"); // Filter by payment status
-  const [sortOrder, setSortOrder] = useState("desc"); // Default sort by date descending
+  const [searchField, setSearchField] = useState("user");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("desc");
 
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -110,7 +110,7 @@ function Payment() {
       const cooperativeId = user?.cooperativeId;
 
       if (userId) {
-        const paymentsData = await fetchPaymentById(userId, cooperativeId); // Changed to fetchPaymentById
+        const paymentsData = await fetchPaymentById(userId, cooperativeId);
         const mappedPayments = (paymentsData || []).map((payment) => {
           const userName = payment.userId?.names || "N/A";
           return {
@@ -148,7 +148,6 @@ function Payment() {
   };
 
   const viewPaymentTransaction = () => {
-    // Renamed from viewpaymentTransaction for consistency
     navigate("/member/dashboard/payment-transaction");
   };
 
@@ -157,7 +156,6 @@ function Payment() {
     navigate("/member/dashboard/payment-summary");
   };
 
-  // Filter and sort payments based on search, status filter, and sort order
   const filteredAndSortedPayments = useMemo(() => {
     let filtered = payments;
 
@@ -225,25 +223,32 @@ function Payment() {
   };
 
   return (
-    <Box px={isMobile ? 2 : 3} pt={0}>
+    <Box px={isMobile ? 2 : 3} pt={0} >
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
+        {<Typography variant="h6">Payments </Typography>}
         <StyledCardHeader
-          title={<Typography variant="h6">Payments Dashboard</Typography>}
           action={
-            <Stack direction="row" spacing={2}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }} // stack vertically on mobile
+              spacing={1}
+              sx={{ width: { xs: "100%", sm: "auto" } }} // full width on mobile
+            >
               <Button
                 variant="outlined"
                 size="medium"
-                startIcon={<VisibilityIcon />} // Material-UI Eye icon
+                startIcon={<VisibilityIcon />}
                 onClick={viewPaymentTransaction}
+                fullWidth={{ xs: true, sm: false }} // full width on mobile
               >
-                View Payment Transactions
+                Payment Transactions
               </Button>
+
               <Button
                 variant="outlined"
                 size="medium"
                 startIcon={<VisibilityIcon />}
                 onClick={viewPaymentSummary}
+                fullWidth={{ xs: true, sm: false }} // full width on mobile
               >
                 Payment Summary
               </Button>
@@ -357,18 +362,20 @@ function Payment() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
-                  overflowX: "auto",
+                  boxShadow: 3,
                   borderRadius: 2,
-                  boxShadow: 2,
-                  flexGrow: 1,
+                  overflowX: "auto",
+                  maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table
+                  size="small"
+                  l
+                  sx={{ minWidth: 700, tableLayout: "auto" }}
+                >
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>

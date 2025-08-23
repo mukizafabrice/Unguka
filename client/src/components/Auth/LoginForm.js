@@ -1,14 +1,16 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { Eye, EyeOff } from "lucide-react"; // Import icons from lucide-react
 
 const LoginForm = () => {
   const navigate = useNavigate();
-  const { login } = useAuth(); // Get the login function from the context
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -17,32 +19,31 @@ const LoginForm = () => {
     }));
   };
 
+  const handleTogglePassword = () => {
+    setShowPassword((prev) => !prev);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // Call the login function from AuthContext directly
       const response = await login(formData.identifier, formData.password);
 
       if (response.success) {
-        // Redirect based on the user's role
         const role = response.user.role;
         if (role === "superadmin") {
           navigate("/super/dashboard");
         } else if (role === "manager") {
           navigate("/admin/dashboard");
         } else {
-          // Default for "member" or other roles
           navigate("/member/dashboard");
         }
       } else {
-        // The error message is already set by the AuthContext's login function
         setError(response.message || "Login failed. Please try again.");
       }
     } catch (err) {
-      // Fallback for unexpected errors
       setError("An unexpected error occurred. Please try again later.");
     } finally {
       setLoading(false);
@@ -72,7 +73,7 @@ const LoginForm = () => {
           Phone Number or Email
         </label>
         <input
-          type="text" // Use type="text" for a generic input
+          type="text"
           className="form-control rounded-3"
           id="identifier"
           name="identifier"
@@ -86,20 +87,35 @@ const LoginForm = () => {
         </small>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 password-input-container">
+        {" "}
+        {/* Apply new container class */}
         <label htmlFor="password" className="form-label">
           Password
         </label>
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           className="form-control rounded-3"
           id="password"
           name="password"
-          placeholder="********"
+          placeholder="Enter Your Password "
           value={formData.password}
           onChange={handleChange}
           required
         />
+        <span
+          onClick={handleTogglePassword}
+          className="password-toggle-icon" // Apply new icon class
+        >
+          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}{" "}
+          {/* Adjust icon size if needed */}
+        </span>
+      </div>
+
+      <div className="text-end mb-3">
+        <Link to="/forgot-password" className="text-decoration-none">
+          Forgot Password?
+        </Link>
       </div>
 
       <button

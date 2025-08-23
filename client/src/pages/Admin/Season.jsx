@@ -101,7 +101,7 @@ const getStatusColor = (status) => {
 };
 
 function Season() {
-  // ⭐ Get user and cooperativeId from AuthContext
+ 
   const { user } = useAuth();
   const cooperativeId = user?.cooperativeId;
 
@@ -120,8 +120,7 @@ function Season() {
   const [sortOrder, setSortOrder] = useState("asc");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
-
-  // Function to load seasons data from the backend, filtered by cooperativeId
+  
   const loadSeasons = useCallback(async () => {
     if (!cooperativeId) {
       toast.error("Cooperative ID is not available. Cannot load seasons.");
@@ -163,9 +162,8 @@ function Season() {
       return;
     }
     try {
-      // ⭐ Add cooperativeId to the data before sending
       const dataToSend = { ...newSeasonData, cooperativeId };
-      const response = await createSeason(dataToSend); // ⭐ Corrected service call
+      const response = await createSeason(dataToSend); 
       if (response.success) {
         toast.success(response.message || "Season added successfully!");
         setShowAddModal(false);
@@ -191,9 +189,8 @@ function Season() {
       return;
     }
     try {
-      // ⭐ Add cooperativeId to the data before sending
       const dataToSend = { ...updatedSeasonData, cooperativeId };
-      const response = await updateSeason(seasonId, dataToSend); // ⭐ Corrected service call
+      const response = await updateSeason(seasonId, dataToSend); 
       if (response.success) {
         toast.success(response.message || "Season updated successfully!");
         setShowUpdateModal(false);

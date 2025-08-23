@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { toast } from "react-toastify"; // Keep toast for individual notifications
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
 
 import { useAuth } from "../../contexts/AuthContext";
 
 import {
-  fetchAllSales, 
+  fetchAllSales,
   deleteSale,
-  updateSale, 
-  createSale, 
+  updateSale,
+  createSale,
 } from "../../services/salesService";
 
 import {
@@ -35,11 +34,11 @@ import {
   Pagination,
   CircularProgress,
   MenuItem,
-  Chip, // Added Chip for status display
-  Dialog, // ⭐ Added for confirmation dialog
-  DialogTitle, // ⭐ Added for confirmation dialog
-  DialogContent, // ⭐ Added for confirmation dialog
-  DialogActions, // ⭐ Added for confirmation dialog
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -48,6 +47,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
+// Assuming these modals are correctly implemented and accept the cooperativeId prop
 import UpdateSaleModal from "../../features/modals/UpdateSaleModal";
 import AddSaleModal from "../../features/modals/AddSaleModal";
 
@@ -67,18 +67,20 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   color: theme.palette.text.primary,
   wordWrap: "break-word",
   whiteSpace: "normal",
+  // Responsive adjustments for smaller screens
   [theme.breakpoints.down("sm")]: {
     padding: "4px 6px",
-    fontSize: "0.65rem",
+    fontSize: "0.75rem", // Slightly increased for better readability on small screens
   },
 }));
 
 const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   padding: "12px 16px",
-  backgroundColor: "#f5f5f5", // ⭐ Adjusted for solid background in header
+  backgroundColor: "#f5f5f5", // Adjusted for solid background in header
   color: theme.palette.text.primary,
   fontWeight: 600,
   borderBottom: `2px solid ${theme.palette.divider}`,
+  // Removed fixed widths, let content and minWidth of table handle it
   "&:first-of-type": {
     borderTopLeftRadius: theme.shape.borderRadius,
   },
@@ -87,9 +89,10 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
   wordWrap: "break-word",
   whiteSpace: "normal",
+  // Responsive adjustments for smaller screens
   [theme.breakpoints.down("sm")]: {
     padding: "6px 6px",
-    fontSize: "0.65rem",
+    fontSize: "0.7rem", // Slightly increased for better readability
   },
 }));
 
@@ -106,16 +109,15 @@ const getStatusColor = (status) => {
 };
 
 function Sales() {
-
   const { user } = useAuth();
-  const cooperativeId = user?.cooperativeId;
+  // Ensure cooperativeId is always a string or null
+  const cooperativeId = user?.cooperativeId || null;
 
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-
 
   const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
   const [saleToDeleteId, setSaleToDeleteId] = useState(null);
@@ -130,7 +132,7 @@ function Sales() {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // ⭐ Modified loadSales to fetch sales for the specific cooperativeId
+  // Modified loadSales to fetch sales for the specific cooperativeId
   const loadSales = useCallback(async () => {
     if (!cooperativeId) {
       toast.error(
@@ -240,7 +242,7 @@ function Sales() {
     setShowAddModal(true);
   };
 
-  // ⭐ Modified handleAddSale to include cooperativeId
+  // Modified handleAddSale to include cooperativeId
   const handleAddSale = async (newSaleData) => {
     if (!cooperativeId) {
       toast.error("Cooperative ID is missing. Cannot add sale.");
@@ -249,7 +251,7 @@ function Sales() {
     try {
       // Add the cooperativeId to the sale data before sending
       const dataToSend = { ...newSaleData, cooperativeId: cooperativeId };
-      const response = await createSale(dataToSend); // ⭐ CORRECTED: use createSale
+      const response = await createSale(dataToSend);
       if (response.success) {
         toast.success(response.message || "Sale added successfully!");
         await loadSales();
@@ -273,7 +275,7 @@ function Sales() {
     setShowUpdateModal(true);
   };
 
-  // ⭐ Modified handleUpdateSale to include cooperativeId
+  // Modified handleUpdateSale to include cooperativeId
   const handleUpdateSale = async (saleId, updatedSaleData) => {
     if (!cooperativeId) {
       toast.error("Cooperative ID is missing. Cannot update sale.");
@@ -282,7 +284,7 @@ function Sales() {
     try {
       // Add the cooperativeId to the update data before sending
       const dataToSend = { ...updatedSaleData, cooperativeId: cooperativeId };
-      const response = await updateSale(saleId, dataToSend); // ⭐ CORRECTED: use updateSale
+      const response = await updateSale(saleId, dataToSend);
       if (response.success) {
         toast.success(response.message || "Sale updated successfully!");
         await loadSales();
@@ -302,19 +304,19 @@ function Sales() {
     }
   };
 
-  // ⭐ NEW FUNCTION: Open confirmation dialog
+  // NEW FUNCTION: Open confirmation dialog
   const handleOpenConfirmDeleteDialog = (id) => {
     setSaleToDeleteId(id);
     setShowConfirmDeleteDialog(true);
   };
 
-  // ⭐ NEW FUNCTION: Close confirmation dialog (cancel deletion)
+  // NEW FUNCTION: Close confirmation dialog (cancel deletion)
   const handleCancelDelete = () => {
     setSaleToDeleteId(null);
     setShowConfirmDeleteDialog(false);
   };
 
-  // ⭐ NEW FUNCTION: Confirm and proceed with deletion
+  // NEW FUNCTION: Confirm and proceed with deletion
   const confirmDeleteSale = async () => {
     if (!cooperativeId || !saleToDeleteId) {
       toast.error("Cooperative ID or Sale ID is missing. Cannot delete sale.");
@@ -322,7 +324,7 @@ function Sales() {
     }
     try {
       // Pass the cooperativeId to deleteSale for backend authorization
-      const response = await deleteSale(saleToDeleteId, cooperativeId); // ⭐ CORRECTED: use deleteSale
+      const response = await deleteSale(saleToDeleteId, cooperativeId);
       if (response.success) {
         toast.success(response.message || "Sale deleted successfully!");
         await loadSales();
@@ -377,7 +379,7 @@ function Sales() {
         />
         <CardContent
           sx={{
-            maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
+            maxHeight: isMobile ? "calc(100vh - 180px)" : "calc(100vh - 120px)", // Adjusted maxHeight
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
@@ -472,49 +474,31 @@ function Sales() {
               <TableContainer
                 component={Paper}
                 sx={{
-                  boxShadow: 2,
+                  boxShadow: 3,
                   borderRadius: 2,
-                  overflowX: "auto",
-                  flexGrow: 1,
+                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table
+                  size="small"
+                  // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
+                  sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
+                >
                   <TableHead>
                     <TableRow>
-                      <StyledTableHeaderCell sx={{ width: "5%" }}>
-                        ID
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        Product
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        Season
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "8%" }}>
-                        Quantity
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "12%" }}>
-                        Unit Price
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "12%" }}>
-                        Amount
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        Buyer
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        Tel
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "8%" }}>
-                        Status
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        Date
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        align="center"
-                        sx={{ width: "5%" }}
-                      >
+                      {/* Removed explicit width percentages, let content and table minWidth manage */}
+                      <StyledTableHeaderCell>ID</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Product</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Season</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Qty(kg)</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Unit Price</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Amount</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Buyer</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Tel</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Status</StyledTableHeaderCell>
+                      <StyledTableHeaderCell>Date</StyledTableHeaderCell>
+                      <StyledTableHeaderCell align="center">
                         Action
                       </StyledTableHeaderCell>
                     </TableRow>
@@ -541,7 +525,7 @@ function Sales() {
                           </StyledTableCell>
                           <StyledTableCell>
                             {sale.quantity}{" "}
-                            <span style={{ fontWeight: "bold" }}>kg</span>
+                            <span style={{ fontWeight: "bold" }}></span>
                           </StyledTableCell>
                           <StyledTableCell>
                             {formatCurrency(sale.unitPrice)}
@@ -629,18 +613,18 @@ function Sales() {
         sale={selectedSale}
         onClose={() => setShowUpdateModal(false)}
         onSubmit={handleUpdateSale}
-        // ⭐ Pass cooperativeId to the modal if it needs to fetch related data (e.g., stocks, seasons)
+        // Pass cooperativeId to the modal if it needs to fetch related data (e.g., stocks, seasons)
         cooperativeId={cooperativeId}
       />
       <AddSaleModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddSale}
-        // ⭐ Pass cooperativeId to the modal for new sale creation
+        // Pass cooperativeId to the modal for new sale creation
         cooperativeId={cooperativeId}
       />
 
-      {/* ⭐ NEW: Confirmation Dialog for Deletion */}
+      {/* NEW: Confirmation Dialog for Deletion */}
       <Dialog
         open={showConfirmDeleteDialog}
         onClose={handleCancelDelete}

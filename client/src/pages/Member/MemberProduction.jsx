@@ -298,18 +298,20 @@ function Production() {
                 flexDirection: "column",
               }}
             >
-              {" "}
-              {/* This box will scroll */}
               <TableContainer
                 component={Paper}
                 sx={{
-                  overflowX: "auto",
+                  boxShadow: 3,
                   borderRadius: 2,
-                  boxShadow: 2,
-                  flexGrow: 1,
+                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table
+                  size="small"
+                  // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
+                  sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
+                >
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
@@ -409,18 +411,6 @@ function Production() {
           )}
         </CardContent>
       </Card>
-
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
     </Box>
   );
 }

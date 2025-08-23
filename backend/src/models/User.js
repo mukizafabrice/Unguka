@@ -9,6 +9,7 @@ import Plot from "./Plot.js";
 import Production from "./Production.js";
 import Cooperative from "./Cooperative.js";
 import Announcements from "./Announcements.js";
+import crypto from "crypto";
 
 const userSchema = new mongoose.Schema({
   names: {
@@ -100,7 +101,20 @@ userSchema.post("findOneAndDelete", async function (doc) {
   } catch (err) {
     console.error(`Error during cascading delete for user ${userId}:`, err);
   }
+  passwordResetToken: String;
+  passwordResetTokenExpire: Date;
 });
+
+userSchema.methods.createResetPasswordToken = function () {
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+  this.passwordResetTokenExpire = Date.now() * 10 * 60 * 1000;
+  console.log(resetToken, this.passwordResetToken);
+  return resetToken;
+};
 
 const User = mongoose.model("User", userSchema);
 export default User;

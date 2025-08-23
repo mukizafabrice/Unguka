@@ -402,13 +402,16 @@ function User() {
               <TableContainer
                 component={Paper}
                 sx={{
-                  overflowX: "auto",
+                  boxShadow: 3,
                   borderRadius: 2,
-                  boxShadow: 2,
-                  flexGrow: 1,
+                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <Table
+                  size="small"
+                  sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
+                >
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>

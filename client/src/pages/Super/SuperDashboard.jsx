@@ -232,43 +232,37 @@ const Dashboard = () => {
       <Box
         sx={{ p: { xs: 2, sm: 4 }, bgcolor: theme.palette.background.default }}
       >
-        <div className=" mb-4 border-bottom border-secondary-subtle">
-          <div className="dashboard-content-area">
-            <h4 className="fs-4 fw-medium mb-3" style={{ color: "black" }}>
-              Dashboard
-            </h4>
-            <div className="row flex-nowrap overflow-auto pb-2 gx-3">
-              <div className="col-lg-3 col-md-4 col-sm-6 mb-3 p-3">
-                <StatCard
-                  title="Total Cooperatives"
-                  value={stats.totalCooperatives}
-                  color="orange"
-                  icon={Group}
-                />
-              </div>
-              <div className="col-lg-3 col-md-4 col-sm-6 mb-3 p-3">
-                <StatCard
-                  title="Total Members"
-                  value={stats.totalUsers}
-                  color="red"
-                  icon={Users}
-                />
-              </div>
+        <div className="dashboard-content-area">
+          <h4 className="fs-4 fw-medium " style={{ color: "black" }}>
+            Dashboard
+          </h4>
+          <div className="row flex-nowrap overflow-auto  pb-2 gx-1">
+            <div className="col-lg-3 col-md-4 col-sm-6 w-50 p-3">
+              <StatCard
+                title="Total Cooperatives"
+                value={stats.totalCooperatives}
+                color="orange"
+                icon={Group}
+              />
+            </div>
+            <div className="col-lg-3 col-md-4 col-sm-6 w-50 p-3">
+              <StatCard
+                title="Total Users"
+                value={stats.totalUsers}
+                color="red"
+                icon={Users}
+              />
             </div>
           </div>
         </div>
 
         {/* Charts */}
-        <Grid
-          container
-          spacing={3}
-          sx={{ mt: 4, maxHeight: 400, overflow: "auto" }}
-        >
+        <Grid container spacing={3} sx={{ maxHeight: 400, overflow: "auto" }}>
           <Grid item xs={12} md={6}>
             <Paper
               sx={{
                 p: 3,
-                height: 400,
+                height: 360,
                 width: 500,
                 display: "flex",
                 flexDirection: "column",
@@ -300,7 +294,7 @@ const Dashboard = () => {
             <Paper
               sx={{
                 p: 3,
-                height: 400,
+                height: 360,
                 width: 500,
                 display: "flex",
                 flexDirection: "column",

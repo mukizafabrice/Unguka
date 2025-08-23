@@ -294,11 +294,13 @@ const AddPaymentModal = ({ show, onClose, onSave }) => {
                   >
                     <option value="">-- Select User --</option>
                     {Array.isArray(users) &&
-                      users.map((userOption) => (
-                        <option key={userOption._id} value={userOption._id}>
-                          {userOption.names}
-                        </option>
-                      ))}
+                      users
+                        .filter((userOption) => userOption.role === "member")
+                        .map((userOption) => (
+                          <option key={userOption._id} value={userOption._id}>
+                            {userOption.names}
+                          </option>
+                        ))}
                   </select>
                 </div>
 

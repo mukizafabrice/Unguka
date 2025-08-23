@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { fetchAnnouncements } from "../../services/announcementService";
-
+import {
+  fetchAnnouncements,
+  createAnnouncement,
+} from "../../services/announcementService";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Box,
   Card,
   CardHeader,
   CardContent,
   Typography,
+  Button,
+  TextField,
   CircularProgress,
   Stack,
   List,
@@ -16,12 +21,14 @@ import {
   ListItemText,
   useMediaQuery,
   styled,
+  Alert, // For displaying errors
 } from "@mui/material";
+import SendIcon from "@mui/icons-material/Send";
 import CampaignIcon from "@mui/icons-material/Campaign"; // Icon for Announcements
 
 // Styled components consistent with other dashboards
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[50], // Neutral background for header
+  backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
   "& .MuiCardHeader-title": {
     fontWeight: 600,
@@ -33,7 +40,7 @@ const StyledListGroupItem = styled(ListItem)(({ theme }) => ({
   "&:last-child": {
     borderBottom: "none",
   },
-  padding: theme.spacing(2, 3), // Consistent padding
+  padding: theme.spacing(2, 3), //
   flexDirection: "column",
   alignItems: "flex-start",
   backgroundColor: theme.palette.background.paper,
@@ -42,13 +49,18 @@ const StyledListGroupItem = styled(ListItem)(({ theme }) => ({
 const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: theme.shape.borderRadius,
   boxShadow: theme.shadows[4],
-  height: "100%", // Ensure card stretches to fill height in Stack
+  height: "100%", // Ensure cards stretch to fill height in Stack
 }));
 
 function Announcement() {
   const [announcements, setAnnouncements] = useState([]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(""); // Kept for fetch errors
+  const [error, setError] = useState("");
+
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -56,21 +68,54 @@ function Announcement() {
     setLoading(true);
     setError(""); // Clear previous errors
     try {
-      const data = await fetchAnnouncements();
+      const data = await fetchAnnouncements(cooperativeId);
       setAnnouncements(data ? data.reverse() : []); // Ensure data is an array
     } catch (err) {
       console.error("Error fetching announcements:", err);
       setError("Failed to load announcements.");
-      toast.error("Failed to load announcements."); // Display toast for fetch error
       setAnnouncements([]); // Reset on error
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cooperativeId]);
 
   useEffect(() => {
     fetchAllAnnouncements();
   }, [fetchAllAnnouncements]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(""); // Clear previous errors
+
+    if (!title.trim() || !description.trim()) {
+      setError("Both title and description are required.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Ensure user is retrieved safely; consider using a global auth context if available
+      const user = JSON.parse(localStorage.getItem("user"));
+      const userId = user?.id; // Get userId if available
+
+      await createAnnouncement({ title, description, userId, cooperativeId });
+
+      setTitle("");
+      setDescription("");
+      toast.success("Announcement sent successfully!"); // Added success toast
+      await fetchAllAnnouncements(); // Re-fetch all announcements
+    } catch (err) {
+      console.error("Failed to create announcement:", err);
+      setError(
+        `Failed to send announcement: ${
+          err.response?.data?.message || err.message
+        }`
+      );
+      toast.error("Failed to send announcement. Please try again."); // Toast for error
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Box px={isMobile ? 2 : 3} py={0}>
@@ -85,10 +130,12 @@ function Announcement() {
       </Typography>
 
       <Stack
-        direction="row" // Set to row, as there's only one main card now, helps with centering if desired.
+        direction={isMobile ? "column" : "row"}
+        spacing={isMobile ? 3 : 4}
         justifyContent="center"
-        alignItems="stretch" // Ensures card stretches to equal height
+        alignItems="stretch" // Ensures cards stretch to equal height
       >
+        {/* Card for Create New Announcement */}
         {/* Card for Displaying Recent Announcements */}
         <Box flex={1}>
           <StyledCard>
@@ -174,7 +221,6 @@ function Announcement() {
           </StyledCard>
         </Box>
       </Stack>
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );
 }

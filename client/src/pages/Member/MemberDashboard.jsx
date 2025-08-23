@@ -1,70 +1,70 @@
 import React, { useState, useEffect } from "react";
-import {
-  Package,
-  Users,
-  Layers,
-  XCircle,
-  Info,
-  Wallet,
-  ShoppingCart,
-} from "lucide-react";
+import { Layers, Factory, HandCoins } from "lucide-react"; // Removed Users, Added HandCoins
 import StatCard from "../../components/StatCard";
 import { fetchPurchaseInputsById } from "../../services/purchaseInputsService";
 import { fetchProductionsById } from "../../services/productionService";
 import { fetchProducts } from "../../services/productService";
-import { fetchUsers } from "../../services/userService";
-
+import { fetchLoansById } from "../../services/loanService";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Paper from "@mui/material/Paper";
 function MemberDashboard() {
-  //fetch sales
-  const [countSales, setCountSales] = useState(0);
+  const [countProduction, setProductionSales] = useState(0);
+  const [countProducts, setCountProducts] = useState(0);
+  const [countLoans, setCountLoans] = useState(0); // ✅ New state
+  const [recentPurchases, setRecentPurchases] = useState([]);
+  const [recentProductions, setRecentProductions] = useState([]);
 
+  // Fetch productions count
   useEffect(() => {
     const countSales = async () => {
       try {
-        const response = await fetchPurchaseInputsById();
-
-        setCountSales(response.data.length);
+        const user = JSON.parse(localStorage.getItem("user"));
+        const userId = user?.id;
+        const response = await fetchProductionsById(userId);
+        setProductionSales(response.length);
       } catch (error) {
-        console.error("Failed to fetch customers count:", error);
+        console.error("Failed to fetch productions count:", error);
       }
     };
     countSales();
   }, []);
 
-  // Fetch members
-
-  const [members, setMembers] = useState(0);
-  useEffect(() => {
-    const countUsers = async () => {
-      try {
-        const response = await fetchUsers();
-
-        setMembers(response.length);
-      } catch (error) {
-        console.error("Failed to fetch low stock count:", error);
-      }
-    };
-    countUsers();
-  }, []);
-
-  //fetch product
-
-  const [countProducts, setCountProducts] = useState(0);
-
+  // Fetch products count
   useEffect(() => {
     const fetchProductCount = async () => {
       try {
-        const response = await fetchProducts();
-        setCountProducts(response.length);
+        const user = JSON.parse(localStorage.getItem("user"));
+        const cooperativeId = user?.cooperativeId;
+        const response = await fetchProducts(cooperativeId);
+        setCountProducts(response.data.length);
       } catch (error) {
-        console.error("Failed to fetch low stock count:", error);
+        console.error("Failed to fetch products count:", error);
       }
     };
     fetchProductCount();
   }, []);
 
-  // Fetch recent sales and productions
-  const [recentPurchases, setRecentPurchases] = useState([]);
+  // ✅ Fetch loans count
+  useEffect(() => {
+    const fetchLoanCount = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        const userId = user?.id;
+        const response = await fetchLoansById(userId); // assuming it returns an array
+        setCountLoans(response.length);
+      } catch (error) {
+        console.error("Failed to fetch loans count:", error);
+      }
+    };
+    fetchLoanCount();
+  }, []);
+
+  // Fetch recent purchases
   useEffect(() => {
     const loadPurchases = async () => {
       try {
@@ -73,14 +73,13 @@ function MemberDashboard() {
         const purchasesData = await fetchPurchaseInputsById(userId);
         setRecentPurchases(purchasesData);
       } catch (error) {
-        console.error("Failed to fetch sales:", error);
+        console.error("Failed to fetch purchases:", error);
       }
     };
-
     loadPurchases();
   }, []);
 
-  const [recentProductions, setRecentProductions] = useState([]);
+  // Fetch recent productions
   useEffect(() => {
     const loadProductions = async () => {
       try {
@@ -89,10 +88,9 @@ function MemberDashboard() {
         const productionsData = await fetchProductionsById(userId);
         setRecentProductions(productionsData);
       } catch (error) {
-        console.error("Failed to fetch sales:", error);
+        console.error("Failed to fetch productions:", error);
       }
     };
-
     loadProductions();
   }, []);
 
@@ -100,142 +98,137 @@ function MemberDashboard() {
     <div className="p-4 text-white">
       <div className="pb-4 mb-4 border-bottom border-secondary-subtle">
         <div className="dashboard-content-area">
-          <h4 className="fs-4 fw-medium mb-3" style={{ color: "black" }}>
-            Dashboard
-          </h4>
+          <h4 className="fw-semibold mb-4 text-dark">Dashboard</h4>
           <div className="row flex-nowrap overflow-auto pb-2 gx-3">
-            <div className="col-lg-3 col-md-4 col-sm-6 mb-3">
+            <div className="col-lg-4 col-md-4 col-sm-4 mb-3">
               <StatCard
-                title="Total Product"
+                title="Total Products"
                 value={countProducts}
-                color="orange"
+                color="#7B2FCE"
                 icon={Layers}
               />
             </div>
-            <div className="col-lg-3 col-md-4 col-sm-6 mb-3">
+            <div className="col-lg-4 col-md-4 col-sm-4 mb-3">
               <StatCard
-                title="Total Members"
-                value={members}
-                color="red"
-                icon={Users}
+                title="Total Productions"
+                value={countProduction}
+                color="#0F62FE"
+                icon={Factory}
               />
             </div>
-            <div className="col-lg-3 col-md-4 col-sm-6 mb-3">
+            <div className="col-lg-4 col-md-4 col-sm-4 mb-3">
               <StatCard
-                title="total Sales"
-                value={countSales}
-                color="black"
-                icon={ShoppingCart}
+                title="My Loans"
+                value={countLoans}
+                color="#E11D48"
+                icon={HandCoins}
               />
             </div>
           </div>
         </div>
       </div>
-      <div className="mt-4 p-4  rounded-3">
-        <h4 className="text-dark mb-3">Recent Activities</h4>
-        <div className="row">
-          <div className="col-md-6 mb-4">
-            <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark overflow-auto">
-              <h5 className="text-white mb-3">Recent Purchases</h5>
-              <div className="table-responsive">
-                <table className="table table-dark table-striped table-hover mb-0 table-sm small">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Member</th>
-                      <th>Product</th>
-                      <th>Qty(kg)</th>
-                      <th>unitPrice</th>
-                      <th>Left to Pay</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+
+      {/* Recent Activities */}
+      <div
+        className="f"
+        style={{
+          maxHeight: "57vh",
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}
+      >
+        <h5 className="fw-medium text-secondary mb-3">Recent Activities</h5>
+        <div className="row g-4">
+          {/* Recent Purchases */}
+          <div className="col-md-6">
+            <div className="card p-4 shadow-sm rounded-3 h-100 ">
+              <h5 className="text-dark mb-3">Recent Purchases</h5>
+              <TableContainer component={Paper} sx={{ height: "100%" }}>
+                <Table size="small" aria-label="recent purchases table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: "bold" }}>#</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Member</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Product</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>
+                        Qty (kg)
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
                     {recentPurchases.length > 0 ? (
                       recentPurchases.slice(0, 3).map((p, index) => (
-                        <tr key={p.id}>
-                          <td>{index + 1}</td>
-                          <td>{p.userId?.names}</td>
-                          <td>{p.productId?.productName}</td>
-                          <td>
-                            {p.quantity}
-                            <span className="fw-bold">kg</span>
-                          </td>
-                          <td>{p.unitPrice}</td>
-                          <td>
-                            {p.amountRemaining}
-                            <span className="fw-bold">rwf</span>
-                          </td>
-                        </tr>
+                        <TableRow key={p.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{p.userId?.names}</TableCell>
+                          <TableCell>{p.productId?.productName}</TableCell>
+                          <TableCell>{p.quantity}</TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: "bold",
+                              color: p.status === "paid" ? "green" : "orange",
+                            }}
+                          >
+                            {p.status}
+                          </TableCell>
+                        </TableRow>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center">
-                          No sales found.
-                        </td>
-                      </tr>
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
+                          No purchases found.
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </div>
           </div>
-          <div className="col-md-6 mb-4">
-            <div className="card p-4 shadow-sm rounded-3 h-100 bg-dark">
-              <h5 className="text-white mb-3">Recent Productions</h5>
-              <div className="table-responsive">
-                <table className="table table-dark table-striped table-hover mb-0 table-sm small">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Member</th>
-                      <th>Product</th>
-                      <th>Quantity</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+
+          {/* Recent Productions */}
+          <div className="col-md-6">
+            <div className="card p-4 shadow-sm rounded-3 h-100 ">
+              <h5 className="text-dark mb-3">Recent Productions</h5>
+              <TableContainer component={Paper} sx={{ height: "100%" }}>
+                <Table size="small" aria-label="recent productions table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: "bold" }}>#</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Member</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Product</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Qty</TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
                     {recentProductions.length > 0 ? (
                       recentProductions.slice(0, 3).map((prod, index) => (
-                        <tr key={prod.id}>
-                          <td>{index + 1}</td>
-                          <td>{prod.userId.names}</td>
-                          <td>
-                            {prod.productId
-                              ? prod.productId.productName
-                              : "N/A"}
-                          </td>
-                          <td>
-                            {prod.quantity}
-                            <span className="fw-bold">kg</span>
-                          </td>
-                          {/* <td>
-                          <span
-                            className={`badge ${
-                              prod.status === "Completed"
-                                ? "bg-success"
-                                : "bg-warning"
-                            }`}
-                          >
-                            {prod.status}
-                          </span>
-                        </td> */}
-                          <td>
+                        <TableRow key={prod.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{prod.userId?.names}</TableCell>
+                          <TableCell>
+                            {prod.productId?.productName || "N/A"}
+                          </TableCell>
+                          <TableCell>{prod.quantity}kg</TableCell>
+                          <TableCell>
                             {prod.createdAt
                               ? new Date(prod.createdAt).toLocaleDateString()
                               : "N/A"}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center">
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">
                           No productions found.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </div>
           </div>
         </div>

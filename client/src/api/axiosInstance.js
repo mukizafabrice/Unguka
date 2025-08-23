@@ -2,16 +2,13 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  // IMPORTANT: Set your backend's base URL here.
-  // This ensures all requests made with axiosInstance go to your API.
-  baseURL: "http://localhost:8000/api", // Adjust to your actual backend URL
+  baseURL: "http://172.20.10.2:8000/api", // Adjust to your actual backend URL
   timeout: 100000, // Optional: Request timeout in milliseconds
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request Interceptor: This runs BEFORE every request made with axiosInstance
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token"); // Retrieve token from local storage

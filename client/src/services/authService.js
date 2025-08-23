@@ -1,9 +1,7 @@
 import axios from "axios";
 
 // This URL is for your login endpoint
-const LOGIN_URL = "http://localhost:8000/api/users/login";
-
-
+const LOGIN_URL = "http://172.20.10.2:8000/api/users/login";
 
 const login = async (identifier, password) => {
   try {
@@ -19,7 +17,8 @@ const login = async (identifier, password) => {
       return { success: true, user, token };
     }
   } catch (error) {
-    const message = error.response?.data?.message || "Login failed. Please try again.";
+    const message =
+      error.response?.data?.message || "Login failed. Please try again.";
     return { success: false, message };
   }
 };

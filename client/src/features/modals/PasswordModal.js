@@ -22,7 +22,7 @@ const PasswordModal = ({ onClose }) => {
     }
 
     const user = JSON.parse(localStorage.getItem("user"));
-    const userId = user?.id; // <-- The fix is right here!
+    const userId = user?.id;
 
     if (!userId) {
       toast.error("User not found in local storage.");

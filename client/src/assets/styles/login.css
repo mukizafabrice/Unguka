@@ -1,8 +1,4 @@
-/* .container-fluid {
-  width: 100%;
-  background: linear-gradient(to bottom, #e9ebee, #f5e2da);
-} */
-
+/* Your existing CSS */
 .login-button {
   background: #282c34 !important;
   color: white;
@@ -30,6 +26,34 @@
   transform: scale(1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
+
 .login-button .spinner-border {
   margin-right: 0.5rem;
+}
+
+/* New CSS for the password input and icon */
+.password-input-container {
+  position: relative; /* Ensure the icon is positioned relative to this container */
+}
+
+.password-input-container input {
+  padding-right: 2.5rem; /* Add extra padding to the right for the icon */
+}
+
+.password-toggle-icon {
+  position: absolute;
+  top: 75%; /* Vertically centers the icon */
+  right: 10px; /* Adjust right position as needed */
+  transform: translateY(-50%); /* Fine-tunes vertical centering */
+  cursor: pointer;
+  z-index: 10; /* Ensure icon is above input */
+  color: #6c757d; /* A subtle color for the icon */
+  font-size: 1.1rem; /* Adjust icon size */
+  display: flex; /* Helps center the SVG/icon */
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle-icon:hover {
+  color: #282c34; /* Darker on hover */
 }

@@ -2,15 +2,15 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import fs from "fs";
-// In your backend's user controller (e.g., authController.js)
-
-// In your backend's user controller (e.g., userController.js)
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 export const registerUser = async (req, res) => {
   const { names, email, phoneNumber, nationalId, role, cooperativeId } =
     req.body;
   const defaultPass = "123";
-  const requestingUser = req.user; // This comes from your authentication middleware
+  const requestingUser = req.user;
 
   // 1. Basic input validation for required fields
   if (!names || !email || !phoneNumber || !nationalId) {
@@ -57,14 +57,8 @@ export const registerUser = async (req, res) => {
     }
 
     if (requestingUser.role === "superadmin") {
-      // Superadmin can create any role (member, manager, superadmin)
-      // and assign any cooperativeId.
-      // They can also create users without a cooperativeId (e.g., other superadmins)
-      newUserRole = role || "member"; // Use provided role, or default to member
-      newUserCooperativeId = cooperativeId; // Use provided cooperativeId, or keep null/undefined
-
-      // Optional: Add more specific validation for superadmin if needed,
-      // e.g., if a superadmin tries to create another superadmin, you might restrict that.
+      newUserRole = role || "member";
+      newUserCooperativeId = cooperativeId;
       if (
         newUserRole === "superadmin" &&
         requestingUser.id.toString() !== newUser._id.toString()
@@ -311,11 +305,9 @@ export const loginUser = async (req, res) => {
 };
 //get all users
 
-// ... (imports)
-
 export const getAllUsers = async (req, res) => {
   try {
-    const requestingUser = req.user; // Assumes authentication middleware is in place
+    const requestingUser = req.user;
 
     if (requestingUser.role === "superadmin") {
       const users = await User.find().populate("cooperativeId", "name");
@@ -338,7 +330,6 @@ export const getAllUsers = async (req, res) => {
 };
 
 //get user by ID
-// ... (imports)
 
 export const getUserById = async (req, res) => {
   const { id } = req.params;
@@ -506,10 +497,40 @@ export const updateUser = async (req, res) => {
   }
 };
 
+// Update user by ID (PATCH)
+export const updateAdmin = async (req, res) => {
+  try {
+    const { id } = req.params; // userId from route
+    const updates = req.body; // fields to update
+
+    if (!id) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //change profile image
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 export const changeProfileImage = async (req, res) => {
   const { id } = req.params;
-  const requestingUser = req.user; // Assumes authentication middleware is in place
 
   if (!id) {
     return res.status(400).json({ message: "User ID is required." });
@@ -519,63 +540,70 @@ export const changeProfileImage = async (req, res) => {
     return res.status(400).json({ message: "No image file uploaded." });
   }
 
-  // Security Check: Ensure the user is only updating their own profile
-  if (requestingUser.id.toString() !== id) {
-    return res.status(403).json({
-      message: "You are not authorized to change this profile image.",
-    });
-  }
-
   try {
-    const userToUpdate = await User.findById(id);
+    const user = await User.findById(id);
 
-    if (!userToUpdate) {
-      // This case should ideally not be reached if the ID from the token is valid
+    if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Optional: Delete the old profile picture to save storage space
-    if (
-      userToUpdate.profilePicture &&
-      userToUpdate.profilePicture.startsWith("/uploads/")
-    ) {
-      const oldImagePath = `./public${userToUpdate.profilePicture}`;
-      // Check if the file exists before trying to delete it
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlink(oldImagePath, (err) => {
-          if (err) console.error("Failed to delete old profile image:", err);
-        });
+    const oldProfilePicture = user.profilePicture;
+
+    user.profilePicture = `/uploads/${req.file.filename}`;
+    await user.save();
+
+    if (oldProfilePicture && !oldProfilePicture.includes("default.png")) {
+      const oldImagePath = path.join(__dirname, "..", oldProfilePicture);
+      try {
+        await fs.unlink(oldImagePath);
+        console.log(`Successfully deleted old profile image: ${oldImagePath}`);
+      } catch (error) {
+        console.error(
+          `Failed to delete old image file: ${oldImagePath}`,
+          error
+        );
       }
     }
-
-    userToUpdate.profilePicture = `/uploads/${req.file.filename}`;
-
-    await userToUpdate.save();
 
     res.status(200).json({
       message: "Profile image updated successfully!",
       user: {
-        id: userToUpdate._id,
-        names: userToUpdate.names,
-        email: userToUpdate.email,
-        role: userToUpdate.role,
-        profilePicture: userToUpdate.profilePicture,
+        id: user._id,
+        names: user.names,
+        email: user.email,
+        role: user.role,
+        profilePicture: user.profilePicture,
       },
     });
   } catch (error) {
     console.error("Error updating profile image:", error);
+    if (req.file) {
+      const newImagePath = path.join(
+        __dirname,
+        "..",
+        `/uploads/${req.file.filename}`
+      );
+      try {
+        await fs.unlink(newImagePath);
+        console.log(
+          `Successfully deleted new image due to a database error: ${newImagePath}`
+        );
+      } catch (unlinkError) {
+        console.error(
+          `Failed to delete new image file after a database error: ${newImagePath}`,
+          unlinkError
+        );
+      }
+    }
     res.status(500).json({ message: "Internal server error." });
   }
 };
-
 //change password
 
 export const changePassword = async (req, res) => {
-  const { id } = req.params;
+  const userId = req.params.id;
   const { currentPassword, newPassword } = req.body;
-  const requestingUser = req.user; // Assumes you have authentication middleware
 
-  // 1. Basic Validation
   if (!currentPassword || !newPassword) {
     return res
       .status(400)
@@ -588,27 +616,17 @@ export const changePassword = async (req, res) => {
       .json({ message: "New password must be at least 6 characters long." });
   }
 
-  // 2. Authorization Check: A user can only change their own password
-  if (requestingUser.id.toString() !== id) {
-    return res.status(403).json({
-      message: "You are not authorized to change this user's password.",
-    });
-  }
-
   try {
-    // 3. Find the user by ID
-    const user = await User.findById(id);
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // 4. Verify the current password
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Incorrect current password." });
     }
 
-    // 5. Hash the new password and save
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     await user.save();
@@ -616,6 +634,18 @@ export const changePassword = async (req, res) => {
     res.status(200).json({ message: "Password changed successfully." });
   } catch (error) {
     console.error("Error changing password:", error);
-    res.status(500).json({ message: "Internal server error." });
+    res.status(500).json({ message: "Server error." });
   }
 };
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ message: "User Not Found" });
+  }
+  const resetToken = user.createResetPasswordToken();
+  user.save();
+};
+
+export const resetPassword = (req, res, next) => {};

@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import Logout from "./Logout";
 import { useAuth } from "../contexts/AuthContext";
 
-import { Home, Users, Building, BarChart, Megaphone, User } from "lucide-react";
+import { Home, Users, Building, BarChart, Settings } from "lucide-react";
 
 import "../assets/styles/dashboard.css";
 
@@ -58,6 +58,16 @@ function SuperNav({ isHide }) {
             }
           >
             <BarChart size={18} className="me-2" /> Analytics
+          </NavLink>
+        </li>
+        <li>
+          <NavLink
+            to="/super/dashboard/settings"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <Settings size={18} className="me-2" /> Settings
           </NavLink>
         </li>
 

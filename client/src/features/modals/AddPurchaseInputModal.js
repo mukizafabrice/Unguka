@@ -319,11 +319,13 @@ export default function AddPurchaseInputModal({
                     helperText={errors[`userId-${index}`]}
                   >
                     <MenuItem value="">Select a member</MenuItem>
-                    {users.map((user) => (
-                      <MenuItem key={user._id} value={user._id}>
-                        {user.names}
-                      </MenuItem>
-                    ))}
+                    {users
+                      .filter((user) => user.role === "member")
+                      .map((user) => (
+                        <MenuItem key={user._id} value={user._id}>
+                          {user.names}
+                        </MenuItem>
+                      ))}
                   </TextField>
 
                   <TextField

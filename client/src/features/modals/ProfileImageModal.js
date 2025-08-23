@@ -9,27 +9,41 @@ const ProfileImageModal = ({ onClose, onImageUpdated }) => {
   const [messageType, setMessageType] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
+  const maxFileSize = 5 * 1024 * 1024; // 5MB
+
+  const displayMessage = (text, type) => {
+    setMessage(text);
+    setMessageType(type);
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        setMessage("Please select a valid image file (e.g., JPG, PNG).");
-        setMessageType("danger");
+        displayMessage(
+          "Please select a valid image file (e.g., JPG, PNG).",
+          "danger"
+        );
+        setSelectedFile(null);
+        setPreviewImage("");
+        return;
+      }
+      if (file.size > maxFileSize) {
+        displayMessage("File size exceeds the 5MB limit.", "danger");
         setSelectedFile(null);
         setPreviewImage("");
         return;
       }
 
       setSelectedFile(file);
-      setMessage("");
+      displayMessage("", "");
 
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
       };
       reader.onerror = () => {
-        setMessage("Failed to read file for preview.");
-        setMessageType("danger");
+        displayMessage("Failed to read file for preview.", "danger");
         setSelectedFile(null);
         setPreviewImage("");
       };
@@ -37,17 +51,16 @@ const ProfileImageModal = ({ onClose, onImageUpdated }) => {
     } else {
       setSelectedFile(null);
       setPreviewImage("");
+      displayMessage("", "");
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
-    setMessageType("");
+    displayMessage("", "");
 
     if (!selectedFile) {
-      setMessage("Please select an image file.");
-      setMessageType("danger");
+      displayMessage("Please select an image file.", "danger");
       return;
     }
 
@@ -56,8 +69,7 @@ const ProfileImageModal = ({ onClose, onImageUpdated }) => {
     try {
       const currentUser = JSON.parse(localStorage.getItem("user"));
       if (!currentUser || !currentUser.id) {
-        setMessage("User not logged in or ID not found.");
-        setMessageType("danger");
+        displayMessage("User not logged in or ID not found.", "danger");
         setIsUploading(false);
         return;
       }
@@ -68,8 +80,10 @@ const ProfileImageModal = ({ onClose, onImageUpdated }) => {
 
       const result = await changeProfileImage(userId, formData);
 
-      setMessage(result.message || "Profile image updated successfully!");
-      setMessageType("success");
+      displayMessage(
+        result.message || "Profile image updated successfully!",
+        "success"
+      );
 
       if (result.user && result.user.profilePicture) {
         const updatedUser = {
@@ -81,10 +95,10 @@ const ProfileImageModal = ({ onClose, onImageUpdated }) => {
           onImageUpdated(result.user.profilePicture);
         }
       } else {
-        setMessage(
-          "Image uploaded, but new URL not received. Refresh to see changes."
+        displayMessage(
+          "Image uploaded, but new URL not received. Refresh to see changes.",
+          "warning"
         );
-        setMessageType("warning");
       }
 
       setTimeout(() => {
@@ -92,15 +106,20 @@ const ProfileImageModal = ({ onClose, onImageUpdated }) => {
       }, 1500);
     } catch (error) {
       console.error("Error uploading image:", error);
-      setMessage(
+      displayMessage(
         error.response?.data?.message ||
           error.message ||
           "An error occurred during upload."
       );
-      setMessageType("danger");
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const alertTypes = {
+    success: "alert-success",
+    danger: "alert-danger",
+    warning: "alert-warning",
   };
 
   return (
@@ -139,7 +158,7 @@ const ProfileImageModal = ({ onClose, onImageUpdated }) => {
                   type="file"
                   id="image-upload"
                   className="form-control"
-                  accept="image/*"
+                  accept="image/jpeg, image/png, image/gif"
                   onChange={handleFileChange}
                   required
                   disabled={isUploading}
@@ -168,13 +187,7 @@ const ProfileImageModal = ({ onClose, onImageUpdated }) => {
 
               {message && (
                 <div
-                  className={`alert alert-${
-                    messageType === "error"
-                      ? "danger"
-                      : messageType === "warning"
-                      ? "warning"
-                      : "success"
-                  } py-2`}
+                  className={`alert ${alertTypes[messageType]} py-2`}
                   role="alert"
                 >
                   {message}
