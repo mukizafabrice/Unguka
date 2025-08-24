@@ -124,7 +124,6 @@ function Fees() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [feeToEdit, setFeeToEdit] = useState(null);
 
-  // ⭐ NEW: State for the confirmation dialog
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [feeToDeleteId, setFeeToDeleteId] = useState(null);
 
@@ -283,20 +282,16 @@ function Fees() {
       );
     }
   };
-
-  // ⭐ NEW: Function to open the confirmation dialog
   const handleOpenDeleteDialog = (id) => {
     setFeeToDeleteId(id);
     setOpenDeleteDialog(true);
   };
 
-  // ⭐ NEW: Function to close the confirmation dialog
   const handleCloseDeleteDialog = () => {
     setOpenDeleteDialog(false);
     setFeeToDeleteId(null);
   };
 
-  // ⭐ MODIFIED: Actual deletion function, now called after confirmation
   const handleConfirmDelete = async () => {
     if (!feeToDeleteId) return;
 
@@ -403,7 +398,7 @@ function Fees() {
   };
 
   return (
-    <Box px={isMobile ? 2 : 3} pt={0}>
+    <Box px={isMobile ? 0 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         <StyledCardHeader
           title={<Typography variant="h6">Fees Dashboard</Typography>}

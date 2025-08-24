@@ -1,14 +1,13 @@
 import FeeType from "../models/FeeType.js";
 import { assignFeeToAllUsers } from "../services/feesService.js"; // This service needs to be updated to accept cooperativeId
 import Season from "../models/Season.js";
-import User from "../models/User.js"; // Import User model to filter members by cooperative
+import User from "../models/User.js";
 import Fees from "../models/Fees.js"; // Import Fees model for insertMany operation
 import mongoose from "mongoose"; // Import mongoose for ObjectId validation
 
 // Create new fee type
 export const createFeeType = async (req, res) => {
   try {
-    // ⭐ NEW: Extract cooperativeId from the request body
     const {
       name,
       amount,
@@ -21,12 +20,10 @@ export const createFeeType = async (req, res) => {
 
     // Basic validation for required fields
     if (!name || amount == null || !cooperativeId) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Name, amount, and Cooperative ID are required.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Name, amount, and Cooperative ID are required.",
+      });
     }
 
     // Validate cooperativeId format
@@ -42,13 +39,11 @@ export const createFeeType = async (req, res) => {
       cooperativeId,
     });
     if (existingFeeType) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message:
-            "A fee type with this name already exists in this cooperative.",
-        });
+      return res.status(409).json({
+        success: false,
+        message:
+          "A fee type with this name already exists in this cooperative.",
+      });
     }
 
     // ⭐ UPDATED: Create new FeeType including cooperativeId
@@ -85,8 +80,6 @@ export const createFeeType = async (req, res) => {
             data: feeType,
           });
         }
-        // ⭐ Pass feeType ID, activeSeason ID, and cooperativeId to assignFeeToAllUsers
-        // This service function needs to be updated to handle cooperativeId internally
         await assignFeeToAllUsers(feeType._id, activeSeason._id, cooperativeId);
       } else {
         // Non-seasonal → assign with null seasonId, but still pass cooperativeId
@@ -94,13 +87,11 @@ export const createFeeType = async (req, res) => {
       }
     }
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Fee type created successfully",
-        data: feeType,
-      });
+    res.status(201).json({
+      success: true,
+      message: "Fee type created successfully",
+      data: feeType,
+    });
   } catch (error) {
     console.error("Error creating fee type:", error);
     if (error.name === "ValidationError") {
@@ -108,13 +99,11 @@ export const createFeeType = async (req, res) => {
     }
     // Handle duplicate key error (code 11000) for the compound unique index
     if (error.code === 11000) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message:
-            "A fee type with this name already exists in this cooperative.",
-        });
+      return res.status(409).json({
+        success: false,
+        message:
+          "A fee type with this name already exists in this cooperative.",
+      });
     }
     res
       .status(500)
@@ -125,14 +114,12 @@ export const createFeeType = async (req, res) => {
 // Get all fee types (optionally filter by status and cooperativeId)
 export const getFeeTypes = async (req, res) => {
   try {
-    // ⭐ NEW: Extract cooperativeId from query parameters
     const { status, cooperativeId } = req.query;
     const filter = {};
 
     if (status) {
       filter.status = status;
     }
-    // ⭐ NEW: Apply cooperativeId filter if provided
     if (cooperativeId) {
       if (!mongoose.Types.ObjectId.isValid(cooperativeId)) {
         return res
@@ -142,27 +129,22 @@ export const getFeeTypes = async (req, res) => {
       filter.cooperativeId = cooperativeId;
     }
 
-    // ⭐ UPDATED: Find fee types based on the constructed filter, and populate cooperative info
     const feeTypes = await FeeType.find(filter)
       .populate("cooperativeId", "name registrationNumber") // Populate cooperative details
       .sort({ createdAt: -1 });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: feeTypes,
-        message: "Fee types fetched successfully",
-      });
+    res.status(200).json({
+      success: true,
+      data: feeTypes,
+      message: "Fee types fetched successfully",
+    });
   } catch (error) {
     console.error("Error fetching fee types:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Internal server error",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 
@@ -170,7 +152,7 @@ export const getFeeTypes = async (req, res) => {
 export const getFeeTypeById = async (req, res) => {
   try {
     const { id } = req.params;
-    // ⭐ NEW: Extract cooperativeId from query parameters
+
     const { cooperativeId } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -184,7 +166,6 @@ export const getFeeTypeById = async (req, res) => {
         .json({ success: false, message: "Invalid Cooperative ID format." });
     }
 
-    // ⭐ UPDATED: Find fee type by ID and cooperativeId for security
     let query = { _id: id };
     if (cooperativeId) {
       query.cooperativeId = cooperativeId;
@@ -196,20 +177,16 @@ export const getFeeTypeById = async (req, res) => {
     );
 
     if (!feeType) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Fee type not found or unauthorized access.",
-        });
-    }
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: feeType,
-        message: "Fee type retrieved successfully",
+      return res.status(404).json({
+        success: false,
+        message: "Fee type not found or unauthorized access.",
       });
+    }
+    res.status(200).json({
+      success: true,
+      data: feeType,
+      message: "Fee type retrieved successfully",
+    });
   } catch (error) {
     console.error("Error fetching fee type:", error);
     if (error.name === "CastError") {
@@ -217,13 +194,11 @@ export const getFeeTypeById = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid Fee Type ID format." });
     }
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Internal server error",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 
@@ -231,7 +206,6 @@ export const getFeeTypeById = async (req, res) => {
 export const updateFeeType = async (req, res) => {
   try {
     const { id } = req.params;
-    // ⭐ NEW: Extract cooperativeId from the request body
     const {
       name,
       amount,
@@ -249,12 +223,10 @@ export const updateFeeType = async (req, res) => {
         .json({ success: false, message: "Invalid Fee Type ID format." });
     }
     if (!name || amount == null || !cooperativeId) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Name, amount, and Cooperative ID are required for update.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Name, amount, and Cooperative ID are required for update.",
+      });
     }
     if (!mongoose.Types.ObjectId.isValid(cooperativeId)) {
       return res
@@ -262,31 +234,25 @@ export const updateFeeType = async (req, res) => {
         .json({ success: false, message: "Invalid Cooperative ID format." });
     }
 
-    // ⭐ UPDATED: Find the fee type by ID and cooperativeId for secure update
     const feeType = await FeeType.findOne({ _id: id, cooperativeId });
     if (!feeType) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Fee type not found or unauthorized to update.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Fee type not found or unauthorized to update.",
+      });
     }
 
-    // ⭐ UPDATED: Check if new name conflicts with another fee type *within the same cooperative*
     if (name.trim().toLowerCase() !== feeType.name.toLowerCase()) {
       const exists = await FeeType.findOne({
         name: name.trim(),
         cooperativeId,
       });
       if (exists) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-            message:
-              "A fee type with this name already exists in this cooperative.",
-          });
+        return res.status(409).json({
+          success: false,
+          message:
+            "A fee type with this name already exists in this cooperative.",
+        });
       }
     }
 
@@ -304,15 +270,13 @@ export const updateFeeType = async (req, res) => {
         ? autoApplyOnCreate
         : feeType.autoApplyOnCreate;
 
-    await feeType.save(); // runValidators is implicitly true on .save() if schema has them
+    await feeType.save();
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Fee type updated successfully",
-        data: feeType,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Fee type updated successfully",
+      data: feeType,
+    });
   } catch (error) {
     console.error("Error updating fee type:", error);
     if (error.name === "ValidationError") {
@@ -320,21 +284,17 @@ export const updateFeeType = async (req, res) => {
     }
     // Handle duplicate key error (code 11000) for the compound unique index
     if (error.code === 11000) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message:
-            "A fee type with this name already exists in this cooperative.",
-        });
-    }
-    res
-      .status(500)
-      .json({
+      return res.status(409).json({
         success: false,
-        message: "Internal server error",
-        error: error.message,
+        message:
+          "A fee type with this name already exists in this cooperative.",
       });
+    }
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 
@@ -342,7 +302,6 @@ export const updateFeeType = async (req, res) => {
 export const deleteFeeType = async (req, res) => {
   try {
     const { id } = req.params;
-    // ⭐ NEW: Extract cooperativeId from the request body
     const { cooperativeId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -351,36 +310,29 @@ export const deleteFeeType = async (req, res) => {
         .json({ success: false, message: "Invalid Fee Type ID format." });
     }
     if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Cooperative ID is required and must be valid.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Cooperative ID is required and must be valid.",
+      });
     }
-
-    // ⭐ UPDATED: Find and delete the fee type by ID and cooperativeId for security
+    
     const deleted = await FeeType.findOneAndDelete({ _id: id, cooperativeId });
 
     if (!deleted) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Fee type not found or unauthorized to delete.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Fee type not found or unauthorized to delete.",
+      });
     }
     res
       .status(200)
       .json({ success: true, message: "Fee type deleted successfully" });
   } catch (error) {
     console.error("Error deleting fee type:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Internal server error",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };

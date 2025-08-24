@@ -647,9 +647,7 @@ const ManagersTable = () => {
                         {manager.nationalId || "N/A"}
                       </TableCell>
                       <TableCell sx={{ py: 1 }}>
-                        {manager.cooperativeId
-                          ? getCooperativeName(manager.cooperativeId)
-                          : "None"}
+                        {manager.cooperativeId?.name}
                       </TableCell>
                       <TableCell sx={{ py: 1 }}>
                         {manager.isActive ? "Yes" : "No"}

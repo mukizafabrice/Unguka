@@ -166,7 +166,7 @@ export const changePassword = async (id, currentPassword, newPassword) => {
   }
 };
 
-export const updateAdmin = async (id) => {
-  const response = await axiosInstance.put(`/users/${id}/admin`);
+export const updateAdmin = async (id, data) => {
+  const response = await axiosInstance.patch(`/users/${id}/admin`, data);
   return response.data;
 };

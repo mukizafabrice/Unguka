@@ -51,7 +51,9 @@ function TopNav({ onMenuClick }) {
           className="topnav-icon menu-icon-left"
           onClick={onMenuClick}
         />
-        <span className="topnav-brand-name ms-3">{cooperativeName}</span>
+        <span className="topnav-brand-name ms-3">
+          {cooperativeName || "Cooperatives"}
+        </span>
       </div>
 
       <div className="topnav-right">

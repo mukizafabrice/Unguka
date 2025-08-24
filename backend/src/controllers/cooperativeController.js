@@ -1,9 +1,6 @@
 import Cooperative from "../models/Cooperative.js";
 import User from "../models/User.js";
 
-// @desc    Create a new cooperative
-// @route   POST /api/cooperatives
-// @access  Private/Superadmin
 export const createCooperative = async (req, res) => {
   const {
     name,

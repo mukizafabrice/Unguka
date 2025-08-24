@@ -37,7 +37,7 @@ const __dirname = path.resolve();
 // Middleware
 app.use(cors());
 app.use(express.json());
-const allowedOrigins = ["http://localhost:3000", "http://172.20.10.2:3000"];
+const allowedOrigins = ["http://localhost:3000", "http://192.168.43.129:3000"];
 app.use(
   cors({
     origin: allowedOrigins,
