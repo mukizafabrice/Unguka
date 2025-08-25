@@ -170,3 +170,41 @@ export const updateAdmin = async (id, data) => {
   const response = await axiosInstance.patch(`/users/${id}/admin`, data);
   return response.data;
 };
+
+// Service to request a password reset link
+export const forgotPasswordService = async (email) => {
+  try {
+    const response = await axiosInstance.post("/users/forgot-password", {
+      email,
+    });
+    return handleServiceResponse(response);
+  } catch (error) {
+    return handleServiceError(error, "Failed to send password reset email.");
+  }
+};
+
+// Service to reset the password with a token
+export const resetPasswordService = async (token, password) => {
+  try {
+    const response = await axiosInstance.post(
+      `/users/reset-password/${token}`,
+      {
+        password,
+      }
+    );
+    return handleServiceResponse(response);
+  } catch (error) {
+    return handleServiceError(error, "Failed to reset password.");
+  }
+};
+
+export const fetchEmail = async (email) => {
+  try {
+    const response = await axiosInstance.post("/users/getUserByEmail", {
+      email,
+    });
+    return response.data;
+  } catch (error) {
+    return handleServiceError(error, "Failed to fetch user by email.");
+  }
+};

@@ -40,7 +40,9 @@ function SideNav({ isHide }) {
 
   return (
     <div className={`sidebar ${isHide ? "hide" : ""}`}>
-      <div className="sidebar-header">{names}</div>
+      <div className="sidebar-header">
+        <p className="small">{names}</p>
+      </div>
       <ul className="sidebar-menu">
         <li>
           <NavLink
@@ -54,18 +56,16 @@ function SideNav({ isHide }) {
           </NavLink>
         </li>
 
-        <ul className="sidebar-submenu">
-          <li>
-            <NavLink
-              to="/member/dashboard/product"
-              className={({ isActive }) =>
-                `sidebar-link ${isActive ? "active" : ""}`
-              }
-            >
-              <Package size={16} className="me-2" /> Products
-            </NavLink>
-          </li>
-        </ul>
+        <li>
+          <NavLink
+            to="/member/dashboard/product"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <Package size={16} className="me-2" /> Products
+          </NavLink>
+        </li>
 
         {/* Operations Section */}
         <li className="sidebar-parent" onClick={() => toggleMenu("operations")}>
@@ -171,30 +171,27 @@ function SideNav({ isHide }) {
 
         {/* Admin Section */}
 
-        <ul className="sidebar-submenu">
-          <li className="sidebar-parent">
-            <NavLink
-              to="/member/dashboard/season"
-              className={({ isActive }) =>
-                `sidebar-link ${isActive ? "active" : ""}`
-              }
-            >
-              <Calendar size={16} className="me-2" /> Seasons
-            </NavLink>
-          </li>
-        </ul>
-        <ul className="sidebar-submenu">
-          <li>
-            <NavLink
-              to="/member/dashboard/announcement"
-              className={({ isActive }) =>
-                `sidebar-link ${isActive ? "active" : ""}`
-              }
-            >
-              <Megaphone size={18} className="me-2" /> Announcements
-            </NavLink>
-          </li>
-        </ul>
+        <li className="sidebar-parent">
+          <NavLink
+            to="/member/dashboard/season"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <Calendar size={16} className="me-2" /> Seasons
+          </NavLink>
+        </li>
+
+        <li>
+          <NavLink
+            to="/member/dashboard/announcement"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <Megaphone size={18} className="me-2" /> Announcements
+          </NavLink>
+        </li>
         <div className="mt-auto">
           <Logout />
         </div>

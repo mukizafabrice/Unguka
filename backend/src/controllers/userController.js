@@ -638,14 +638,107 @@ export const changePassword = async (req, res) => {
   }
 };
 
+//forgot password
+import nodemailer from "nodemailer";
+
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(404).json({ message: "User Not Found" });
+
+  try {
+    const user = await User.findOne({ email });
+
+    // Always respond with success message to prevent email enumeration
+    if (!user) {
+      return res.status(200).json({
+        message:
+          "If a user with that email exists, a password reset link has been sent.",
+      });
+    }
+
+    // Generate reset token
+    const resetToken = user.getResetPasswordToken();
+
+    await user.save({ validateBeforeSave: false });
+
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    // Email message
+    const message = `
+      <h2>Password Reset Request</h2>
+      <p>Click the link below to reset your password. This link is valid for 10 minutes:</p>
+      <a href="${resetUrl}" target="_blank">${resetUrl}</a>
+    `;
+
+    // Nodemailer Gmail transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "Password Reset",
+      html: message,
+    });
+
+    res.status(200).json({
+      message:
+        "If a user with that email exists, a password reset link has been sent.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Error sending password reset email." });
   }
-  const resetToken = user.createResetPasswordToken();
-  user.save();
 };
 
-export const resetPassword = (req, res, next) => {};
+import crypto from "crypto";
+
+export const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  try {
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetTokenExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    // ✅ Hash password before saving
+    user.password = await bcrypt.hash(password, 12);
+
+    // Clear reset token fields
+    user.passwordResetToken = undefined;
+    user.passwordResetTokenExpire = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ message: "Server error occurred." });
+  }
+};
+
+// fetch user by email
+export const getUserByEmail = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Fetching user error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

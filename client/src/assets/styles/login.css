@@ -1,3 +1,9 @@
+.myform {
+  background: linear-gradient(to bottom, #ebe7ee, #ecd0d1);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
 /* Your existing CSS */
 .login-button {
   background: #282c34 !important;

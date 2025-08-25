@@ -5,6 +5,7 @@ import {
   loginUser,
   getAllUsers,
   getUserById,
+  getUserByEmail,
   updateUser,
   updateAdmin,
   changePassword,
@@ -26,7 +27,8 @@ router.post(
 
 router.post("/login", loginUser);
 router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+router.post("/reset-password/:token", resetPassword);
+router.post("/getUserByEmail", getUserByEmail);
 router.get("/", protect, getAllUsers);
 router.get("/:id", protect, getUserById);
 router.put("/:id", protect, updateUser);

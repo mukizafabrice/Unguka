@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "http://192.168.43.129:8000/api", // Adjust to your actual backend URL
+  baseURL: "http://192.168.1.193:8000/api", // Adjust to your actual backend URL
   timeout: 100000, // Optional: Request timeout in milliseconds
   headers: {
     "Content-Type": "application/json",

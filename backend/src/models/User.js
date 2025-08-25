@@ -1,14 +1,4 @@
 import mongoose from "mongoose";
-import Fees from "./Fees.js";
-import PurchaseInput from "./PurchaseInput.js";
-import Loan from "./Loan.js";
-import LoanTransaction from "./LoanTransaction.js";
-import Payment from "./LoanTransaction.js";
-import PaymentTransaction from "./PaymentTransaction.js";
-import Plot from "./Plot.js";
-import Production from "./Production.js";
-import Cooperative from "./Cooperative.js";
-import Announcements from "./Announcements.js";
 import crypto from "crypto";
 
 const userSchema = new mongoose.Schema({
@@ -25,6 +15,7 @@ const userSchema = new mongoose.Schema({
     trim: true,
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, "Please enter a valid email address"],
+    required: [true, "Email is required"],
   },
   password: {
     type: String,
@@ -36,14 +27,13 @@ const userSchema = new mongoose.Schema({
     required: [true, "Phone number is required"],
     unique: true,
     trim: true,
-    // Updated regex to accept a more general international format
     match: [
       /^\+?[1-9]\d{7,14}$/,
       "Please enter a valid phone number (e.g., +250781234567 or 0781234567)",
     ],
   },
   nationalId: {
-    type: Number,
+    type: String,
     required: [true, "National ID is required"],
     unique: true,
     match: [/^\d{16}$/, "National ID must be exactly 16 digits"],
@@ -73,20 +63,32 @@ const userSchema = new mongoose.Schema({
     },
     default: null,
   },
+  passwordResetToken: String,
+  passwordResetTokenExpire: Date,
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-// A robust post-delete hook that only deletes data associated with the user's ID.
+// Method to generate a password reset token
+userSchema.methods.getResetPasswordToken = function () {
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+  this.passwordResetTokenExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  return resetToken;
+};
+
+// Post-delete hook to remove related documents
 userSchema.post("findOneAndDelete", async function (doc) {
   if (!doc) return;
 
   const userId = doc._id;
 
   try {
-    // Delete all documents from other collections where the userId field matches.
     await Promise.all([
       mongoose.model("PurchaseInput").deleteMany({ userId }),
       mongoose.model("Fees").deleteMany({ userId }),
@@ -101,20 +103,8 @@ userSchema.post("findOneAndDelete", async function (doc) {
   } catch (err) {
     console.error(`Error during cascading delete for user ${userId}:`, err);
   }
-  passwordResetToken: String;
-  passwordResetTokenExpire: Date;
 });
 
-userSchema.methods.createResetPasswordToken = function () {
-  const resetToken = crypto.randomBytes(32).toString("hex");
-  this.passwordResetToken = crypto
-    .createHash("sha256")
-    .update(resetToken)
-    .digest("hex");
-  this.passwordResetTokenExpire = Date.now() * 10 * 60 * 1000;
-  console.log(resetToken, this.passwordResetToken);
-  return resetToken;
-};
-
 const User = mongoose.model("User", userSchema);
+
 export default User;

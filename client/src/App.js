@@ -8,6 +8,8 @@ import "react-toastify/dist/ReactToastify.css"; //
 import ProtectedRoute from "./components/ProtectedRoute";
 import usePreventBack from "./components/usePreventBack";
 import Profile from "./pages/Profile";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 //Admin imports
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Season from "./pages/Admin/Season";
@@ -61,6 +63,8 @@ function App() {
         <PreventBackWrapper />
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route
             path="/profile"
             element={

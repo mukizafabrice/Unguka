@@ -158,6 +158,11 @@ const Dashboard = () => {
         ? cooperativesResponse.data
         : [];
 
+      // Filter only active cooperatives
+      const activeCooperatives = allCooperatives.filter(
+        (coop) => coop.isActive === true
+      );
+
       // Generate dynamic growth data
       const userGrowthData = generateGrowthData(
         allUsers,
@@ -172,7 +177,8 @@ const Dashboard = () => {
 
       setStats({
         totalUsers: allUsers.length,
-        totalCooperatives: allCooperatives.length,
+        totalCooperatives: allCooperatives.length, // all cooperatives
+        activeCooperatives: activeCooperatives.length, // only active ones
         userGrowthData,
         coopGrowthData,
       });
@@ -232,7 +238,7 @@ const Dashboard = () => {
       <Box
         sx={{ p: { xs: 2, sm: 4 }, bgcolor: theme.palette.background.default }}
       >
-        <div className="dashboard-content-area">
+        {/* <div className="dashboard-content-area">
           <h4 className="fs-4 fw-medium " style={{ color: "black" }}>
             Dashboard
           </h4>
@@ -254,16 +260,60 @@ const Dashboard = () => {
               />
             </div>
           </div>
+        </div> */}
+        <div className=" border-bottom border-secondary-subtle">
+          <div className="dashboard-content-area">
+            <h4 className="fw-semibold mb-4 text-dark">Dashboard</h4>
+            <div className="row flex-nowrap overflow-auto pb-2 gx-3">
+              <div className="col-lg-4 col-md-4 col-sm-4 mb-3">
+                <StatCard
+                  title="Total Cooperatives"
+                  value={stats.totalCooperatives}
+                  color="orange"
+                  icon={Group}
+                />
+              </div>
+              <div className="col-lg-4 col-md-4 col-sm-4 mb-3">
+                <StatCard
+                  title="Total Users"
+                  value={stats.totalUsers}
+                  color="red"
+                  icon={Users}
+                />
+              </div>
+              <div className="col-lg-4 col-md-4 col-sm-4 mb-3">
+                <StatCard
+                  title="Active Cooperatives"
+                  value={stats.activeCooperatives}
+                  color="#E11D48"
+                  icon={Layers}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-
         {/* Charts */}
-        <Grid container spacing={3} sx={{ maxHeight: 400, overflow: "auto" }}>
-          <Grid item xs={12} md={6}>
+        <Grid
+          container
+          sx={{
+            maxHeight: 400,
+            overflowY: "auto",
+            overflowX: "hidden",
+          }}
+        >
+          <Grid item xs={12} sm={6} md={6} lg={6}>
             <Paper
               sx={{
                 p: 3,
                 height: 360,
+                width: {
+                  xs: 500,
+                  sm: "70%", // Tablets
+                  md: "80%", // Laptops
+                  lg: "100%", // Large desktops
+                },
                 width: 500,
+                maxWidth: "100%",
                 display: "flex",
                 flexDirection: "column",
               }}
@@ -290,12 +340,19 @@ const Dashboard = () => {
             </Paper>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} sm={6} md={6} lg={6}>
             <Paper
               sx={{
                 p: 3,
                 height: 360,
+                width: {
+                  xs: 500, // Phones
+                  sm: "70%", // Tablets
+                  md: "800%", // Laptops
+                  lg: "100%", // Large desktops
+                },
                 width: 500,
+                maxWidth: "100%",
                 display: "flex",
                 flexDirection: "column",
               }}
