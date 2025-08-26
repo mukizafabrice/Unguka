@@ -113,3 +113,8 @@ export const deleteProduction = async (id, cooperativeId) => {
     return handleError(error, "Failed to delete production.");
   }
 };
+
+export const getProductions = async () => {
+  const response = await axiosInstance.get(`${API_URL}/productions`);
+  return response.data;
+};

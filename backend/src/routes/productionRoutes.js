@@ -2,6 +2,7 @@ import express from "express";
 import {
   createProduction,
   getAllProductions,
+  Productions,
   getProductions,
   getProductionsByUserId,
   updateProduction,
@@ -28,6 +29,7 @@ router.get(
   authorizeRoles(["superadmin", "manager", "member"]),
   getAllProductions
 );
+router.get("/productions", Productions);
 
 router.get(
   "/by-user-season",

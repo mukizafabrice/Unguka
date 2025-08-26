@@ -23,9 +23,6 @@ const login = async (identifier, password) => {
   }
 };
 
-// ... (rest of the service remains the same)
-
-// Logout function
 const logout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");

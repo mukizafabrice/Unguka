@@ -354,8 +354,8 @@ function Fees() {
                             {fee.userId?.names || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {fee.seasonId?.name || "N/A"} (
-                            {fee.seasonId?.year || "N/A"})
+                            {fee.seasonId?.name || "All"} (
+                            {fee.seasonId?.year || "Season"})
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.feeTypeId?.name || "N/A"}

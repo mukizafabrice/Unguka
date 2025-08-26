@@ -47,7 +47,7 @@ function SideNav({ isHide }) {
         <li>
           <NavLink
             to="/member/dashboard"
-            en
+            end
             className={({ isActive }) =>
               `sidebar-link ${isActive ? "active" : ""}`
             }

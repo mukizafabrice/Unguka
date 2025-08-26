@@ -436,3 +436,25 @@ export const deleteProduction = async (req, res) => {
       .json({ success: false, message: "Server error", error: error.message });
   }
 };
+
+export const Productions = async (req, res) => {
+  try {
+    const productions = await Production.find()
+      .populate("userId", "names phoneNumber")
+      .populate("productId", "productName")
+      .populate("seasonId", "name year")
+      .populate("cooperativeId", "name")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: productions,
+      message: "Productions fetched successfully",
+    }); // Consistent response
+  } catch (error) {
+    console.error("Error fetching all productions:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
+  }
+};

@@ -532,28 +532,35 @@ const __dirname = dirname(__filename);
 export const changeProfileImage = async (req, res) => {
   const { id } = req.params;
 
-  if (!id) {
-    return res.status(400).json({ message: "User ID is required." });
-  }
-
-  if (!req.file) {
-    return res.status(400).json({ message: "No image file uploaded." });
+  if (!id || !req.file) {
+    return res
+      .status(400)
+      .json({ message: "User ID or image file is missing." });
   }
 
   try {
     const user = await User.findById(id);
 
     if (!user) {
+      // Delete newly uploaded file if user not found
+      await fs.unlink(
+        path.join(__dirname, "..", "..", "uploads", req.file.filename)
+      );
       return res.status(404).json({ message: "User not found." });
     }
 
     const oldProfilePicture = user.profilePicture;
 
-    user.profilePicture = `/uploads/${req.file.filename}`;
-    await user.save();
+    // Use findByIdAndUpdate to update only the profilePicture field
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { profilePicture: `/uploads/${req.file.filename}` },
+      { new: true } // Returns the updated user document
+    );
 
-    if (oldProfilePicture && !oldProfilePicture.includes("default.png")) {
-      const oldImagePath = path.join(__dirname, "..", oldProfilePicture);
+    // After a successful database update, delete the old image if it was a local file
+    if (oldProfilePicture && oldProfilePicture.startsWith("/uploads/")) {
+      const oldImagePath = path.join(__dirname, "..", "..", oldProfilePicture);
       try {
         await fs.unlink(oldImagePath);
         console.log(`Successfully deleted old profile image: ${oldImagePath}`);
@@ -565,39 +572,34 @@ export const changeProfileImage = async (req, res) => {
       }
     }
 
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found after update." });
+    }
+
     res.status(200).json({
       message: "Profile image updated successfully!",
       user: {
-        id: user._id,
-        names: user.names,
-        email: user.email,
-        role: user.role,
-        profilePicture: user.profilePicture,
+        id: updatedUser._id,
+        names: updatedUser.names,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        profilePicture: updatedUser.profilePicture,
       },
     });
   } catch (error) {
     console.error("Error updating profile image:", error);
+    // Delete the new file in case of a database error
     if (req.file) {
-      const newImagePath = path.join(
-        __dirname,
-        "..",
-        `/uploads/${req.file.filename}`
-      );
-      try {
-        await fs.unlink(newImagePath);
-        console.log(
-          `Successfully deleted new image due to a database error: ${newImagePath}`
+      await fs
+        .unlink(path.join(__dirname, "..", "..", "uploads", req.file.filename))
+        .catch((err) =>
+          console.error("Failed to delete new file on rollback:", err)
         );
-      } catch (unlinkError) {
-        console.error(
-          `Failed to delete new image file after a database error: ${newImagePath}`,
-          unlinkError
-        );
-      }
     }
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
 //change password
 
 export const changePassword = async (req, res) => {

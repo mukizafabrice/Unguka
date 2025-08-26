@@ -19,7 +19,7 @@ const StyledContainer = styled(Container)(({ theme }) => ({
   justifyContent: "center",
   alignItems: "center",
   minHeight: "100vh",
-  backgroundColor: "#f0f2f5",
+  backgroundColor: "#eee",
 }));
 
 const StyledBox = styled(Box)(({ theme }) => ({
@@ -58,7 +58,7 @@ const ForgotPasswordMUI = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate(); // ✅ useNavigate hook
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,10 +88,10 @@ const ForgotPasswordMUI = () => {
     setLoading(false);
   };
 
-  const handleBackToLogin = () => navigate("/"); // ✅ single function for back
+  const handleBackToLogin = () => navigate("/");
 
   return (
-    <StyledContainer maxWidth="md">
+    <StyledContainer maxWidth="full">
       <StyledBox>
         <Typography
           variant="h4"
@@ -160,7 +160,7 @@ const ForgotPasswordMUI = () => {
         <MuiLink
           component="button"
           variant="body2"
-          onClick={handleBackToLogin} // ✅ corrected
+          onClick={handleBackToLogin}
           sx={{
             marginTop: 2,
             color: "#3f51b5",

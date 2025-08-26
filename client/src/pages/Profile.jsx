@@ -4,8 +4,6 @@ import { useNavigate } from "react-router-dom";
 import PasswordModal from "../features/modals/PasswordModal";
 import ProfileImageModal from "../features/modals/ProfileImageModal";
 
-// Define your API base URL here
-// For production, use process.env.REACT_APP_API_BASE_URL
 const API_BASE_URL = "http://localhost:8000"; // IMPORTANT: Change this to your actual backend URL
 
 function Profile() {

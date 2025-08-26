@@ -1,10 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import {
-  fetchAnnouncements,
-  createAnnouncement,
-} from "../../services/announcementService";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   Box,
@@ -12,8 +6,6 @@ import {
   CardHeader,
   CardContent,
   Typography,
-  Button,
-  TextField,
   CircularProgress,
   Stack,
   List,
@@ -21,12 +13,12 @@ import {
   ListItemText,
   useMediaQuery,
   styled,
-  Alert, // For displaying errors
+  Alert,
 } from "@mui/material";
-import SendIcon from "@mui/icons-material/Send";
-import CampaignIcon from "@mui/icons-material/Campaign"; // Icon for Announcements
+import CampaignIcon from "@mui/icons-material/Campaign";
+import { fetchAnnouncements } from "../../services/announcementService";
 
-// Styled components consistent with other dashboards
+// Styled components
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -40,40 +32,39 @@ const StyledListGroupItem = styled(ListItem)(({ theme }) => ({
   "&:last-child": {
     borderBottom: "none",
   },
-  padding: theme.spacing(2, 3), //
+  padding: theme.spacing(2, 3),
   flexDirection: "column",
   alignItems: "flex-start",
   backgroundColor: theme.palette.background.paper,
 }));
 
 const StyledCard = styled(Card)(({ theme }) => ({
-  borderRadius: theme.shape.borderRadius,
-  boxShadow: theme.shadows[4],
-  height: "100%", // Ensure cards stretch to fill height in Stack
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[3],
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
 }));
 
 function Announcement() {
   const [announcements, setAnnouncements] = useState([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const { user } = useAuth();
   const cooperativeId = user?.cooperativeId;
-
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const fetchAllAnnouncements = useCallback(async () => {
     setLoading(true);
-    setError(""); // Clear previous errors
+    setError("");
     try {
       const data = await fetchAnnouncements(cooperativeId);
-      setAnnouncements(data ? data.reverse() : []); // Ensure data is an array
+      setAnnouncements(data ? data.reverse() : []);
     } catch (err) {
       console.error("Error fetching announcements:", err);
       setError("Failed to load announcements.");
-      setAnnouncements([]); // Reset on error
+      setAnnouncements([]);
     } finally {
       setLoading(false);
     }
@@ -83,42 +74,9 @@ function Announcement() {
     fetchAllAnnouncements();
   }, [fetchAllAnnouncements]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(""); // Clear previous errors
-
-    if (!title.trim() || !description.trim()) {
-      setError("Both title and description are required.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      // Ensure user is retrieved safely; consider using a global auth context if available
-      const user = JSON.parse(localStorage.getItem("user"));
-      const userId = user?.id; // Get userId if available
-
-      await createAnnouncement({ title, description, userId, cooperativeId });
-
-      setTitle("");
-      setDescription("");
-      toast.success("Announcement sent successfully!"); // Added success toast
-      await fetchAllAnnouncements(); // Re-fetch all announcements
-    } catch (err) {
-      console.error("Failed to create announcement:", err);
-      setError(
-        `Failed to send announcement: ${
-          err.response?.data?.message || err.message
-        }`
-      );
-      toast.error("Failed to send announcement. Please try again."); // Toast for error
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <Box px={isMobile ? 2 : 3} py={0}>
+    <Box px={isMobile ? 2 : 5} py={3}>
+      {/* Page Title */}
       <Typography
         variant="h5"
         fontWeight="bold"
@@ -129,98 +87,89 @@ function Announcement() {
         <CampaignIcon sx={{ mr: 1, verticalAlign: "middle" }} /> Announcements
       </Typography>
 
-      <Stack
-        direction={isMobile ? "column" : "row"}
-        spacing={isMobile ? 3 : 4}
-        justifyContent="center"
-        alignItems="stretch" // Ensures cards stretch to equal height
-      >
-        {/* Card for Create New Announcement */}
-        {/* Card for Displaying Recent Announcements */}
-        <Box flex={1}>
-          <StyledCard>
-            <StyledCardHeader
-              title={<Typography variant="h6">Recent Announcements</Typography>}
-              sx={{
-                backgroundColor: "primary.main",
-                color: "primary.contrastText",
-              }}
-            />
-            <CardContent
-              sx={{
-                p: 0,
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                maxHeight: isMobile ? "350px" : "400px",
-              }}
+      <StyledCard>
+        <StyledCardHeader
+          title={<Typography variant="h6">Recent Announcements</Typography>}
+          sx={{
+            backgroundColor: "primary.main",
+            color: "primary.contrastText",
+          }}
+        />
+        <CardContent
+          sx={{
+            p: 0,
+            display: "flex",
+            flexDirection: "column",
+            flexGrow: 1,
+            maxHeight: isMobile ? "350px" : "500px",
+          }}
+        >
+          {loading && announcements.length === 0 ? (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              flexGrow={1}
+              my={3}
             >
-              {loading && announcements.length === 0 ? (
-                <Box
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  flexGrow={1}
-                  my={3}
-                >
-                  <CircularProgress color="primary" />
-                </Box>
-              ) : announcements.length > 0 ? (
-                <List sx={{ flexGrow: 1, overflowY: "auto", py: 0 }}>
-                  {announcements.map((item) => (
-                    <StyledListGroupItem key={item._id}>
-                      <ListItemText
-                        primary={
-                          <Typography
-                            variant="h6"
-                            component="h3"
-                            fontWeight="bold"
-                            color="text.primary"
-                          >
-                            {item.title}
-                          </Typography>
-                        }
-                        secondary={
-                          <>
-                            <Typography
-                              component="p"
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ mt: 0.5, mb: 1 }}
-                            >
-                              {item.description}
-                            </Typography>
-                            <Typography variant="caption" color="text.disabled">
-                              Posted on{" "}
-                              {new Date(item.createdAt).toLocaleString()}
-                            </Typography>
-                          </>
-                        }
-                      />
-                    </StyledListGroupItem>
-                  ))}
-                </List>
-              ) : (
-                <Box
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  flexGrow={1}
-                  p={3}
-                >
-                  <Typography
-                    variant="body1"
-                    color="text.secondary"
-                    textAlign="center"
-                  >
-                    No announcements yet.
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-          </StyledCard>
-        </Box>
-      </Stack>
+              <CircularProgress color="primary" />
+            </Box>
+          ) : error ? (
+            <Box p={2}>
+              <Alert severity="error">{error}</Alert>
+            </Box>
+          ) : announcements.length > 0 ? (
+            <List sx={{ flexGrow: 1, overflowY: "auto", py: 0 }}>
+              {announcements.map((item) => (
+                <StyledListGroupItem key={item._id}>
+                  <ListItemText
+                    primary={
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight="bold"
+                        color="text.primary"
+                      >
+                        {item.title}
+                      </Typography>
+                    }
+                    secondary={
+                      <>
+                        <Typography
+                          component="p"
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mt: 0.5, mb: 1 }}
+                        >
+                          {item.description}
+                        </Typography>
+                        <Typography variant="caption" color="text.disabled">
+                          Posted on {new Date(item.createdAt).toLocaleString()}
+                        </Typography>
+                      </>
+                    }
+                  />
+                </StyledListGroupItem>
+              ))}
+            </List>
+          ) : (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              flexGrow={1}
+              p={3}
+            >
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                textAlign="center"
+              >
+                No announcements yet.
+              </Typography>
+            </Box>
+          )}
+        </CardContent>
+      </StyledCard>
     </Box>
   );
 }

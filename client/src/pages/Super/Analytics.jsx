@@ -1,5 +1,4 @@
-// src/pages/Super/Analytics.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -7,18 +6,74 @@ import {
   Grid,
   CircularProgress,
   Alert,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Groups as GroupsIcon,
   People as PeopleIcon,
   Business as BusinessIcon,
   CheckCircleOutline,
   ErrorOutline,
-} from '@mui/icons-material';
+  AdminPanelSettings,
+} from "@mui/icons-material";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
-// Named imports for userService and cooperativeService functions
-import { fetchUsers } from '../../services/userService';
-import { getCooperatives } from '../../services/cooperativeService';
+// Services
+import { fetchUsers } from "../../services/userService";
+import { getCooperatives } from "../../services/cooperativeService";
+import { getProductions } from "../../services/productionService";
+
+// Reusable StatCard
+const StatCard = ({ title, value, icon, color }) => (
+  <Grid item xs={12} sm={6} md={4} lg={3}>
+    <Paper
+      elevation={3}
+      sx={{
+        p: 3,
+        borderRadius: "16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        bgcolor: "#fff",
+        transition: "0.3s",
+        "&:hover": { transform: "translateY(-5px)", boxShadow: 6 },
+      }}
+    >
+      <Box
+        sx={{
+          width: 50,
+          height: 50,
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: color,
+          color: "white",
+        }}
+      >
+        {icon}
+      </Box>
+      <Box>
+        <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+          {value}
+        </Typography>
+        <Typography variant="subtitle2" color="text.secondary">
+          {title}
+        </Typography>
+      </Box>
+    </Paper>
+  </Grid>
+);
 
 const Analytics = () => {
   const [loading, setLoading] = useState(true);
@@ -28,179 +83,258 @@ const Analytics = () => {
     totalManagers: 0,
     totalMembers: 0,
     totalSuperadmins: 0,
-    assignedManagers: 0,
-    unassignedManagers: 0,
     totalCooperatives: 0,
     activeCooperatives: 0,
     inactiveCooperatives: 0,
+    userGrowthData: [],
+    coopGrowthData: [],
+    productionStats: [],
   });
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Fetch users
-      const usersResponse = await fetchUsers();
-      let allUsers = [];
-      if (usersResponse.success && Array.isArray(usersResponse.data)) {
-        allUsers = usersResponse.data;
-      } else {
-        console.error("Failed to fetch users data or data is not an array:", usersResponse.message);
-        setError(usersResponse.message || "Failed to fetch users data.");
-        // Continue even with user fetch error to display cooperative data if available
-      }
+  // Helper: generate monthly data for last 6 months
+  const generateMonthlyCumulative = (items, dateKey, dataKey) => {
+    const now = new Date();
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const result = [];
 
-      // Fetch cooperatives
-      const cooperativesResponse = await getCooperatives();
-      let allCooperatives = [];
-      if (cooperativesResponse.success && Array.isArray(cooperativesResponse.data)) {
-        allCooperatives = cooperativesResponse.data;
-      } else {
-        console.error("Failed to fetch cooperatives data or data is not an array:", cooperativesResponse.message);
-        setError(prev => prev ? `${prev} | ${cooperativesResponse.message || "Failed to fetch cooperative data."}` : (cooperativesResponse.message || "Failed to fetch cooperative data."));
-      }
+    for (let i = 5; i >= 0; i--) {
+      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthStr = monthNames[month.getMonth()];
 
-      // Process data to calculate statistics
-      const totalUsers = allUsers.length;
-      const managers = allUsers.filter(user => user.role === 'manager');
-      const members = allUsers.filter(user => user.role === 'member');
-      const superadmins = allUsers.filter(user => user.role === 'superadmin');
+      const count = items.filter((item) => {
+        const itemDate = new Date(item[dateKey]);
+        return (
+          itemDate.getMonth() === month.getMonth() &&
+          itemDate.getFullYear() === month.getFullYear()
+        );
+      }).length;
 
-      const assignedManagers = managers.filter(manager => manager.cooperativeId);
-      const unassignedManagers = managers.filter(manager => !manager.cooperativeId);
-
-      const activeCooperatives = allCooperatives.filter(coop => coop.isActive === true);
-      const inactiveCooperatives = allCooperatives.filter(coop => coop.isActive === false);
-
-      setStats({
-        totalUsers,
-        totalManagers: managers.length,
-        totalMembers: members.length,
-        totalSuperadmins: superadmins.length,
-        assignedManagers: assignedManagers.length,
-        unassignedManagers: unassignedManagers.length,
-        totalCooperatives: allCooperatives.length,
-        activeCooperatives: activeCooperatives.length,
-        inactiveCooperatives: inactiveCooperatives.length,
-      });
-
-    } catch (err) {
-      console.error("Analytics data fetch error:", err);
-      setError("An unexpected error occurred while fetching analytics data. Please check your network.");
-    } finally {
-      setLoading(false);
+      result.push({ name: monthStr, [dataKey]: count });
     }
+
+    return result;
   };
 
   useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const usersResponse = await fetchUsers();
+        const allUsers = usersResponse.success ? usersResponse.data : [];
+
+        const coopsResponse = await getCooperatives();
+        const allCooperatives = coopsResponse.success ? coopsResponse.data : [];
+
+        const productionsResponse = await getProductions();
+        const allProductions = productionsResponse.success
+          ? productionsResponse.data
+          : [];
+        console.log("these my production", allProductions);
+        const managers = allUsers.filter((u) => u.role === "manager");
+        const members = allUsers.filter((u) => u.role === "member");
+        const superadmins = allUsers.filter((u) => u.role === "superadmin");
+        const activeCoops = allCooperatives.filter((c) => c.isActive);
+
+        const userGrowthData = generateMonthlyCumulative(
+          allUsers,
+          "createdAt",
+          "users"
+        );
+        const coopGrowthData = generateMonthlyCumulative(
+          allCooperatives,
+          "createdAt",
+          "cooperatives"
+        );
+
+        const productionMap = {};
+        allProductions.forEach((p) => {
+          const name = p.productId?.productName || "Unknown";
+          productionMap[name] = (productionMap[name] || 0) + p.totalPrice;
+        });
+        const productionStats = Object.entries(productionMap).map(
+          ([name, value]) => ({ name, value })
+        );
+
+        setStats({
+          totalUsers: allUsers.length,
+          totalManagers: managers.length,
+          totalMembers: members.length,
+          totalSuperadmins: superadmins.length,
+          totalCooperatives: allCooperatives.length,
+          activeCooperatives: activeCoops.length,
+          inactiveCooperatives: allCooperatives.length - activeCoops.length,
+          userGrowthData,
+          coopGrowthData,
+          productionStats,
+        });
+      } catch (err) {
+        console.error("Analytics fetch error:", err);
+        setError("Failed to load analytics data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "80vh",
+        }}
+      >
         <CircularProgress size={60} />
-        <Typography variant="h6" sx={{ ml: 2 }}>Loading analytics data...</Typography>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error" icon={<ErrorOutline fontSize="inherit" />}>
-          <Typography variant="body1">{error}</Typography>
-          <Typography variant="body2" color="textSecondary">Data might be incomplete due to fetch errors.</Typography>
-        </Alert>
-        {/* Still render the dashboard even with errors, but with N/A or 0 for affected data */}
-        {/* This allows partial display even if one API fails */}
+        <Typography sx={{ ml: 2 }}>Loading analytics...</Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4 }, bgcolor: '#f0f2f5', minHeight: '100vh', borderRadius: '8px' }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#333', mb: { xs: 3, sm: 5 } }}>
-        Overall System Analytics
-      </Typography>
+    <div style={{ maxHeight: "80vh" }}>
+      <Box sx={{ p: { xs: 2, sm: 4 }, bgcolor: "#f9fafc", minHeight: "100vh" }}>
+        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 3 }}>
+          Super Admin Analytics
+        </Typography>
 
-      <Grid container spacing={{ xs: 2, md: 4 }}>
-        {/* Total Users */}
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: '12px', display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#ffffff', borderLeft: '5px solid #1976d2' }}>
-            <PeopleIcon sx={{ fontSize: 40, color: '#1976d2' }} />
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>{stats.totalUsers}</Typography>
-              <Typography variant="subtitle1" color="text.secondary">Total Users</Typography>
-            </Box>
-          </Paper>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* KPI Cards */}
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <StatCard
+            title="Total Users"
+            value={stats.totalUsers}
+            icon={<PeopleIcon />}
+            color="#1976d2"
+          />
+          <StatCard
+            title="Total Managers"
+            value={stats.totalManagers}
+            icon={<GroupsIcon />}
+            color="#4caf50"
+          />
+          <StatCard
+            title="Total Members"
+            value={stats.totalMembers}
+            icon={<PeopleIcon />}
+            color="#ff9800"
+          />
+          <StatCard
+            title="Total Cooperatives"
+            value={stats.totalCooperatives}
+            icon={<BusinessIcon />}
+            color="#9c27b0"
+          />
+          <StatCard
+            title="Active Cooperatives"
+            value={stats.activeCooperatives}
+            icon={<CheckCircleOutline />}
+            color="#4caf50"
+          />
+          <StatCard
+            title="Inactive Cooperatives"
+            value={stats.inactiveCooperatives}
+            icon={<ErrorOutline />}
+            color="#f44336"
+          />
+          <StatCard
+            title="Super Admins"
+            value={stats.totalSuperadmins}
+            icon={<AdminPanelSettings />}
+            color="#673ab7"
+          />
         </Grid>
 
-        {/* Total Managers */}
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: '12px', display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#ffffff', borderLeft: '5px solid #4caf50' }}>
-            <GroupsIcon sx={{ fontSize: 40, color: '#4caf50' }} />
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>{stats.totalManagers}</Typography>
-              <Typography variant="subtitle1" color="text.secondary">Total Managers</Typography>
-            </Box>
-          </Paper>
-        </Grid>
+        {/* Charts */}
+        <Grid container spacing={3}>
+          {/* User Growth Chart */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 360 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                User Growth (Last 6 Months)
+              </Typography>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.userGrowthData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="users"
+                    stroke="#1976d2"
+                    strokeWidth={3}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Grid>
 
-        {/* Total Members */}
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: '12px', display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#ffffff', borderLeft: '5px solid #ff9800' }}>
-            <PeopleIcon sx={{ fontSize: 40, color: '#ff9800' }} />
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>{stats.totalMembers}</Typography>
-              <Typography variant="subtitle1" color="text.secondary">Total Members</Typography>
-            </Box>
-          </Paper>
-        </Grid>
+          {/* Cooperative Growth Chart */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 360 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Cooperative Growth (Last 6 Months)
+              </Typography>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.coopGrowthData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="cooperatives" fill="#4caf50" barSize={30} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Grid>
 
-        {/* Total Cooperatives */}
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: '12px', display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#ffffff', borderLeft: '5px solid #9c27b0' }}>
-            <BusinessIcon sx={{ fontSize: 40, color: '#9c27b0' }} />
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>{stats.totalCooperatives}</Typography>
-              <Typography variant="subtitle1" color="text.secondary">Total Cooperatives</Typography>
-            </Box>
-          </Paper>
+          {/* Production Statistics */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 360 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Production Statistics
+              </Typography>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.productionStats}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="value" fill="#ff9800" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Grid>
         </Grid>
-
-        {/* --- More Detailed Breakdown --- */}
-        <Grid item xs={12}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333', mt: 4, mb: 2 }}>
-            Managers Overview
-          </Typography>
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: '12px', bgcolor: '#ffffff', borderLeft: '5px solid #2196f3' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>Assignment Status</Typography>
-            <Typography variant="body1">
-              Assigned Managers: <Typography component="span" fontWeight="bold">{stats.assignedManagers}</Typography>
-            </Typography>
-            <Typography variant="body1">
-              Unassigned Managers: <Typography component="span" fontWeight="bold">{stats.unassignedManagers}</Typography>
-            </Typography>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: '12px', bgcolor: '#ffffff', borderLeft: '5px solid #4caf50' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>Cooperative Activity</Typography>
-            <Typography variant="body1">
-              Active Cooperatives: <Typography component="span" fontWeight="bold">{stats.activeCooperatives}</Typography>
-            </Typography>
-            <Typography variant="body1">
-              Inactive Cooperatives: <Typography component="span" fontWeight="bold">{stats.inactiveCooperatives}</Typography>
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
+      </Box>
+    </div>
   );
 };
 

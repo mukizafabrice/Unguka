@@ -6,26 +6,29 @@ import { Link } from "react-router-dom";
 import { getCooperativeById } from "../../src/services/cooperativeService";
 import { useAuth } from "../contexts/AuthContext";
 
-// Import the base URL from your config file or environment variable
-// const API_BASE_URL = process.env.REACT_APP_API_BASE_URL; // If using .env
-const API_BASE_URL = "http://localhost:8000"; // Or hardcode for simplicity during testing
+const API_BASE_URL = "http://localhost:8000";
 
 function TopNav({ onMenuClick }) {
   const [cooperativeName, setCooperativeName] = useState("");
   const { user1 } = useAuth();
   const user = JSON.parse(localStorage.getItem("user"));
 
-  // Get the profile picture path from the most reliable source (user1 context or localStorage)
-  const profilePicPath = user1?.profilePicture || user?.profilePicture;
+  // Determine role
+  const role = user1?.role || user?.role || "member"; // default to member
 
-  // Construct the full, valid URL for the image
+  // Determine the correct announcement route
+  const announcementLink =
+    role === "manager"
+      ? "/admin/dashboard/announcement"
+      : "/member/dashboard/announcement";
+
+  // Profile picture
+  const profilePicPath = user1?.profilePicture || user?.profilePicture;
   const fullProfilePicUrl = profilePicPath
     ? `${API_BASE_URL}${profilePicPath}`
     : "/default-avatar.png";
 
   const cooperativeId = user1?.cooperativeId || user?.cooperativeId;
-  console.log("Cooperative ID:", cooperativeId);
-  console.log("This is the full profile picture URL:", fullProfilePicUrl);
 
   useEffect(() => {
     const loadCooperative = async () => {
@@ -36,10 +39,6 @@ function TopNav({ onMenuClick }) {
         if (response.success && response.data?.name) {
           setCooperativeName(response.data.name);
         } else {
-          console.error(
-            "Cooperative data not found or invalid:",
-            response.message
-          );
           setCooperativeName("Cooperative");
         }
       } catch (error) {
@@ -65,11 +64,12 @@ function TopNav({ onMenuClick }) {
       </div>
 
       <div className="topnav-right">
-        <NotificationBell />
+        <Link to={announcementLink}>
+          <NotificationBell />
+        </Link>
 
         <Link to="/profile" className="user-avatar-container ms-4">
           <img
-            // Use the full URL here
             src={fullProfilePicUrl}
             alt="User Avatar"
             className="user-avatar"

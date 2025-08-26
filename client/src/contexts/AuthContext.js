@@ -20,7 +20,6 @@ export const AuthProvider = ({ children }) => {
         setUser(response.user);
         setToken(response.token);
 
-        // ✅ Persist securely (if you’re using localStorage/sessionStorage)
         localStorage.setItem("user", JSON.stringify(response.user));
         localStorage.setItem("token", response.token);
       } else {
@@ -43,19 +42,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // ✅ Clear everything
     localStorage.clear();
     sessionStorage.clear();
 
     setUser(null);
     setToken(null);
 
-    // ✅ Hard reset React memory to prevent back navigation showing old UI
     window.location.href = "/";
   };
 
   useEffect(() => {
-    // ✅ Re-hydrate user/token on mount (fresh check)
     const storedUser = authService.getCurrentUser();
     const storedToken = authService.getToken();
 
