@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, Camera, Key, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-// No need to import toast or changePassword here
 import PasswordModal from "../features/modals/PasswordModal";
 import ProfileImageModal from "../features/modals/ProfileImageModal";
+
+// Define your API base URL here
+// For production, use process.env.REACT_APP_API_BASE_URL
+const API_BASE_URL = "http://localhost:8000"; // IMPORTANT: Change this to your actual backend URL
 
 function Profile() {
   const [user, setUser] = useState(null);
@@ -14,8 +17,13 @@ function Profile() {
   useEffect(() => {
     const userDataString = localStorage.getItem("user");
     try {
-      const userData = JSON.parse(userDataString);
-      setUser(userData);
+      if (userDataString) {
+        const userData = JSON.parse(userDataString);
+        setUser(userData);
+      } else {
+        console.warn("No user data found in localStorage.");
+        // Optionally redirect to login or show an error
+      }
     } catch (error) {
       console.error("Error parsing user data from localStorage:", error);
       setUser(null);
@@ -33,6 +41,15 @@ function Profile() {
       </div>
     );
   }
+
+  // Construct the full profile picture URL
+  // If user.profilePicture exists and is a relative path, prepend API_BASE_URL
+  // Otherwise, use the placeholder directly
+  const fullProfilePictureUrl = user.profilePicture
+    ? `${API_BASE_URL}${user.profilePicture}`
+    : "https://placehold.co/80x80/A7F3D0/10B981?text=U";
+
+  console.log("Full Profile Picture URL for display:", fullProfilePictureUrl); // Debugging
 
   return (
     <div className="container-fluid d-flex flex-column justify-content-center align-items-center vh-100 bg-light p-3">
@@ -54,14 +71,13 @@ function Profile() {
       >
         <div className="position-relative mb-3">
           <img
-            src={
-              user.profilePicture ||
-              "https://placehold.co/80x80/A7F3D0/10B981?text=U"
-            }
+            // Use the constructed fullProfilePictureUrl here
+            src={fullProfilePictureUrl}
             alt="Profile"
             className="rounded-circle border border-primary shadow-sm"
             style={{ width: "80px", height: "80px", borderWidth: "3px" }}
             onError={(e) => {
+              // Fallback if the full URL also fails to load
               e.target.onerror = null;
               e.target.src = "https://placehold.co/80x80/A7F3D0/10B981?text=U";
             }}

@@ -5,26 +5,34 @@ import NotificationBell from "../features/NotificationBell";
 import { Link } from "react-router-dom";
 import { getCooperativeById } from "../../src/services/cooperativeService";
 import { useAuth } from "../contexts/AuthContext";
+
+// Import the base URL from your config file or environment variable
+// const API_BASE_URL = process.env.REACT_APP_API_BASE_URL; // If using .env
+const API_BASE_URL = "http://localhost:8000"; // Or hardcode for simplicity during testing
+
 function TopNav({ onMenuClick }) {
   const [cooperativeName, setCooperativeName] = useState("");
   const { user1 } = useAuth();
-
-  // Use a variable to hold user data for cleaner access
   const user = JSON.parse(localStorage.getItem("user"));
-  const profilePic = user?.profilePicture;
-  // const cooperativeId = user?.cooperativeId;
+
+  // Get the profile picture path from the most reliable source (user1 context or localStorage)
+  const profilePicPath = user1?.profilePicture || user?.profilePicture;
+
+  // Construct the full, valid URL for the image
+  const fullProfilePicUrl = profilePicPath
+    ? `${API_BASE_URL}${profilePicPath}`
+    : "/default-avatar.png";
 
   const cooperativeId = user1?.cooperativeId || user?.cooperativeId;
   console.log("Cooperative ID:", cooperativeId);
-  // Use useEffect to fetch data when the component mounts or cooperativeId changes
-  // Add cooperativeId to the dependency array
+  console.log("This is the full profile picture URL:", fullProfilePicUrl);
+
   useEffect(() => {
     const loadCooperative = async () => {
       if (!cooperativeId) return;
 
       try {
         const response = await getCooperativeById(cooperativeId);
-
         if (response.success && response.data?.name) {
           setCooperativeName(response.data.name);
         } else {
@@ -61,7 +69,8 @@ function TopNav({ onMenuClick }) {
 
         <Link to="/profile" className="user-avatar-container ms-4">
           <img
-            src={profilePic || "/default-avatar.png"}
+            // Use the full URL here
+            src={fullProfilePicUrl}
             alt="User Avatar"
             className="user-avatar"
           />

@@ -560,6 +560,7 @@ function FeeTypeManagement() {
                   borderRadius: 2,
                   boxShadow: 2,
                   flexGrow: 1,
+                  maxHeight: 500,
                 }}
               >
                 <Table

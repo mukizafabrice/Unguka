@@ -7,10 +7,17 @@ import { useAuth } from "../contexts/AuthContext";
 function NotificationBell() {
   const [announcements, setAnnouncements] = useState([]);
   const { user } = useAuth();
+
+  // Get both the cooperativeId and user role from the user object
   const cooperativeId = user?.cooperativeId;
+  const userRole = user?.role; // Access the user's role
 
   useEffect(() => {
-    if (!cooperativeId) return; // Prevent request without cooperativeId
+    // Only fetch announcements if the user is a 'member' and has a cooperativeId
+    if (userRole !== "member" || !cooperativeId) {
+      setAnnouncements([]);
+      return;
+    }
 
     const fetchAnnouncements = async () => {
       try {
@@ -32,16 +39,22 @@ function NotificationBell() {
     };
 
     fetchAnnouncements();
-  }, [cooperativeId]);
+
+    return () => setAnnouncements([]);
+  }, [cooperativeId, userRole]); // Add userRole to the dependency array
 
   const unreadCount = announcements.filter((a) => !a.isRead).length;
 
-  // Mark all announcements as read when the icon is clicked
   const handleMarkRead = () => {
     const readIds = announcements.map((a) => a._id);
     localStorage.setItem("readAnnouncements", JSON.stringify(readIds));
     setAnnouncements((prev) => prev.map((a) => ({ ...a, isRead: true })));
   };
+
+  // Conditionally render the entire bell component based on the user's role
+  if (userRole !== "member") {
+    return null;
+  }
 
   return (
     <div className="notification-wrapper">
@@ -53,6 +66,6 @@ function NotificationBell() {
       </div>
     </div>
   );
-}
+} 
 
 export default NotificationBell;

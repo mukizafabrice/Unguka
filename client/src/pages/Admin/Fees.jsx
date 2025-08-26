@@ -97,17 +97,20 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
 }));
 
 const getStatusColor = (status) => {
-  switch (status) {
-    case "Paid":
+  const normalizedStatus = status.toLowerCase(); // Convert to lowercase
+  console.log("Normalized status:", normalizedStatus);
+
+  switch (normalizedStatus) {
+    case "paid":
       return "success";
-    case "Pending":
-    case "Partially Paid":
+    case "pending":
+    case "partially paid":
+    case "unpaid":
       return "warning";
     default:
       return "default";
   }
 };
-
 function Fees() {
   const { user } = useAuth();
   const cooperativeId = user?.cooperativeId;
@@ -510,26 +513,22 @@ function Fees() {
                   maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table
-                  size="small"
-                  // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
-                  sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
-                >
+                <Table size="small" sx={{ minWidth: 700, tableLayout: "auto" }}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "12%" }}>
+                      <StyledTableHeaderCell sx={{ width: "10%" }}>
                         Cooperative
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "12%" }}>
                         User
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "12%" }}>
+                      <StyledTableHeaderCell sx={{ width: "8%" }}>
                         Season
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "12%" }}>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Fee Type
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "10%" }}>
@@ -546,7 +545,7 @@ function Fees() {
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell
                         align="center"
-                        sx={{ width: "10%" }}
+                        sx={{ width: "8%" }}
                       >
                         Action
                       </StyledTableHeaderCell>
@@ -572,8 +571,8 @@ function Fees() {
                             {fee.userId?.names || usersMap[fee.userId] || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
-                            {fee.seasonId?.name || "N/A"} (
-                            {fee.seasonId?.year || "N/A"})
+                            {fee.seasonId?.name || "All"} (
+                            {fee.seasonId?.year || "years"})
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.feeTypeId?.name || "N/A"}
@@ -620,7 +619,7 @@ function Fees() {
                                 aria-label="delete"
                                 color="error"
                                 size="small"
-                                onClick={() => handleOpenDeleteDialog(fee._id)} // ⭐ Use the new handler
+                                onClick={() => handleOpenDeleteDialog(fee._id)}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>

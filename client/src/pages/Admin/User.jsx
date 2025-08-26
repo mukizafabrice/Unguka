@@ -277,7 +277,7 @@ function User() {
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         <StyledCardHeader
-          title={<Typography variant="h6">Member Dashboard</Typography>}
+          title={<Typography variant="h6">Cooperative Members</Typography>}
           action={
             <Button
               variant="contained"
@@ -358,11 +358,8 @@ function User() {
               sx={{ minWidth: isMobile ? "100%" : 180 }}
             >
               <MenuItem value="all">All</MenuItem>
-              <MenuItem value="superadmin">Superadmin</MenuItem>{" "}
-              {/* Added superadmin */}
-              <MenuItem value="manager">Manager</MenuItem> {/* Added manager */}
+              <MenuItem value="manager">Manager</MenuItem>
               <MenuItem value="member">Member</MenuItem>
-              <MenuItem value="guest">Guest</MenuItem>
             </TextField>
             <Button
               variant="outlined"
@@ -420,10 +417,13 @@ function User() {
                       <StyledTableHeaderCell sx={{ width: "25%" }}>
                         Member
                       </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                        Email
+                      </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Telephone
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         National ID
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
@@ -431,7 +431,7 @@ function User() {
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell
                         align="center"
-                        sx={{ width: "20%" }}
+                        sx={{ width: "10%" }}
                       >
                         Action
                       </StyledTableHeaderCell>
@@ -446,6 +446,9 @@ function User() {
                           </StyledTableCell>
                           <StyledTableCell>
                             {user.names || "N/A"}
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {user.email || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
                             {user.phoneNumber || "N/A"}
