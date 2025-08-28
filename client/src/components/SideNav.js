@@ -36,11 +36,13 @@ function SideNav({ isHide }) {
   const toggleMenu = (menu) => {
     setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
   };
-const { user } = useAuth();
+  const { user } = useAuth();
   return (
     <div className={`sidebar ${isHide ? "hide" : ""}`}>
       <div className="sidebar-header">
-        <h5 className="fw-bold">{user?.names || "System Admin"}</h5>
+        <h6 className="fw-bold" style={{ color: "#4caf50" }}>
+          {user?.names || "System Admin"}
+        </h6>
       </div>
       <ul className="sidebar-menu">
         <li>

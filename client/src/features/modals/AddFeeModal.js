@@ -24,32 +24,30 @@ function AddFeeModal({
   users,
   seasons,
   feeTypes,
-  cooperativeId, // Cooperative ID from parent (from token)
-  cooperativeName, // ⭐ NEW: Cooperative Name from parent (from DB fetch)
+  cooperativeId,
+  cooperativeName,
 }) {
   const [formData, setFormData] = useState({
     userId: "",
     seasonId: "",
     feeTypeId: "",
-    paymentAmount: "",
   });
 
   const [amountToPay, setAmountToPay] = useState(0);
 
-  // Reset form state and amount to pay when the modal is shown
+  // Reset form state when modal opens
   useEffect(() => {
     if (show) {
       setFormData({
         userId: "",
         seasonId: "",
         feeTypeId: "",
-        paymentAmount: "",
       });
       setAmountToPay(0);
     }
   }, [show]);
 
-  // Effect to update the default payment amount when a fee type is selected
+  // Update amountToPay when a fee type is selected
   useEffect(() => {
     if (formData.feeTypeId && feeTypes.length > 0) {
       const selectedFeeType = feeTypes.find(
@@ -57,17 +55,9 @@ function AddFeeModal({
       );
       if (selectedFeeType) {
         setAmountToPay(selectedFeeType.amount);
-        setFormData((prev) => ({
-          ...prev,
-          paymentAmount: selectedFeeType.amount,
-        }));
       }
     } else {
       setAmountToPay(0);
-      setFormData((prev) => ({
-        ...prev,
-        paymentAmount: "",
-      }));
     }
   }, [formData.feeTypeId, feeTypes]);
 
@@ -82,22 +72,16 @@ function AddFeeModal({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Basic form validation
-    if (
-      !formData.userId ||
-      !formData.seasonId ||
-      !formData.feeTypeId ||
-      formData.paymentAmount === ""
-    ) {
-      toast.error("Please fill in all required fields.");
+    // Validation
+    if (!formData.userId || !formData.seasonId || !formData.feeTypeId) {
+      toast.error("Please select User, Season, and Fee Type.");
       return;
     }
 
-    // Call the onSubmit function, passing the cooperativeId from the prop
+    // Submit without paymentAmount (amountPaid/status handled by backend)
     onSubmit({
       ...formData,
-      cooperativeId: cooperativeId, // Always use the cooperativeId from the prop
-      paymentAmount: Number(formData.paymentAmount),
+      cooperativeId,
     });
   };
 
@@ -123,19 +107,20 @@ function AddFeeModal({
           <CloseIcon />
         </IconButton>
       </DialogTitle>
+
       <DialogContent dividers>
         <Box
           component="form"
           onSubmit={handleSubmit}
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
-          {/* ⭐ DISPLAY: Cooperative Name (disabled field) */}
+          {/* Cooperative Name (read-only) */}
           <TextField
             label="Cooperative"
             value={cooperativeName || "N/A"}
             fullWidth
-            disabled // Make it read-only
-            sx={{ mb: 2 }} // Add some margin below
+            disabled
+            sx={{ mb: 2 }}
           />
 
           {/* User Selection */}
@@ -152,7 +137,7 @@ function AddFeeModal({
               <MenuItem value="">Select User</MenuItem>
               {users &&
                 users
-                  .filter((user) => user.role === "member") // ⭐ Filter for 'member' role
+                  .filter((user) => user.role === "member") // Only members
                   .map((user) => (
                     <MenuItem key={user._id} value={user._id}>
                       {user.names}
@@ -201,7 +186,7 @@ function AddFeeModal({
             </Select>
           </FormControl>
 
-          {/* Display Standard Amount if applicable */}
+          {/* Display standard amount */}
           {amountToPay > 0 && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Standard Amount:{" "}
@@ -211,21 +196,9 @@ function AddFeeModal({
               }).format(amountToPay)}
             </Typography>
           )}
-
-          {/* Payment Amount Input */}
-          <TextField
-            label="Payment Amount"
-            type="number"
-            id="paymentAmount"
-            name="paymentAmount"
-            value={formData.paymentAmount}
-            onChange={handleChange}
-            fullWidth
-            required
-            inputProps={{ min: "0", step: "0.01" }}
-          />
         </Box>
       </DialogContent>
+
       <DialogActions sx={{ p: 2 }}>
         <Button onClick={onClose} variant="outlined" color="secondary">
           Cancel

@@ -35,7 +35,7 @@ import { getProductions } from "../../services/productionService";
 
 // Reusable StatCard
 const StatCard = ({ title, value, icon, color }) => (
-  <Grid item xs={12} sm={6} md={4} lg={3}>
+  <Grid item xs={12} sm={12} md={4} lg={3}>
     <Paper
       elevation={3}
       sx={{
@@ -88,10 +88,10 @@ const Analytics = () => {
     inactiveCooperatives: 0,
     userGrowthData: [],
     coopGrowthData: [],
-    productionStats: [],
+    productionSeasonStats: [],
   });
 
-  // Helper: generate monthly data for last 6 months
+  // Helper: generate monthly growth
   const generateMonthlyCumulative = (items, dateKey, dataKey) => {
     const now = new Date();
     const monthNames = [
@@ -144,7 +144,7 @@ const Analytics = () => {
         const allProductions = productionsResponse.success
           ? productionsResponse.data
           : [];
-        console.log("these my production", allProductions);
+
         const managers = allUsers.filter((u) => u.role === "manager");
         const members = allUsers.filter((u) => u.role === "member");
         const superadmins = allUsers.filter((u) => u.role === "superadmin");
@@ -161,13 +161,17 @@ const Analytics = () => {
           "cooperatives"
         );
 
-        const productionMap = {};
+        // --- Production by Season ---
+        const seasonMap = {};
         allProductions.forEach((p) => {
-          const name = p.productId?.productName || "Unknown";
-          productionMap[name] = (productionMap[name] || 0) + p.totalPrice;
+          const seasonName = p.seasonId
+            ? `${p.seasonId.name} ${p.seasonId.year}`
+            : "Unknown Season";
+          seasonMap[seasonName] = (seasonMap[seasonName] || 0) + p.totalPrice;
         });
-        const productionStats = Object.entries(productionMap).map(
-          ([name, value]) => ({ name, value })
+
+        const productionSeasonStats = Object.entries(seasonMap).map(
+          ([season, value]) => ({ season, value })
         );
 
         setStats({
@@ -180,7 +184,7 @@ const Analytics = () => {
           inactiveCooperatives: allCooperatives.length - activeCoops.length,
           userGrowthData,
           coopGrowthData,
-          productionStats,
+          productionSeasonStats,
         });
       } catch (err) {
         console.error("Analytics fetch error:", err);
@@ -272,7 +276,7 @@ const Analytics = () => {
         <Grid container spacing={3}>
           {/* User Growth Chart */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, borderRadius: "16px", height: 360 }}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 400 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
                 User Growth (Last 6 Months)
               </Typography>
@@ -297,7 +301,7 @@ const Analytics = () => {
 
           {/* Cooperative Growth Chart */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, borderRadius: "16px", height: 360 }}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 400 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Cooperative Growth (Last 6 Months)
               </Typography>
@@ -314,20 +318,39 @@ const Analytics = () => {
             </Paper>
           </Grid>
 
-          {/* Production Statistics */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, borderRadius: "16px", height: 360 }}>
+          {/* Production by Season Chart */}
+          <Grid item xs={12} md={12}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 400 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Production Statistics
+                Production by Season
               </Typography>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.productionStats}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
+                <BarChart
+                  data={stats.productionSeasonStats}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }} // extra bottom margin
+                >
+                  <CartesianGrid strokeDasharray="5 5" />
+                  <XAxis
+                    dataKey="season"
+                    angle={-45}
+                    textAnchor="end"
+                    interval={0}
+                    height={60}
+                  />
+                  <YAxis
+                    tickFormatter={(value) =>
+                      value >= 1000000
+                        ? `${(value / 1000000).toFixed(1)}M`
+                        : value >= 1000
+                        ? `${(value / 1000).toFixed(0)}K`
+                        : value
+                    }
+                  />
+                  <Tooltip
+                    formatter={(value) => new Intl.NumberFormat().format(value)}
+                  />
                   <Legend />
-                  <Bar dataKey="value" fill="#ff9800" />
+                  <Bar dataKey="value" fill="#ff9800" barSize={30} />
                 </BarChart>
               </ResponsiveContainer>
             </Paper>

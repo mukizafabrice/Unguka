@@ -22,6 +22,10 @@ const loanSchema = new mongoose.Schema(
       ref: "Season",
       required: true,
     },
+    loanOwed: {
+      type: Number,
+      min: [0, "Amount owed must be a positive number"],
+    },
 
     amountOwed: {
       type: Number,

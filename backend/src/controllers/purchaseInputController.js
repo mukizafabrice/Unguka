@@ -2,13 +2,9 @@ import mongoose from "mongoose";
 import PurchaseInput from "../models/PurchaseInput.js";
 import Product from "../models/Product.js";
 import Stock from "../models/Stock.js";
-import Cash from "../models/Cash.js"; // Assuming Cash model will also be cooperative-specific
-import Loan from "../models/Loan.js"; // Assuming Loan model will also be cooperative-specific
+import Cash from "../models/Cash.js";
+import Loan from "../models/Loan.js";
 
-// Note: LoanTransaction import was not used, removed for clarity.
-// import LoanTransaction from "../models/LoanTransaction.js";
-
-// Create a new Purchase Input
 export const createPurchaseInput = async (req, res) => {
   try {
     const {
@@ -19,7 +15,7 @@ export const createPurchaseInput = async (req, res) => {
       unitPrice,
       amountPaid,
       interest,
-      cooperativeId, // ⭐ NEW: Extract cooperativeId from req.body
+      cooperativeId,
     } = req.body;
 
     // Validate ObjectIds including cooperativeId
@@ -27,7 +23,7 @@ export const createPurchaseInput = async (req, res) => {
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(productId) ||
       !mongoose.Types.ObjectId.isValid(seasonId) ||
-      !mongoose.Types.ObjectId.isValid(cooperativeId) // ⭐ NEW: Validate cooperativeId
+      !mongoose.Types.ObjectId.isValid(cooperativeId)
     ) {
       return res.status(400).json({
         message:
@@ -85,10 +81,10 @@ export const createPurchaseInput = async (req, res) => {
 
     // Update cooperative's cash balance
     if (amountPaid > 0) {
-      let cash = await Cash.findOne({ cooperativeId: cooperativeId }); // ⭐ UPDATED: Find cash for specific cooperative
+      let cash = await Cash.findOne({ cooperativeId: cooperativeId });
       if (!cash) {
         // If no cash document exists for this cooperative, create one
-        cash = new Cash({ amount: 0, cooperativeId: cooperativeId }); // ⭐ NEW: Include cooperativeId
+        cash = new Cash({ amount: 0, cooperativeId: cooperativeId });
       }
       cash.amount += amountPaid;
       await cash.save();
@@ -126,6 +122,7 @@ export const createPurchaseInput = async (req, res) => {
         userId,
         cooperativeId,
         seasonId,
+        loanOwed: amountRemaining,
         amountOwed: finalAmountRemaining,
         loanRevenue: loanRevenue,
         interest,

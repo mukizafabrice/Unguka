@@ -27,6 +27,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Checkbox,
 } from "@mui/material";
 import {
   Visibility,
@@ -49,7 +50,7 @@ import AddLoanModal from "../../features/modals/AddLoanModal";
 import PayLoanModal from "../../features/modals/PayLoanModal";
 import UpdateLoanModal from "../../features/modals/UpdateLoanModal";
 
-// Styled components (no change)
+// Styled components
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -91,7 +92,7 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// Helper function for status chip color (no change)
+// Helper function for status chip color
 const getStatusColor = (status) => {
   switch (status) {
     case "repaid":
@@ -109,9 +110,10 @@ function Loan() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // New state for confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
-  const [loanToDelete, setLoanToDelete] = useState(null); // New state to hold the loan to be deleted
+  const [loanToDelete, setLoanToDelete] = useState(null);
+  const [selectedLoanId, setSelectedLoanId] = useState(null); // State for the selected loan ID
   const [page, setPage] = useState(1);
   const rowsPerPage = 7;
   const [searchTerm, setSearchTerm] = useState("");
@@ -178,7 +180,15 @@ function Loan() {
     setShowUpdateModal(false);
   };
 
-  // New handler to confirm deletion
+  const handleAddLoan = (data) => {
+    handleApiCall(
+      () => createLoan(data),
+      "Loan added successfully!",
+      "Failed to add loan"
+    );
+    setShowAddModal(false);
+  };
+
   const confirmDelete = (loan) => {
     setLoanToDelete(loan);
     setShowDeleteConfirm(true);
@@ -196,13 +206,16 @@ function Loan() {
     }
   };
 
-  const handleAddLoan = (data) => {
-    handleApiCall(
-      () => createLoan(data),
-      "Loan added successfully!",
-      "Failed to add loan"
-    );
-    setShowAddModal(false);
+  // Handler for checkbox change
+  const handleCheckboxChange = (loanId) => {
+    setSelectedLoanId((prevId) => (prevId === loanId ? null : loanId));
+  };
+
+  // Handler for navigating to loan transactions
+  const handleNavigateToTransactions = () => {
+    if (selectedLoanId) {
+      navigate(`/admin/dashboard/loan-transaction/${selectedLoanId}`);
+    }
   };
 
   const filteredLoans = useMemo(() => {
@@ -293,7 +306,8 @@ function Loan() {
                 variant="outlined"
                 size="medium"
                 startIcon={<Visibility />}
-                onClick={() => navigate("/admin/dashboard/loan-transaction")}
+                onClick={handleNavigateToTransactions} // Changed onClick
+                disabled={!selectedLoanId} // Disabled if no loan is selected
                 sx={{ minWidth: { xs: "100%", sm: "auto" } }}
               >
                 Transactions
@@ -382,17 +396,16 @@ function Loan() {
               sx={{
                 boxShadow: 3,
                 borderRadius: 2,
-                overflowX: "auto", // Ensure horizontal scrolling is possible
+                overflowX: "auto",
                 maxHeight: { xs: "50vh", md: "70vh" },
               }}
             >
-              <Table
-                size="small"
-                // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
-                sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
-              >
+              <Table size="small" sx={{ minWidth: 700, tableLayout: "auto" }}>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <StyledTableHeaderCell sx={{ width: "5%" }}>
+                      Select
+                    </StyledTableHeaderCell>
                     <StyledTableHeaderCell sx={{ width: "5%" }}>
                       ID
                     </StyledTableHeaderCell>
@@ -406,6 +419,9 @@ function Loan() {
                       Season (Year)
                     </StyledTableHeaderCell>
                     <StyledTableHeaderCell sx={{ width: "12%" }}>
+                      Loan Owed
+                    </StyledTableHeaderCell>
+                    <StyledTableHeaderCell sx={{ width: "12%" }}>
                       Amount Owed
                     </StyledTableHeaderCell>
                     <StyledTableHeaderCell sx={{ width: "8%" }}>
@@ -414,6 +430,7 @@ function Loan() {
                     <StyledTableHeaderCell sx={{ width: "8%" }}>
                       Status
                     </StyledTableHeaderCell>
+                    <StyledTableHeaderCell>Date</StyledTableHeaderCell>
                     <StyledTableHeaderCell align="center" sx={{ width: "14%" }}>
                       Actions
                     </StyledTableHeaderCell>
@@ -423,6 +440,13 @@ function Loan() {
                   {paginatedLoans.length > 0 ? (
                     paginatedLoans.map((loan, index) => (
                       <TableRow hover key={loan._id}>
+                        <StyledTableCell>
+                          <Checkbox
+                            size="small"
+                            checked={selectedLoanId === loan._id}
+                            onChange={() => handleCheckboxChange(loan._id)}
+                          />
+                        </StyledTableCell>
                         <StyledTableCell>
                           {(page - 1) * rowsPerPage + index + 1}
                         </StyledTableCell>
@@ -437,14 +461,17 @@ function Loan() {
                             "N/A"}
                         </StyledTableCell>
                         <StyledTableCell>
-                          {loan.purchaseInputId?.seasonId?.name || "N/A"} (
-                          {loan.purchaseInputId?.seasonId?.year || "N/A"})
+                          {loan.seasonId?.name || "N/A"} (
+                          {loan.seasonId?.year || "N/A"})
+                        </StyledTableCell>
+                        <StyledTableCell>
+                          {formatCurrency(loan.loanOwed)}
                         </StyledTableCell>
                         <StyledTableCell>
                           {formatCurrency(loan.amountOwed)}
                         </StyledTableCell>
                         <StyledTableCell>
-                          {loan.interest || "N/A"}
+                          {loan.interest || "N/A"}%
                         </StyledTableCell>
                         <StyledTableCell>
                           <Chip
@@ -452,6 +479,11 @@ function Loan() {
                             size="small"
                             color={getStatusColor(loan.status)}
                           />
+                        </StyledTableCell>
+                        <StyledTableCell>
+                          {loan.createdAt
+                            ? new Date(loan.createdAt).toLocaleDateString()
+                            : "N/A"}
                         </StyledTableCell>
                         <StyledTableCell align="center">
                           <Stack
@@ -489,7 +521,7 @@ function Loan() {
                               <IconButton
                                 size="small"
                                 color="error"
-                                onClick={() => confirmDelete(loan)} // Updated click handler
+                                onClick={() => confirmDelete(loan)}
                               >
                                 <Delete fontSize="small" />
                               </IconButton>
@@ -556,7 +588,7 @@ function Loan() {
           onSubmit={handleAddLoan}
         />
       )}
-      {/* New: Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog */}
       <Dialog
         open={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}

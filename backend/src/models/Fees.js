@@ -4,7 +4,7 @@ const feesSchema = new mongoose.Schema(
   {
     cooperativeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Cooperative', // Refers to your Cooperative model
+      ref: "Cooperative", // Refers to your Cooperative model
       required: true, // Every fee entry must belong to a cooperative
     },
     userId: {
@@ -57,14 +57,13 @@ feesSchema.pre("save", function (next) {
   next();
 });
 
-
-// ⭐ UPDATED: Index for seasonal fees now includes cooperativeId
+//   Index for seasonal fees now includes cooperativeId
 feesSchema.index(
   { cooperativeId: 1, userId: 1, seasonId: 1, feeTypeId: 1 },
   { unique: true, partialFilterExpression: { seasonId: { $exists: true } } }
 );
 
-// ⭐ UPDATED: Index for non-seasonal fees now includes cooperativeId
+//  Index for non-seasonal fees now includes cooperativeId
 feesSchema.index(
   { cooperativeId: 1, userId: 1, feeTypeId: 1 },
   { unique: true, partialFilterExpression: { seasonId: { $exists: false } } }

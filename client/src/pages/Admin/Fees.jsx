@@ -28,16 +28,20 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Checkbox,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
+import PaymentIcon from "@mui/icons-material/Payment";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import UpdateFeeModal from "../../features/modals/UpdateFeeModal";
 import AddFeeModal from "../../features/modals/AddFeeModal";
+import PayFeeModal from "../../features/modals/PayFeeModal";
+
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -53,6 +57,8 @@ import { fetchUsers } from "../../services/userService";
 import { fetchSeasons } from "../../services/seasonService";
 import { fetchFeeTypes } from "../../services/feeTypeService";
 import { getCooperativeById } from "../../services/cooperativeService";
+import { addPaymentToFee } from "../../services/feesService";
+import { ClassNames } from "@emotion/react";
 
 // --- Styled Components ---
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
@@ -139,6 +145,12 @@ function Fees() {
   const [sortOrder, setSortOrder] = useState("desc");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const [selectedFeeId, setSelectedFeeId] = useState(null);
+  // ... existing state ...
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [feeToPay, setFeeToPay] = useState(null);
+  // ... rest of your state ...
 
   // Helper function for currency formatting
   const formatCurrency = (amount) => {
@@ -336,6 +348,25 @@ function Fees() {
     }
   };
 
+  // Below handleFeeUpdated, or with your other event handlers
+  const handlePayFee = async (feeId, paymentAmount) => {
+    try {
+      await addPaymentToFee(feeId, paymentAmount);
+      toast.success("Payment recorded successfully!");
+      setShowPayModal(false);
+      setFeeToPay(null);
+      setSelectedFeeId(null); // Deselect the fee after payment
+      await loadFeesData(); // Reload data to reflect changes
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      toast.error(
+        `Failed to record payment: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
+  };
+
   const filteredAndSortedFees = useMemo(() => {
     let currentFiltered = fees;
     if (searchTerm) {
@@ -400,20 +431,45 @@ function Fees() {
     setSortOrder((prevSortOrder) => (prevSortOrder === "asc" ? "desc" : "asc"));
   };
 
+  const handleCheckboxChange = (feeId) => {
+    setSelectedFeeId((prevId) => (prevId === feeId ? null : feeId));
+  };
+
   return (
     <Box px={isMobile ? 0 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         <StyledCardHeader
           title={<Typography variant="h6">Fees Dashboard</Typography>}
           action={
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setShowAddModal(true)}
-              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-            >
-              Record Fee
-            </Button>
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setShowAddModal(true)}
+              >
+                Record Fee
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<PaymentIcon />}
+                disabled={!selectedFeeId}
+                onClick={() => {
+                  const fee = fees.find((f) => f._id === selectedFeeId);
+                  if (fee) {
+                    setFeeToPay(fee);
+                    setShowPayModal(true);
+                  } else {
+                    toast.error("Selected fee not found.");
+                  }
+                }}
+                sx={{
+                  backgroundColor: "#28a745",
+                  "&:hover": { backgroundColor: "#218838" },
+                }}
+              >
+                Pay Fee
+              </Button>
+            </Stack>
           }
         />
         <CardContent
@@ -509,13 +565,16 @@ function Fees() {
                 sx={{
                   boxShadow: 3,
                   borderRadius: 2,
-                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  overflowX: "auto",
                   maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
                 <Table size="small" sx={{ minWidth: 700, tableLayout: "auto" }}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>
+                        Select
+                      </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
@@ -561,6 +620,13 @@ function Fees() {
                             "&:last-child td, &:last-child th": { border: 0 },
                           }}
                         >
+                          <StyledTableCell>
+                            <Checkbox
+                              size="small"
+                              checked={selectedFeeId === fee._id}
+                              onChange={() => handleCheckboxChange(fee._id)}
+                            />
+                          </StyledTableCell>
                           <StyledTableCell component="th" scope="row">
                             {indexOfFirstRow + index + 1}
                           </StyledTableCell>
@@ -682,10 +748,16 @@ function Fees() {
             cooperativeId={cooperativeId}
             cooperativeName={cooperativeName}
           />
+
+          <PayFeeModal
+            show={showPayModal}
+            onClose={() => setShowPayModal(false)}
+            onSubmit={handlePayFee}
+            feeToPay={feeToPay}
+            formatCurrency={formatCurrency}
+          />
         </>
       )}
-
-      {/* ⭐ NEW: Confirmation Dialog for Deletion */}
       <Dialog
         open={openDeleteDialog}
         onClose={handleCloseDeleteDialog}

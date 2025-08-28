@@ -7,13 +7,14 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
 import {
+  Groups as GroupsIcon,
   People as PeopleIcon,
   Business as BusinessIcon,
+  CheckCircleOutline,
   ErrorOutline,
+  AdminPanelSettings,
 } from "@mui/icons-material";
-import { Users, Layers, Group } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -21,54 +22,78 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 
+// Services
 import { fetchUsers } from "../../services/userService";
 import { getCooperatives } from "../../services/cooperativeService";
-import StatCard from "../../components/StatCard"; // make sure this works with icon prop
+import { getProductions } from "../../services/productionService";
 
-// Theme
-const localCustomTheme = createTheme({
-  palette: {
-    mode: "light",
-    primary: { main: "#3B82F6" },
-    secondary: { main: "#6366F1" },
-    background: { default: "#F9FAFB", paper: "#FFFFFF" },
-    text: { primary: "#111827", secondary: "#6B7280" },
-  },
-  typography: {
-    fontFamily: '"Inter", sans-serif',
-    h3: { fontWeight: 700 },
-    h4: { fontWeight: 600 },
-    h6: { fontWeight: 500 },
-  },
-  shape: { borderRadius: 16 },
-});
+// Reusable StatCard
+const StatCard = ({ title, value, icon, color }) => (
+  <Grid item xs={12} sm={12} md={4} lg={3}>
+    <Paper
+      elevation={3}
+      sx={{
+        p: 3,
+        borderRadius: "16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        bgcolor: "#fff",
+        transition: "0.3s",
+        "&:hover": { transform: "translateY(-5px)", boxShadow: 6 },
+      }}
+    >
+      <Box
+        sx={{
+          width: 50,
+          height: 50,
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: color,
+          color: "white",
+        }}
+      >
+        {icon}
+      </Box>
+      <Box>
+        <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+          {value}
+        </Typography>
+        <Typography variant="subtitle2" color="text.secondary">
+          {title}
+        </Typography>
+      </Box>
+    </Paper>
+  </Grid>
+);
 
 const Dashboard = () => {
-  const theme = localCustomTheme;
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
-    totalCooperatives: 0,
-    activeCooperatives: 0,
-    inactiveCooperatives: 0,
     totalManagers: 0,
     totalMembers: 0,
     totalSuperadmins: 0,
+    totalCooperatives: 0,
+    activeCooperatives: 0,
+    inactiveCooperatives: 0,
     userGrowthData: [],
     coopGrowthData: [],
+    productionSeasonStats: [],
   });
 
-  // Helper to generate growth data
-  const generateGrowthData = (dataArray, dataKey) => {
-    const today = new Date();
+  // Helper: generate monthly growth
+  const generateMonthlyCumulative = (items, dateKey, dataKey) => {
+    const now = new Date();
     const monthNames = [
       "Jan",
       "Feb",
@@ -83,75 +108,92 @@ const Dashboard = () => {
       "Nov",
       "Dec",
     ];
-    const growthMap = new Map();
+    const result = [];
 
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const yearMonth = `${date.getFullYear()}-${date.getMonth()}`;
-      growthMap.set(yearMonth, {
-        name: monthNames[date.getMonth()],
-        [dataKey]: 0,
-      });
+      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthStr = monthNames[month.getMonth()];
+
+      const count = items.filter((item) => {
+        const itemDate = new Date(item[dateKey]);
+        return (
+          itemDate.getMonth() === month.getMonth() &&
+          itemDate.getFullYear() === month.getFullYear()
+        );
+      }).length;
+
+      result.push({ name: monthStr, [dataKey]: count });
     }
 
-    const sortedData = [...dataArray].sort(
-      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-    );
-    sortedData.forEach((item) => {
-      const itemDate = new Date(item.createdAt);
-      const itemYearMonth = `${itemDate.getFullYear()}-${itemDate.getMonth()}`;
-      if (growthMap.has(itemYearMonth)) {
-        growthMap.get(itemYearMonth)[dataKey]++;
-      }
-    });
-
-    // Convert to cumulative array
-    let cumulative = 0;
-    return Array.from(growthMap.values()).map((d) => {
-      cumulative += d[dataKey];
-      return { name: d.name, [dataKey]: cumulative };
-    });
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const usersResponse = await fetchUsers();
-      const allUsers = usersResponse.success ? usersResponse.data : [];
-
-      const cooperativesResponse = await getCooperatives();
-      const allCooperatives = cooperativesResponse.success
-        ? cooperativesResponse.data
-        : [];
-
-      const activeCooperatives = allCooperatives.filter((c) => c.isActive);
-      const inactiveCooperatives = allCooperatives.filter((c) => !c.isActive);
-
-      const managers = allUsers.filter((u) => u.role === "manager");
-      const members = allUsers.filter((u) => u.role === "member");
-      const superadmins = allUsers.filter((u) => u.role === "superadmin");
-
-      setStats({
-        totalUsers: allUsers.length,
-        totalCooperatives: allCooperatives.length,
-        activeCooperatives: activeCooperatives.length,
-        inactiveCooperatives: inactiveCooperatives.length,
-        totalManagers: managers.length,
-        totalMembers: members.length,
-        totalSuperadmins: superadmins.length,
-        userGrowthData: generateGrowthData(allUsers, "users"),
-        coopGrowthData: generateGrowthData(allCooperatives, "cooperatives"),
-      });
-    } catch (err) {
-      setError("Failed to fetch dashboard data.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    return result;
   };
 
   useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const usersResponse = await fetchUsers();
+        const allUsers = usersResponse.success ? usersResponse.data : [];
+
+        const coopsResponse = await getCooperatives();
+        const allCooperatives = coopsResponse.success ? coopsResponse.data : [];
+
+        const productionsResponse = await getProductions();
+        const allProductions = productionsResponse.success
+          ? productionsResponse.data
+          : [];
+
+        const managers = allUsers.filter((u) => u.role === "manager");
+        const members = allUsers.filter((u) => u.role === "member");
+        const superadmins = allUsers.filter((u) => u.role === "superadmin");
+        const activeCoops = allCooperatives.filter((c) => c.isActive);
+
+        const userGrowthData = generateMonthlyCumulative(
+          allUsers,
+          "createdAt",
+          "users"
+        );
+        const coopGrowthData = generateMonthlyCumulative(
+          allCooperatives,
+          "createdAt",
+          "cooperatives"
+        );
+
+        // --- Production by Season ---
+        const seasonMap = {};
+        allProductions.forEach((p) => {
+          const seasonName = p.seasonId
+            ? `${p.seasonId.name} ${p.seasonId.year}`
+            : "Unknown Season";
+          seasonMap[seasonName] = (seasonMap[seasonName] || 0) + p.totalPrice;
+        });
+
+        const productionSeasonStats = Object.entries(seasonMap).map(
+          ([season, value]) => ({ season, value })
+        );
+
+        setStats({
+          totalUsers: allUsers.length,
+          totalManagers: managers.length,
+          totalMembers: members.length,
+          totalSuperadmins: superadmins.length,
+          totalCooperatives: allCooperatives.length,
+          activeCooperatives: activeCoops.length,
+          inactiveCooperatives: allCooperatives.length - activeCoops.length,
+          userGrowthData,
+          coopGrowthData,
+          productionSeasonStats,
+        });
+      } catch (err) {
+        console.error("Analytics fetch error:", err);
+        setError("Failed to load analytics data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
 
@@ -160,150 +202,166 @@ const Dashboard = () => {
       <Box
         sx={{
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
           justifyContent: "center",
+          alignItems: "center",
           height: "80vh",
         }}
       >
-        <CircularProgress
-          size={50}
-          sx={{ color: theme.palette.primary.main }}
-        />
-        <Typography variant="h6" sx={{ mt: 2 }}>
-          Loading dashboard data...
-        </Typography>
+        <CircularProgress size={60} />
+        <Typography sx={{ ml: 2 }}>Loading analytics...</Typography>
       </Box>
     );
   }
-
-  if (error) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ borderRadius: 2 }}>
-          {error}
-        </Alert>
-      </Box>
-    );
-  }
-
-  const cardConfig = [
-    {
-      title: "Total Cooperatives",
-      value: stats.totalCooperatives,
-      icon: Group,
-      color: "orange",
-    },
-    {
-      title: "Active Cooperatives",
-      value: stats.activeCooperatives,
-      icon: Layers,
-      color: "#22C55E",
-    },
-    {
-      title: "Inactive Cooperatives",
-      value: stats.inactiveCooperatives,
-      icon: ErrorOutline,
-      color: "#EF4444",
-    },
-    {
-      title: "Total Users",
-      value: stats.totalUsers,
-      icon: Users,
-      color: "#3B82F6",
-    },
-    {
-      title: "Total Managers",
-      value: stats.totalManagers,
-      icon: Layers,
-      color: "#F59E0B",
-    },
-    {
-      title: "Total Members",
-      value: stats.totalMembers,
-      icon: Layers,
-      color: "#6366F1",
-    },
-    {
-      title: "Super Admins",
-      value: stats.totalSuperadmins,
-      icon: Layers,
-      color: "#8B5CF6",
-    },
-  ];
 
   return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{ p: { xs: 2, sm: 4 }, bgcolor: theme.palette.background.default }}
-      >
-        <Typography variant="h4" sx={{ mb: 4, fontWeight: 600 }}>
+    <div style={{ maxHeight: "80vh" }}>
+      <Box sx={{ p: { xs: 2, sm: 4 }, bgcolor: "#f9fafc", minHeight: "100vh" }}>
+        <Typography
+          variant="h5"
+          sx={{ fontWeight: "bold", mb: 3 }}
+          align="center"
+        >
           Dashboard
         </Typography>
 
-        {/* Cards */}
-        <div className="row flex-nowrap overflow-auto pb-2 gx-3">
-          {cardConfig.map((card, index) => (
-            <div key={index} className="col-lg-3 col-md-4 col-sm-6 mb-3">
-              <StatCard
-                title={card.title}
-                value={card.value}
-                color={card.color}
-                icon={card.icon}
-              />
-            </div>
-          ))}
-        </div>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* KPI Cards */}
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <StatCard
+            title="Total Users"
+            value={stats.totalUsers}
+            icon={<PeopleIcon />}
+            color="#1976d2"
+          />
+          <StatCard
+            title="Total Managers"
+            value={stats.totalManagers}
+            icon={<GroupsIcon />}
+            color="#4caf50"
+          />
+          <StatCard
+            title="Total Members"
+            value={stats.totalMembers}
+            icon={<PeopleIcon />}
+            color="#ff9800"
+          />
+          <StatCard
+            title="Total Cooperatives"
+            value={stats.totalCooperatives}
+            icon={<BusinessIcon />}
+            color="#9c27b0"
+          />
+          <StatCard
+            title="Active Cooperatives"
+            value={stats.activeCooperatives}
+            icon={<CheckCircleOutline />}
+            color="#4caf50"
+          />
+          <StatCard
+            title="Inactive Cooperatives"
+            value={stats.inactiveCooperatives}
+            icon={<ErrorOutline />}
+            color="#f44336"
+          />
+          <StatCard
+            title="Super Admins"
+            value={stats.totalSuperadmins}
+            icon={<AdminPanelSettings />}
+            color="#673ab7"
+          />
+        </Grid>
 
         {/* Charts */}
-        <Grid container spacing={3} sx={{ mt: 4 }}>
+        <Grid container spacing={3}>
+          {/* User Growth Chart */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: 360 }}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 400 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                User Growth
+                User Growth (Last 6 Months)
               </Typography>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stats.userGrowthData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis />
+                  <YAxis allowDecimals={false} />
                   <Tooltip />
                   <Legend />
                   <Line
                     type="monotone"
                     dataKey="users"
-                    stroke={theme.palette.primary.main}
+                    stroke="#1976d2"
                     strokeWidth={3}
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </Paper>
           </Grid>
 
+          {/* Cooperative Growth Chart */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: 360 }}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 400 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Cooperative Growth
+                Cooperative Growth (Last 6 Months)
               </Typography>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.coopGrowthData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis />
+                  <YAxis allowDecimals={false} />
                   <Tooltip />
                   <Legend />
-                  <Bar
-                    dataKey="cooperatives"
-                    fill={theme.palette.secondary.main}
-                    barSize={30}
+                  <Bar dataKey="cooperatives" fill="#4caf50" barSize={30} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Grid>
+
+          {/* Production by Season Chart */}
+          <Grid item xs={12} md={12}>
+            <Paper sx={{ p: 3, borderRadius: "16px", height: 400 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Production by Season
+              </Typography>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={stats.productionSeasonStats}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }} // extra bottom margin
+                >
+                  <CartesianGrid strokeDasharray="5 5" />
+                  <XAxis
+                    dataKey="season"
+                    angle={-45}
+                    textAnchor="end"
+                    interval={0}
+                    height={60}
                   />
+                  <YAxis
+                    tickFormatter={(value) =>
+                      value >= 1000000
+                        ? `${(value / 1000000).toFixed(1)}M`
+                        : value >= 1000
+                        ? `${(value / 1000).toFixed(0)}K`
+                        : value
+                    }
+                  />
+                  <Tooltip
+                    formatter={(value) => new Intl.NumberFormat().format(value)}
+                  />
+                  <Legend />
+                  <Bar dataKey="value" fill="#ff9800" barSize={30} />
                 </BarChart>
               </ResponsiveContainer>
             </Paper>
           </Grid>
         </Grid>
       </Box>
-    </ThemeProvider>
+    </div>
   );
 };
 

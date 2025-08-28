@@ -13,8 +13,7 @@ import {
 
 function AddProductModal({ show, onClose, onSubmit }) {
   const [productName, setProductName] = useState("");
-
-  // ⭐ No longer manipulating document.body classes with Material-UI Dialog
+ 
   // useEffect(() => {
   //   if (show) {
   //     document.body.classList.add("modal-open");

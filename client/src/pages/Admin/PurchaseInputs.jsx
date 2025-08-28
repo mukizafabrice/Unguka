@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { toast } from "react-toastify"; // ✅ only toast
-import "react-toastify/dist/ReactToastify.css"; // ✅ CSS once (better put in App.js)
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -530,9 +530,9 @@ function PurchaseInputs() {
                       <StyledTableHeaderCell sx={{ width: "10%" }}>
                         Amount Paid
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
+                      {/* <StyledTableHeaderCell sx={{ width: "10%" }}>
                         Remaining
-                      </StyledTableHeaderCell>
+                      </StyledTableHeaderCell> */}
                       <StyledTableHeaderCell sx={{ width: "8%" }}>
                         Status
                       </StyledTableHeaderCell>
@@ -576,7 +576,7 @@ function PurchaseInputs() {
                           <StyledTableCell>
                             {formatCurrency(purchaseInput.amountPaid || 0)}
                           </StyledTableCell>
-                          <StyledTableCell
+                          {/* <StyledTableCell
                             sx={{
                               color:
                                 purchaseInput.amountRemaining > 0
@@ -586,7 +586,7 @@ function PurchaseInputs() {
                             }}
                           >
                             {formatCurrency(purchaseInput.amountRemaining || 0)}
-                          </StyledTableCell>
+                          </StyledTableCell> */}
                           <StyledTableCell>
                             <Chip
                               label={purchaseInput.status}

@@ -91,20 +91,16 @@ export const processMemberPayment = async (req, res) => {
       0
     );
 
-    const purchaseInputs = await PurchaseInput.find({ ...memberPaymentFilter });
-    const purchaseInputIds = purchaseInputs.map((p) => p._id);
-
     const unpaidLoans = await Loan.find({
       ...memberPaymentFilter,
-      purchaseInputId: { $in: purchaseInputIds },
       status: "pending",
     });
     const totalLoansOutstanding = unpaidLoans.reduce(
-      (sum, loan) => sum + (loan.amountOwed || 0),
+      (sum, loan) => sum + (loan.amountOwed - (loan.amountPaid || 0)),
       0
     );
     console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Unpaid Loans fetched. Outstanding: ${totalLoansOutstanding}`
+      `[${new Date().toISOString()}] DEBUG: processMemberPayment - Unpaid Loans fetched by userId. Outstanding: ${totalLoansOutstanding}`
     );
 
     console.log(
@@ -278,29 +274,6 @@ export const processMemberPayment = async (req, res) => {
       );
     }
 
-    if (paymentAmount > 0) {
-      await Promise.all(
-        purchaseInputs.map(async (purchaseInput) => {
-          if (
-            purchaseInput.cooperativeId.toString() === cooperativeId.toString()
-          ) {
-            purchaseInput.amountPaid = purchaseInput.totalPrice;
-            purchaseInput.amountRemaining = 0;
-            purchaseInput.status = "paid";
-            await purchaseInput.save();
-            console.log(
-              `[${new Date().toISOString()}] DEBUG: processMemberPayment - PurchaseInput ${
-                purchaseInput._id
-              } updated.`
-            );
-          }
-        })
-      );
-    }
-
-    console.log(
-      `[${new Date().toISOString()}] DEBUG: processMemberPayment END (Success)`
-    );
     return res.status(200).json({
       message: "Payment processed successfully",
       payment: paymentRecord,
@@ -492,33 +465,17 @@ export const getPaymentSummary = async (req, res) => {
 
   const { _id: authenticatedUserId, cooperativeId, role } = req.user;
 
-  // Basic authorization check: non-superadmin can only query their own user ID
-  // MODIFIED: Added defensive check for authenticatedUserId before calling .toString()
-  // if (
-  //   role !== "superadmin" &&
-  //   (!authenticatedUserId || paramUserId !== authenticatedUserId.toString())
-  // ) {
-  //   console.log(
-  //     `[${new Date().toISOString()}] DEBUG: getPaymentSummary - Unauthorized attempt or missing authenticatedUserId.`
-  //   );
-  //   return res
-  //     .status(403)
-  //     .json({
-  //       message:
-  //         "You are not authorized to view payment summary for this user.",
-  //     });
-  // }
-
   try {
-    // Get the cooperative filter from the helper, which handles superadmin vs manager/member logic
+    // Get the cooperative filter from your helper
     const cooperativeFilter = getCooperativeQueryFilter(req);
 
-    // Combine the cooperative filter with the specific userId for the summary
+    // Combine cooperative filter with the specific userId
     const finalFilter = {
-      ...cooperativeFilter, // This will be { cooperativeId: '...' } or {}
-      userId: paramUserId, // Add the specific userId to filter by
+      ...cooperativeFilter,
+      userId: paramUserId,
     };
 
+    // --- Productions ---
     const productions = await Production.find({
       ...finalFilter,
       paymentStatus: "pending",
@@ -528,30 +485,30 @@ export const getPaymentSummary = async (req, res) => {
       0
     );
 
-    const purchaseInputs = await PurchaseInput.find({ ...finalFilter });
-    const purchaseInputIds = purchaseInputs.map((p) => p._id);
-
+    // --- Loans directly by userId ---
     const loans = await Loan.find({
       ...finalFilter,
-      purchaseInputId: { $in: purchaseInputIds },
       status: "pending",
     });
+
     const totalLoans = loans.reduce(
       (sum, loan) => sum + (loan.amountOwed - (loan.amountPaid || 0)),
       0
     );
     console.log(
-      `[${new Date().toISOString()}] DEBUG: getPaymentSummary - Loans fetched. Count: ${
+      `[${new Date().toISOString()}] DEBUG: getPaymentSummary - Loans fetched by userId. Count: ${
         loans.length
       }`
     );
 
+    // --- Fees ---
     const fees = await Fee.find({ ...finalFilter, status: { $ne: "paid" } });
     const totalUnpaidFees = fees.reduce(
       (sum, fee) => sum + (fee.amountOwed - (fee.amountPaid || 0)),
       0
     );
 
+    // --- Partial payments ---
     const allPartialPaymentsForUser = await Payment.find({
       ...finalFilter,
       status: "partial",
@@ -560,8 +517,8 @@ export const getPaymentSummary = async (req, res) => {
       (sum, p) => sum + (p.amountRemainingToPay || 0),
       0
     );
-    // --- DATABASE QUERIES END ---
 
+    // --- Net calculation ---
     const currentDeductions = totalLoans + totalUnpaidFees;
     const currentNet = totalProduction - currentDeductions;
     const netPayable = currentNet + previousRemaining;

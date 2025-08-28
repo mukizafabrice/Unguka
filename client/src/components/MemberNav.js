@@ -41,7 +41,9 @@ function SideNav({ isHide }) {
   return (
     <div className={`sidebar ${isHide ? "hide" : ""}`}>
       <div className="sidebar-header">
-        <p className="small">{names}</p>
+        <h6 className="fw-bold" style={{ color: "#4caf50" }}>
+          {names}
+        </h6>
       </div>
       <ul className="sidebar-menu">
         <li>

@@ -245,7 +245,6 @@ export default function AddPurchaseInputModal({
 
       console.log("Submitting purchases:", purchasesToSubmit);
       try {
-        // ⭐ THE KEY FIX: Loop through each purchase and call onSubmit individually
         for (const purchase of purchasesToSubmit) {
           await onSubmit(purchase);
         }

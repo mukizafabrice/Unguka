@@ -3,14 +3,6 @@ import axiosInstance from "../api/axiosInstance";
 // ✅ The base URL is correct. All subsequent routes will build upon this.
 const API_BASE_URL = "/fees";
 
-// =======================================================
-// ✅ CORRECTED SERVICE FUNCTIONS
-// =======================================================
-
-/**
- * Fetches all fees for a specific cooperative.
- * Aligns with the backend route: GET /api/fees/:cooperativeId
- */
 export const fetchAllFees = async (cooperativeId) => {
   try {
     const response = await axiosInstance.get(
@@ -94,6 +86,23 @@ export const deleteFee = async (id) => {
     return response.data;
   } catch (error) {
     console.error("Error deleting fee:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Assuming you have an axios instance set up
+
+export const addPaymentToFee = async (feeId, paymentAmount) => {
+  try {
+    const response = await axiosInstance.put(`/fees/pay/${feeId}`, {
+      paymentAmount,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error adding payment to fee:",
+      error.response?.data || error.message
+    );
     throw error;
   }
 };

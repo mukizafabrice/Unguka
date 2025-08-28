@@ -7,6 +7,7 @@ import {
   getAllFees,
   getAllFeesById,
   updateFee,
+  payFee,
   deleteFee,
 } from "../controllers/feesController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -47,6 +48,12 @@ router.put(
   protect,
   authorizeRoles(["superadmin", "manager"]),
   updateFee
+);
+router.put(
+  "/pay/:feeId",
+  protect,
+  authorizeRoles(["superadmin", "manager", "member"]),
+  payFee
 );
 
 router.delete(

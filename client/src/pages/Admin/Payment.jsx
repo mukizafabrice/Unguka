@@ -23,6 +23,7 @@ import {
   InputAdornment,
   useMediaQuery,
   styled,
+  Checkbox,
 } from "@mui/material";
 import { Add, Search, Visibility } from "@mui/icons-material";
 import { toast } from "react-toastify";
@@ -80,6 +81,8 @@ const Payment = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("user");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
+
   const rowsPerPage = 7;
   const { user } = useAuth();
   const cooperativeId = user?.cooperativeId;
@@ -191,6 +194,18 @@ const Payment = () => {
 
   const handlePageChange = useCallback((_, page) => setCurrentPage(page), []);
 
+  //handle transaction
+
+  const handleCheckboxChange = (paymentId) => {
+    setSelectedPaymentId((prevId) => (prevId === paymentId ? null : paymentId));
+  };
+
+  const handleNavigateToTransactions = () => {
+    if (selectedPaymentId) {
+      navigate(`/admin/dashboard/payment-transaction/${selectedPaymentId}`);
+    }
+  };
+
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
@@ -213,11 +228,12 @@ const Payment = () => {
               </Button>
               <Button
                 variant="outlined"
+                size="medium"
                 startIcon={<Visibility />}
-                onClick={viewTransactions}
-                sx={{ minWidth: { xs: "100%", sm: "auto" } }}
+                onClick={handleNavigateToTransactions}
+                disabled={!selectedPaymentId} // disabled until a loan is checked
               >
-                View Transactions
+                Transactions
               </Button>
             </Stack>
           }
@@ -281,7 +297,6 @@ const Payment = () => {
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="paid">Paid</MenuItem>
               <MenuItem value="partial">Partial</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
             </TextField>
           </Stack>
 
@@ -299,6 +314,7 @@ const Payment = () => {
               sx={{
                 flexGrow: 1,
                 overflowY: "auto",
+                maxHeight: "55vh",
                 display: "flex",
                 flexDirection: "column",
               }}
@@ -308,17 +324,20 @@ const Payment = () => {
                 sx={{
                   boxShadow: 3,
                   borderRadius: 2,
-                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  overflowX: "auto",
                   maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
                 <Table
                   size="small"
-                  // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
                   sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
                 >
                   <TableHead>
                     <TableRow>
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>
+                        Select
+                      </StyledTableHeaderCell>
+
                       <StyledTableHeaderCell>ID</StyledTableHeaderCell>
                       <StyledTableHeaderCell>User</StyledTableHeaderCell>
                       <StyledTableHeaderCell>Paid Amount</StyledTableHeaderCell>
@@ -334,6 +353,14 @@ const Payment = () => {
                     {filteredPayments.length ? (
                       filteredPayments.map((p, i) => (
                         <TableRow hover key={p._id}>
+                          <StyledTableCell>
+                            <Checkbox
+                              size="small"
+                              checked={selectedPaymentId === p._id}
+                              onChange={() => handleCheckboxChange(p._id)}
+                            />
+                          </StyledTableCell>
+
                           <StyledTableCell>
                             {(currentPage - 1) * rowsPerPage + i + 1}
                           </StyledTableCell>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { fetchPaymentTransactions } from "../../services/paymentTransactionService";
+import { useNavigate, useParams } from "react-router-dom";
+import { fetchPaymentTransactionsById } from "../../services/paymentTransactionService";
 import { useAuth } from "../../contexts/AuthContext"; // Import useAuth to get cooperativeId
 import {
   Box,
@@ -106,7 +106,7 @@ function PaymentTransaction() {
 
   const { user } = useAuth(); // Access user from AuthContext
   const cooperativeId = user?.cooperativeId; // Get the cooperativeId
-
+  const { paymentId } = useParams();
   // Function to fetch transactions
   const getTransactions = useCallback(async () => {
     // Only proceed if cooperativeId is available
@@ -122,7 +122,7 @@ function PaymentTransaction() {
     setLoading(true);
     try {
       // Pass the cooperativeId to the fetchPaymentTransactions service
-      const res = await fetchPaymentTransactions(cooperativeId);
+      const res = await fetchPaymentTransactionsById(paymentId);
       // Ensure res is an array or has a .data property that is an array
       const paymentsData = res.data || res; // Adjust based on actual API response structure
 

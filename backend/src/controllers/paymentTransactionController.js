@@ -1,49 +1,33 @@
 import PaymentTransaction from "../models/PaymentTransaction.js";
-import mongoose from "mongoose"; // Needed for mongoose.Types.ObjectId.isValid
+import mongoose from "mongoose";
 
-export const getAllPaymentTransactions = async (req, res) => {
+export const handlePaymentTransactions = async (req, res) => {
+  const { paymentId } = req.params;
+
   try {
-    const requestingUser = req.user;
+    if (paymentId) {
+      // Logic for getting transactions by a specific paymentId
+      if (!mongoose.Types.ObjectId.isValid(paymentId)) {
+        return res.status(400).json({
+          message: "A valid payment ID is required.",
+        });
+      }
 
-    if (requestingUser.role === "superadmin") {
-      const PaymentTransactions = await PaymentTransaction.find()
-        .populate("cooperativeId", "name")
+      const transactions = await PaymentTransaction.find({ paymentId })
+        .populate("userId", "names")
         .populate("paymentId", "status")
-        .populate("userId", "names");
-      return res.status(200).json(PaymentTransactions);
-    }
+        .sort({ transactionDate: -1 });
 
-    if (requestingUser.role === "manager") {
-      const PaymentTransactions = await PaymentTransaction.find({
-        cooperativeId: requestingUser.cooperativeId,
-      })
-        .populate("cooperativeId", "name")
+      return res.status(200).json(transactions);
+    } else {
+      // Logic for getting all transactions, regardless of user role
+      const transactions = await PaymentTransaction.find()
         .populate("userId", "names")
         .populate("paymentId", "status")
         .sort({ createdAt: -1 });
-      return res.status(200).json(PaymentTransactions);
+
+      return res.status(200).json(transactions);
     }
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-export const getAllPaymentTransactionsById = async (req, res) => {
-  const { userId } = req.params;
-
-  // Defensive check for req.user before destructuring
-  if (!userId) {
-    return res.status(401).json({
-      message: "User is needed",
-    });
-  }
-
-  try {
-    const PaymentTransactions = await PaymentTransaction.find({ userId })
-      .populate("userId", "names")
-      .populate("paymentId", "status")
-      .sort({ transactionDate: -1 });
-    res.status(200).json(PaymentTransactions);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

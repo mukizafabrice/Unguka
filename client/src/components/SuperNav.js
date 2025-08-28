@@ -14,7 +14,9 @@ function SuperNav({ isHide }) {
     <div className={`sidebar ${isHide ? "hide" : ""}`}>
       {/* Sidebar Header/Logo */}
       <div className="sidebar-header">
-        <h5 className="fw-bold">{user?.names || "System Admin"}</h5>
+        <h6 className="fw-bold" style={{ color: "#4caf50" }}>
+          {user?.names || "System Admin"}
+        </h6>
       </div>
 
       <ul className="sidebar-menu">
@@ -50,7 +52,7 @@ function SuperNav({ isHide }) {
           </NavLink>
         </li>
 
-        <li>
+        {/* <li>
           <NavLink
             to="/super/dashboard/analytics"
             className={({ isActive }) =>
@@ -59,7 +61,7 @@ function SuperNav({ isHide }) {
           >
             <BarChart size={18} className="me-2" /> Analytics
           </NavLink>
-        </li>
+        </li> */}
         <li>
           <NavLink
             to="/super/dashboard/settings"

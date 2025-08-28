@@ -3,14 +3,19 @@ import FeeType from "../models/FeeType.js";
 import User from "../models/User.js";
 import mongoose from "mongoose"; // Import mongoose for ObjectId validation
 
-export async function assignFeeToAllUsers(feeTypeId, seasonId = null, cooperativeId) { // ⭐ ADDED cooperativeId parameter
+export async function assignFeeToAllUsers(
+  feeTypeId,
+  seasonId = null,
+  cooperativeId
+) {
+  // ⭐ ADDED cooperativeId parameter
   try {
     // ⭐ Basic validation for cooperativeId
     if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
       throw new Error("Valid Cooperative ID is required to assign fees.");
     }
 
-    // ⭐ Find the fee type by ID and cooperativeId
+    
     // Ensure the fee type itself belongs to the cooperative we're working with
     const feeType = await FeeType.findOne({ _id: feeTypeId, cooperativeId });
     if (!feeType) {
@@ -25,11 +30,11 @@ export async function assignFeeToAllUsers(feeTypeId, seasonId = null, cooperativ
       throw new Error("Invalid Season ID format.");
     }
 
-    // ⭐ Find all cooperative members for the given cooperativeId
-    // Only members within this cooperative will receive the fee assignment
     const members = await User.find({ role: "member", cooperativeId });
     if (members.length === 0) {
-      console.warn(`No members found in cooperative ${cooperativeId} to assign fees.`);
+      console.warn(
+        `No members found in cooperative ${cooperativeId} to assign fees.`
+      );
       return; // Exit if no members are found
     }
 
@@ -39,11 +44,12 @@ export async function assignFeeToAllUsers(feeTypeId, seasonId = null, cooperativ
         filter: {
           userId: member._id,
           feeTypeId: feeType._id,
-          cooperativeId: cooperativeId, // ⭐ Include cooperativeId in the filter for the Fees collection
+          cooperativeId: cooperativeId, 
           ...(seasonId ? { seasonId } : { seasonId: null }), // Conditionally add seasonId or null
         },
         update: {
-          $setOnInsert: { // Only set these fields if a new document is inserted
+          $setOnInsert: {
+            // Only set these fields if a new document is inserted
             amountOwed: feeType.amount,
             amountPaid: 0,
             status: "unpaid",
@@ -59,7 +65,9 @@ export async function assignFeeToAllUsers(feeTypeId, seasonId = null, cooperativ
     // Execute bulk write operation
     if (bulkOps.length > 0) {
       const result = await Fees.bulkWrite(bulkOps, { ordered: false });
-      console.log(`Bulk fee assignment for cooperative ${cooperativeId} completed. Upserted: ${result.upsertedCount}, Matched: ${result.matchedCount}`);
+      console.log(
+        `Bulk fee assignment for cooperative ${cooperativeId} completed. Upserted: ${result.upsertedCount}, Matched: ${result.matchedCount}`
+      );
     } else {
       console.log("No bulk operations to perform for fee assignment.");
     }

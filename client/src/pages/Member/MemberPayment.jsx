@@ -23,10 +23,11 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Button, // Added Button for sort control
-  Chip, // Added Chip for status display
+  CircularProgress,
+  MenuItem,
+  Button,
+  Chip,
+  Checkbox,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
@@ -97,6 +98,8 @@ function Payment() {
   const [searchField, setSearchField] = useState("user");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("desc");
+
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
 
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -222,8 +225,17 @@ function Payment() {
     setSortOrder((prevSortOrder) => (prevSortOrder === "asc" ? "desc" : "asc"));
   };
 
+  const handleCheckboxChange = (paymentId) => {
+    setSelectedPaymentId((prevId) => (prevId === paymentId ? null : paymentId));
+  };
+  const handleNavigateToTransactions = () => {
+    if (selectedPaymentId) {
+      navigate(`/member/dashboard/payment-transaction/${selectedPaymentId}`);
+    }
+  };
+
   return (
-    <Box px={isMobile ? 2 : 3} pt={0} >
+    <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
         {<Typography variant="h6">Payments </Typography>}
         <StyledCardHeader
@@ -237,10 +249,10 @@ function Payment() {
                 variant="outlined"
                 size="medium"
                 startIcon={<VisibilityIcon />}
-                onClick={viewPaymentTransaction}
-                fullWidth={{ xs: true, sm: false }} // full width on mobile
+                onClick={handleNavigateToTransactions}
+                disabled={!selectedPaymentId} // 👈 Smart!
               >
-                Payment Transactions
+                Transactions
               </Button>
 
               <Button
@@ -379,6 +391,9 @@ function Payment() {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
+                        Select
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
@@ -405,6 +420,13 @@ function Payment() {
                     {currentRows.length > 0 ? (
                       currentRows.map((p, index) => (
                         <TableRow hover key={p._id || index}>
+                          <StyledTableCell>
+                            <Checkbox
+                              size="small"
+                              checked={selectedPaymentId === p._id}
+                              onChange={() => handleCheckboxChange(p._id)}
+                            />
+                          </StyledTableCell>
                           <StyledTableCell>
                             {(currentPage - 1) * rowsPerPage + index + 1}
                           </StyledTableCell>

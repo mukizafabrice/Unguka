@@ -41,9 +41,10 @@ export const createLoan = async (req, res) => {
     const newLoan = new Loan({
       userId,
       seasonId,
+      loanOwed: amountOwed,
       amountOwed: newAmountOwed,
       interest,
-      cooperativeId, // CRITICAL: Securely set cooperativeId from the authenticated user
+      cooperativeId,
       status: "pending",
     });
 
@@ -63,9 +64,6 @@ export const createLoan = async (req, res) => {
   }
 };
 
-// @desc    Get all loans for the user's cooperative
-// @route   GET /api/loans
-// @access  Private (Manager, Superadmin)
 export const getAllLoans = async (req, res) => {
   const { role, cooperativeId } = req.user;
 
@@ -76,7 +74,6 @@ export const getAllLoans = async (req, res) => {
   }
 
   try {
-    // CRITICAL: Filter loans by the authenticated user's cooperative ID
     const loans = await Loan.find({ cooperativeId })
       .populate("purchaseInputId")
       .populate({
@@ -88,6 +85,7 @@ export const getAllLoans = async (req, res) => {
         ],
       })
       .populate("userId", "names")
+      .populate("seasonId", "year name")
       .sort({ createdAt: -1 });
 
     res.status(200).json(loans);
@@ -97,9 +95,6 @@ export const getAllLoans = async (req, res) => {
   }
 };
 
-// @desc    Get a single loan by ID
-// @route   GET /api/loans/:id
-// @access  Private (Member, Manager, Superadmin)
 export const getLoanById = async (req, res) => {
   const { userId } = req.params;
   const { role, cooperativeId } = req.user;
@@ -128,9 +123,6 @@ export const getLoanById = async (req, res) => {
   }
 };
 
-// @desc    Update a loan
-// @route   PUT /api/loans/:id
-// @access  Private (Manager)
 export const updateLoan = async (req, res) => {
   const { id } = req.params;
   const { amountPaid, status, userId, seasonId } = req.body;
@@ -143,7 +135,6 @@ export const updateLoan = async (req, res) => {
   }
 
   try {
-    // 1. Find the loan within the manager's cooperative
     const loan = await Loan.findOne({ _id: id, cooperativeId });
     if (!loan) {
       return res
@@ -151,10 +142,7 @@ export const updateLoan = async (req, res) => {
         .json({ message: "Loan not found in your cooperative." });
     }
 
-    // 2. Update userId and seasonId if they are provided in the request body
-    // This allows reassigning the loan to a different member or season.
     if (userId) {
-      // You may want to add validation here to ensure the new userId belongs to the same cooperative.
       const newMember = await User.findOne({ _id: userId, cooperativeId });
       if (!newMember) {
         return res
@@ -165,11 +153,6 @@ export const updateLoan = async (req, res) => {
     }
 
     if (seasonId) {
-      // You can add validation here to ensure the season exists
-      // const newSeason = await Season.findById(seasonId);
-      // if (!newSeason) {
-      //   return res.status(400).json({ message: "The selected season does not exist." });
-      // }
       loan.seasonId = seasonId;
     }
 
@@ -223,9 +206,6 @@ export const updateLoan = async (req, res) => {
   }
 };
 
-// @desc    Delete a loan
-// @route   DELETE /api/loans/:id
-// @access  Private (Manager)
 export const deleteLoan = async (req, res) => {
   const { id } = req.params;
   const { role, cooperativeId } = req.user;

@@ -25,12 +25,7 @@ import {
  * @property {function(Object): void} onSubmit - Function to call when the form is submitted.
  */
 
-/**
- * AddFeeTypeModal component for creating a new fee type.
- * It uses Material-UI components for a consistent design.
- * @param {AddFeeTypeModalProps} props - The component props.
- * @returns {JSX.Element | null} The AddFeeTypeModal component.
- */
+
 function AddFeeTypeModal({ show, onClose, onSubmit }) {
   // State to hold the form data
   const [formData, setFormData] = useState({

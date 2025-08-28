@@ -1,10 +1,11 @@
 import LoanTransaction from "../models/LoanTransaction.js";
 
-export const getAllLoanTransactions = async (req, res) => {
-  const { cooperativeId } = req.user; // Get cooperativeId from the authenticated user
+
+export const getLoanTransactionsByLoanId = async (req, res) => {
+  const { id } = req.params; 
 
   try {
-    const transactions = await LoanTransaction.find({ cooperativeId })
+    const transactions = await LoanTransaction.find({ loanId: id })
       .populate({
         path: "loanId",
         select: "amountOwed status purchaseInputId userId",
@@ -22,6 +23,12 @@ export const getAllLoanTransactions = async (req, res) => {
         ],
       })
       .sort({ transactionDate: -1 });
+
+    if (transactions.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No loan transactions found for this loan ID." });
+    }
 
     res.status(200).json({
       message: "Loan transactions fetched successfully",

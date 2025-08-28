@@ -101,9 +101,12 @@ function App() {
             <Route path="purchase-inputs" element={<PurchaseInput />} />
             <Route path="purchase-outputs" element={<PurchaseOut />} />
             <Route path="announcement" element={<Announcement />} />
-            <Route path="loan-transaction" element={<LoanTransaction />} />
             <Route
-              path="payment-transaction"
+              path="loan-transaction/:loanId"
+              element={<LoanTransaction />}
+            />
+            <Route
+              path="payment-transaction/:paymentId"
               element={<PaymentTransaction />}
             />
             <Route path="user" element={<User />} />
@@ -131,11 +134,11 @@ function App() {
             <Route path="payment" element={<MemberPayment />} />
             <Route path="payment-summary" element={<PaymentSummary />} />
             <Route
-              path="payment-transaction"
+              path="payment-transaction/:paymentId"
               element={<MemberPaymentTransaction />}
             />
             <Route
-              path="loan-transaction"
+              path="loan-transaction/:loanId"
               element={<MemberLoanTransaction />}
             />
           </Route>

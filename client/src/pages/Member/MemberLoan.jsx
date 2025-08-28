@@ -23,10 +23,12 @@ import {
   useMediaQuery,
   styled,
   Pagination,
-  CircularProgress, // Added CircularProgress for loading state
-  MenuItem, // Added MenuItem for dropdowns
-  Button, // Added Button for sort control
-  Chip, // Added Chip for status display
+  CircularProgress,
+  MenuItem,
+  Button,
+  Visibility,
+  Chip,
+  Checkbox,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
@@ -101,6 +103,8 @@ function Loan() {
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  const [selectedLoanId, setSelectedLoanId] = useState(null);
+
   // Inside your loadLoans function
   const loadLoans = useCallback(async () => {
     setLoading(true);
@@ -144,8 +148,14 @@ function Loan() {
     }).format(amount || 0); // Handle null/undefined amount gracefully
   };
 
-  const viewLoanTransaction = () => {
-    navigate("/member/dashboard/loan-transaction");
+  const handleNavigateToTransactions = () => {
+    if (selectedLoanId) {
+      navigate(`/member/dashboard/loan-transaction/${selectedLoanId}`);
+    }
+  };
+
+  const handleCheckboxChange = (loanId) => {
+    setSelectedLoanId((prevId) => (prevId === loanId ? null : loanId));
   };
 
   // Filter and sort loans based on search, status filter, and sort order
@@ -229,10 +239,11 @@ function Loan() {
             <Button
               variant="outlined"
               size="medium"
-              startIcon={<VisibilityIcon />} // Material-UI Eye icon
-              onClick={viewLoanTransaction}
+              startIcon={<VisibilityIcon />}
+              onClick={handleNavigateToTransactions}
+              disabled={!selectedLoanId} // disabled until a loan is checked
             >
-              View Loan Transactions
+              Transactions
             </Button>
           }
         />
@@ -356,6 +367,9 @@ function Loan() {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
+                        Select
+                      </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
@@ -367,6 +381,9 @@ function Loan() {
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Season
                       </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "12%" }}>
+                        Loan Owed
+                      </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Amount Owed
                       </StyledTableHeaderCell>
@@ -376,12 +393,23 @@ function Loan() {
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Status
                       </StyledTableHeaderCell>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
+                        Date
+                      </StyledTableHeaderCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {currentRows.length > 0 ? (
                       currentRows.map((loan, index) => (
                         <TableRow hover key={loan._id || index}>
+                          <StyledTableCell>
+                            <Checkbox
+                              size="small"
+                              checked={selectedLoanId === loan._id}
+                              onChange={() => handleCheckboxChange(loan._id)}
+                            />
+                          </StyledTableCell>
+
                           <StyledTableCell>
                             {(currentPage - 1) * rowsPerPage + index + 1}
                           </StyledTableCell>
@@ -398,6 +426,9 @@ function Loan() {
                             {loan.seasonId?.year || "N/A"})
                           </StyledTableCell>
                           <StyledTableCell>
+                            {formatCurrency(loan.loanOwed)}
+                          </StyledTableCell>
+                          <StyledTableCell>
                             {formatCurrency(loan.amountOwed)}
                           </StyledTableCell>
                           <StyledTableCell>
@@ -409,6 +440,11 @@ function Loan() {
                               size="small"
                               color={getStatusColor(loan.status)}
                             />
+                          </StyledTableCell>
+                          <StyledTableCell>
+                            {loan.createdAt
+                              ? new Date(loan.createdAt).toLocaleDateString()
+                              : "N/A"}
                           </StyledTableCell>
                         </TableRow>
                       ))

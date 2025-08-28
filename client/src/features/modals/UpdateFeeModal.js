@@ -178,8 +178,8 @@ function UpdateFeeModal({
               onChange={handleChange}
               label="Status"
             >
-              <MenuItem value="Pending">Pending</MenuItem>
-              <MenuItem value="Partially Paid">Partially Paid</MenuItem>
+              <MenuItem value="unpain">Unpaid</MenuItem>
+              <MenuItem value="partial">Partially Paid</MenuItem>
               <MenuItem value="Paid">Paid</MenuItem>
             </Select>
           </FormControl>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { fetchLoanTransactions } from "../../services/loanTransactionService";
 import { ArrowLeft, Search } from "lucide-react";
 import {
@@ -91,36 +91,36 @@ function LoanTransactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const rowsPerPage = 7; // Fixed rows per page as requested
+  const rowsPerPage = 7;
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("member");
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
+  const { loanId } = useParams();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Function to fetch transactions
   const getTransactions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchLoanTransactions();
-      setTransactions(res.transactions || []);
+      const res = loanId
+        ? await fetchLoanTransactions(loanId)
+        : await fetchLoanTransactions();
+
+      setTransactions(res?.transactions ?? []); // always an array
     } catch (error) {
       console.error("Failed to fetch loan transactions:", error);
-      toast.error("Failed to load loan transactions.");
-      setTransactions([]);
+      setTransactions([]); // fallback to empty array
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loanId]);
 
   useEffect(() => {
     getTransactions();
   }, [getTransactions]);
 
-  // Handle back button navigation
   const handleBack = () => navigate(-1);
 
-  // Currency formatter
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-RW", {
       style: "currency",
@@ -128,11 +128,9 @@ function LoanTransactions() {
     }).format(amount);
   };
 
-  // Memoized filtered transactions: this filters the data based on search and status
   const filteredTransactions = useMemo(() => {
     let currentFiltered = transactions;
 
-    // Apply search filter
     if (searchTerm) {
       currentFiltered = currentFiltered.filter((tx) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -142,7 +140,7 @@ function LoanTransactions() {
               tx.loanId?.purchaseInputId?.userId?.names
                 ?.toLowerCase()
                 .includes(lowerCaseSearchTerm) ||
-              tx.loanId?.userId?.names // Fallback if purchaseInputId is missing
+              tx.loanId?.userId?.names
                 ?.toLowerCase()
                 .includes(lowerCaseSearchTerm)
             );
@@ -151,19 +149,17 @@ function LoanTransactions() {
               ?.toLowerCase()
               .includes(lowerCaseSearchTerm);
           case "date":
-            // Filter by transaction date if available (e.g., "2/15/2023")
             return tx.transactionDate
               ? new Date(tx.transactionDate)
                   .toLocaleDateString()
                   .includes(lowerCaseSearchTerm)
               : false;
           default:
-            return true; // If no search field selected, don't filter by search term
+            return true;
         }
       });
     }
 
-    // Apply status filter (for loan status)
     if (statusFilter !== "all") {
       currentFiltered = currentFiltered.filter(
         (tx) => tx.loanId?.status === statusFilter
@@ -173,21 +169,17 @@ function LoanTransactions() {
     return currentFiltered;
   }, [transactions, searchTerm, searchField, statusFilter]);
 
-  // Reset page to 1 whenever filters change (new filtered data is produced)
   useEffect(() => {
     setPage(1);
   }, [filteredTransactions]);
 
-  // Memoized paginated transactions: this slices the filtered data for the current page
   const paginatedTransactions = useMemo(() => {
     const startIndex = (page - 1) * rowsPerPage;
     return filteredTransactions.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredTransactions, page, rowsPerPage]); // Dependencies ensure re-slicing when filtered data or page changes
+  }, [filteredTransactions, page, rowsPerPage]);
 
-  // Calculate total pages based on filtered transactions
   const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
 
-  // Handle page change for MUI Pagination component
   const handleChangePage = useCallback((event, newPage) => {
     setPage(newPage);
   }, []);
@@ -211,25 +203,23 @@ function LoanTransactions() {
         <CardContent
           sx={{
             maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 150px)",
-            overflow: "hidden", // Hide overflow on CardContent itself
+            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
         >
-          {/* Descriptive Text Section (Optional, can add if needed) */}
           <Box mb={3} sx={{ flexShrink: 0 }}>
             <Typography variant="body2" color="text.secondary">
               View and manage all loan payment transactions.
             </Typography>
           </Box>
 
-          {/* Filters and Search Section */}
           <Stack
             direction={isMobile ? "column" : "row"}
             spacing={2}
             mb={3}
             alignItems={isMobile ? "stretch" : "center"}
-            sx={{ flexShrink: 0 }} // Ensures this Stack doesn't shrink
+            sx={{ flexShrink: 0 }}
           >
             <TextField
               select
@@ -302,18 +292,13 @@ function LoanTransactions() {
                 sx={{
                   boxShadow: 3,
                   borderRadius: 2,
-                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  overflowX: "auto",
                   maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table
-                  size="small"
-                  // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
-                  sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
-                >
+                <Table size="small" sx={{ minWidth: 700, tableLayout: "auto" }}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                      {/* Using StyledTableHeaderCell for header cells */}
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
@@ -338,7 +323,6 @@ function LoanTransactions() {
                     {paginatedTransactions.length > 0 ? (
                       paginatedTransactions.map((tx, index) => (
                         <TableRow hover key={tx._id}>
-                          {/* Using StyledTableCell for body cells */}
                           <StyledTableCell>
                             {(page - 1) * rowsPerPage + index + 1}
                           </StyledTableCell>
@@ -383,8 +367,6 @@ function LoanTransactions() {
               </TableContainer>
             </Box>
           )}
-
-          {/* Pagination controls: Only show if there's more than one page */}
           {totalPages > 1 && (
             <Box
               mt={3}
@@ -406,7 +388,6 @@ function LoanTransactions() {
           )}
         </CardContent>
       </Card>
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </Box>
   );
 }

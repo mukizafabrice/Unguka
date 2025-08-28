@@ -50,11 +50,8 @@ app.use(express.json()); // Parses JSON request bodies
 app.use(express.urlencoded({ extended: true })); // Parses URL-encoded request bodies
 
 // 2. CORS Configuration: IMPORTANT - Configure CORS only once and correctly
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://192.168.1.201:3000",
-  // Add any other frontend origins that need to access your backend
-];
+// Define only origins here
+const allowedOrigins = ["http://localhost:3000", "http://192.168.1.201:3000"];
 
 app.use(
   cors({
@@ -62,14 +59,14 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
       if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
+        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
         return callback(new Error(msg), false);
       }
       return callback(null, true);
     },
-    credentials: true, // Allow cookies to be sent with requests
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], // Explicitly allow methods
-    allowedHeaders: ["Content-Type", "Authorization"], // Explicitly allow headers
+    credentials: true, // Allow cookies/sessions
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], // Allowed methods
+    allowedHeaders: ["Content-Type", "Authorization", "x-cooperative-id"], // Allowed headers
   })
 );
 
