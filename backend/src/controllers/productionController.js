@@ -4,6 +4,9 @@ import Stock from "../models/Stock.js";
 import Product from "../models/Product.js";
 import User from "../models/User.js";
 import Season from "../models/Season.js";
+// For PDF and Excel generation
+import PDFDocument from "pdfkit";
+import ExcelJS from "exceljs";
 
 export const createProduction = async (req, res) => {
   try {
@@ -140,11 +143,11 @@ export const getAllProductions = async (req, res) => {
       query.cooperativeId = cooperativeId;
     }
 
-    const productions = await Production.find(query) // ⭐ Apply query filter
+    const productions = await Production.find(query)
       .populate("userId", "names phoneNumber")
       .populate("productId", "productName")
       .populate("seasonId", "name year")
-      .populate("cooperativeId", "name") // ⭐ Populate cooperative info
+      .populate("cooperativeId", "name")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -163,10 +166,9 @@ export const getAllProductions = async (req, res) => {
 // Get productions by userId and seasonId (scoped by cooperativeId)
 export const getProductions = async (req, res) => {
   try {
-    const { userId, seasonId, cooperativeId } = req.query; // ⭐ Added cooperativeId
+    const { userId, seasonId, cooperativeId } = req.query;
 
     if (!userId || !seasonId || !cooperativeId) {
-      // ⭐ Validate cooperativeId
       return res.status(400).json({
         success: false,
         message: "userId, seasonId, and cooperativeId are required",
@@ -189,7 +191,7 @@ export const getProductions = async (req, res) => {
       userId,
       seasonId,
       cooperativeId,
-    }) // ⭐ Added cooperativeId to query
+    })
       .populate("userId", "names")
       .populate("productId", "productName")
       .populate("seasonId", "name year")
@@ -277,10 +279,6 @@ export const updateProduction = async (req, res) => {
             "New product not found or does not belong to this cooperative.",
         });
       }
-      // If changing product, also ensure old stock is decreased and new stock increased if necessary.
-      // For simplicity, sticking to previous logic: changing product is not supported directly through this endpoint
-      // as it complicates stock adjustments greatly (requires reducing old product stock and adding to new product stock).
-      // If this functionality is needed, it would typically be a more complex, dedicated "transfer production" or "edit product in production" flow.
       return res.status(400).json({
         success: false,
         message:
@@ -314,14 +312,12 @@ export const updateProduction = async (req, res) => {
 
     // Update the production, ensuring it belongs to the specified cooperative
     const updated = await Production.findOneAndUpdate(
-      { _id: req.params.id, cooperativeId }, // ⭐ Filter by cooperativeId
+      { _id: req.params.id, cooperativeId },
       {
         productId, // Keep productId or update if allowed (handled above)
         quantity: parsedQuantity,
         unitPrice: parsedUnitPrice,
         totalPrice: newTotal,
-        // Assuming other fields like userId, seasonId are not updated here for simplicity
-        // If they can be updated, they should also be validated and included.
       },
       { new: true, runValidators: true } // Run validators for quantity/totalPrice
     )
@@ -341,15 +337,12 @@ export const updateProduction = async (req, res) => {
     const stock = await Stock.findOne({
       productId: updated.productId,
       cooperativeId,
-    }); // ⭐ Filter by cooperativeId
+    });
     if (stock) {
       stock.quantity = stock.quantity - oldQuantity + parsedQuantity;
       stock.totalPrice = stock.totalPrice - oldTotal + newTotal;
       await stock.save();
     } else {
-      // This scenario means stock record was somehow missing, and we might need to recreate it.
-      // Or it's an error state if stock should always exist for a product in production.
-      // For now, if stock doesn't exist, we don't try to create a new one during update to avoid accidental new records.
       console.warn(
         `Stock for product ${updated.productId} in cooperative ${cooperativeId} not found during update.`
       );
@@ -375,7 +368,7 @@ export const updateProduction = async (req, res) => {
 
 export const deleteProduction = async (req, res) => {
   try {
-    const { cooperativeId } = req.body; // ⭐ Expect cooperativeId in body for authorization
+    const { cooperativeId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res
@@ -456,5 +449,181 @@ export const Productions = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+// This is the corrected version of your backend function
+export const exportProductionsToExcel = async (req, res) => {
+  try {
+    const { cooperativeId } = req.user;
+
+    const productions = await Production.find({ cooperativeId })
+      .populate("userId", "names email")
+      .populate("productId", "productName")
+      .populate("seasonId", "name year")
+      .populate("cooperativeId", "name");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Production");
+
+    // Define columns
+    worksheet.columns = [
+      { header: "User", key: "user", width: 30 },
+      { header: "Product Name", key: "productName", width: 20 },
+      { header: "Season", key: "season", width: 20 },
+      { header: "Quantity", key: "quantity", width: 15 },
+      { header: "Unity Price", key: "unitPrice", width: 15 },
+      { header: "Total Price", key: "totalPrice", width: 15 },
+      { header: "Created At", key: "createdAt", width: 15 },
+    ];
+
+    // Add data to rows, correctly accessing populated fields
+    productions.forEach((p) => {
+      // Use this log to debug which document is causing the error
+      console.log(p);
+
+      worksheet.addRow({
+        user: p.userId?.names || "N/A",
+        productName: p.productId?.productName || "N/A",
+        season: `${p.seasonId?.name || ""} (${p.seasonId?.year || ""})`.trim(),
+        quantity: p.quantity || 0,
+        unitPrice: p.unitPrice || 0,
+        totalPrice: p.totalPrice || 0,
+        createdAt: new Date(p.createdAt).toLocaleDateString("en-GB"),
+      });
+    });
+
+    // Set headers for the file download
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=productions.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("Error generating Excel:", err);
+    res.status(500).send("Error generating Excel");
+  }
+};
+
+export const exportProductionsToPDF = async (req, res) => {
+  try {
+    const { cooperativeId } = req.user;
+
+    const productions = await Production.find({ cooperativeId })
+      .populate("userId", "names email")
+      .populate("productId", "productName")
+      .populate("seasonId", "name year")
+      .populate("cooperativeId", "name");
+
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=productions.pdf"
+    );
+    doc.pipe(res);
+
+    // --- Header and Title ---
+    doc
+      .fontSize(22)
+      .fillColor("#333")
+      .text("Production Report", { align: "center" });
+    doc.moveDown(1);
+    if (productions.length > 0) {
+      const coopName = productions[0].cooperativeId?.name || "N/A";
+      doc
+        .fontSize(14)
+        .fillColor("#555")
+        .text(`Cooperative: ${coopName}`, { align: "center" });
+    }
+    doc.moveDown(1);
+
+    // --- Table Headers Configuration ---
+    const tableColumns = [
+      { header: "User", width: 80 }, // Reduced width
+      { header: "Product", width: 60 }, // Reduced width and simplified name
+      { header: "Season", width: 80 }, // Reduced width
+      { header: "Qty", width: 50 }, // Reduced width and simplified name
+      { header: "Unit Price", width: 60 },
+      { header: "Total Price", width: 70 },
+      { header: "Created At", width: 80 }, // Reduced width
+    ];
+    const startX = 50;
+    const padding = 10;
+    const totalTableWidth =
+      tableColumns.reduce((sum, col) => sum + col.width, 0) +
+      (tableColumns.length - 1) * padding;
+    const endX = startX + totalTableWidth;
+
+    // Helper function to draw table headers
+    const drawTableHeaders = (yPosition) => {
+      let currentX = startX;
+      doc.fontSize(10).font("Helvetica-Bold");
+      tableColumns.forEach((col) => {
+        doc.text(col.header, currentX, yPosition, {
+          width: col.width,
+          align: "left",
+        });
+        currentX += col.width + padding;
+      });
+      doc.moveDown(1);
+      doc
+        .strokeColor("#ccc")
+        .lineWidth(1)
+        .moveTo(startX, doc.y)
+        .lineTo(endX, doc.y)
+        .stroke();
+      doc.moveDown(0.5);
+    };
+
+    // --- Draw Initial Table Headers ---
+    drawTableHeaders(doc.y);
+
+    // --- Table Rows ---
+    doc.font("Helvetica").fontSize(9);
+    let yPosition = doc.y;
+
+    productions.forEach((p) => {
+      // Check for page break
+      if (yPosition + 30 > doc.page.height - doc.page.margins.bottom) {
+        doc.addPage();
+        yPosition = doc.page.margins.top;
+        drawTableHeaders(yPosition);
+        yPosition = doc.y;
+      }
+
+      const rowData = [
+        p.userId?.names || "N/A",
+        p.productId?.productName || "N/A",
+        p.seasonId ? `${p.seasonId.name} (${p.seasonId.year})` : "N/A",
+        p.quantity?.toString() || "N/A",
+        p.unitPrice?.toString() || "N/A",
+        p.totalPrice?.toString() || "N/A",
+        p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-GB") : "N/A",
+      ];
+
+      let currentX = startX;
+      rowData.forEach((cell, index) => {
+        doc.text(cell, currentX, yPosition, {
+          width: tableColumns[index].width,
+          align: "left",
+        });
+        currentX += tableColumns[index].width + padding;
+      });
+
+      yPosition += 20; // Fixed row height
+    });
+
+    doc.end();
+  } catch (err) {
+    console.error("Error generating PDF:", err);
+    res.status(500).send("Error generating PDF");
   }
 };

@@ -1,11 +1,10 @@
 // src/services/salesService.js
-import axiosInstance from "../api/axiosInstance"; // Ensure this path is correct relative to this file
+import axiosInstance from "../api/axiosInstance";
 
 const API_URL = "/sales"; // Base URL for sales endpoints
 
-// Helper to handle successful API responses consistently
+// Helper to handle successful API responses consistently (existing)
 const handleResponse = (response) => {
-  // Assuming successful responses from your backend controllers often have a 'data' key
   return {
     success: true,
     data: response.data.data || response.data,
@@ -13,7 +12,7 @@ const handleResponse = (response) => {
   };
 };
 
-// Helper to handle API errors consistently
+// Helper to handle API errors consistently (existing)
 const handleError = (
   error,
   defaultMessage = "An unexpected error occurred."
@@ -26,12 +25,10 @@ const handleError = (
   };
 };
 
-// --- Sales Management Functions ---
+// --- Sales Management Functions (existing) ---
 
 // Get all sales
-// Can accept a cooperativeId to filter sales specific to a cooperative
 export const fetchAllSales = async (cooperativeId = null) => {
-  // Renamed from fetchSales to fetchAllSales for clarity
   try {
     const params = cooperativeId ? { params: { cooperativeId } } : {};
     const response = await axiosInstance.get(API_URL, params);
@@ -42,7 +39,6 @@ export const fetchAllSales = async (cooperativeId = null) => {
 };
 
 // Get a single sale by ID
-// Requires cooperativeId to be passed (e.g., from user context on frontend) for authorization
 export const fetchSaleById = async (id, cooperativeId) => {
   if (!cooperativeId) {
     return {
@@ -61,7 +57,6 @@ export const fetchSaleById = async (id, cooperativeId) => {
 };
 
 // Get sales by phone number
-// Requires cooperativeId to be passed for authorization
 export const fetchSalesByPhoneNumber = async (phoneNumber, cooperativeId) => {
   if (!cooperativeId) {
     return {
@@ -84,11 +79,8 @@ export const fetchSalesByPhoneNumber = async (phoneNumber, cooperativeId) => {
 };
 
 // Create a new sales record
-// Requires cooperativeId in saleData
 export const createSale = async (saleData) => {
-  // Renamed from createSales to createSale for consistency
   try {
-    // The route for creating sales is /sales/register as per salesRoutes.js
     const response = await axiosInstance.post(`${API_URL}/register`, saleData);
     return handleResponse(response);
   } catch (error) {
@@ -97,11 +89,8 @@ export const createSale = async (saleData) => {
 };
 
 // Update a sales record by ID
-// Requires cooperativeId in data
 export const updateSale = async (id, data) => {
-  // Renamed from updateSales to updateSale
   try {
-    // The backend updateSale expects cooperativeId in req.body
     const response = await axiosInstance.put(`${API_URL}/${id}`, data);
     return handleResponse(response);
   } catch (error) {
@@ -110,7 +99,6 @@ export const updateSale = async (id, data) => {
 };
 
 // Update a sale's status to 'paid'
-// Requires cooperativeId in data
 export const updateSaleToPaid = async (id, cooperativeId) => {
   if (!cooperativeId) {
     return {
@@ -119,7 +107,6 @@ export const updateSaleToPaid = async (id, cooperativeId) => {
     };
   }
   try {
-    // The backend updateSaleToPaid expects cooperativeId in req.body
     const response = await axiosInstance.patch(`${API_URL}/${id}/pay`, {
       cooperativeId,
     });
@@ -130,9 +117,7 @@ export const updateSaleToPaid = async (id, cooperativeId) => {
 };
 
 // Delete a sales record by ID
-// Requires cooperativeId in data
 export const deleteSale = async (id, cooperativeId) => {
-  // Renamed from deleteSales to deleteSale
   if (!cooperativeId) {
     return {
       success: false,
@@ -140,12 +125,62 @@ export const deleteSale = async (id, cooperativeId) => {
     };
   }
   try {
-    // The backend deleteSale expects cooperativeId in req.body, so pass it in the 'data' property
     const response = await axiosInstance.delete(`${API_URL}/${id}`, {
       data: { cooperativeId },
     });
     return handleResponse(response);
   } catch (error) {
     return handleError(error, `Failed to delete sale with ID ${id}.`);
+  }
+};
+
+// salesService.js
+export const downloadSalesPDF = async () => {
+  try {
+    const response = await axiosInstance.get(`${API_URL}/pdf`, {
+      responseType: "blob",
+    });
+
+    const pdfBlob = response.data;
+    const url = window.URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sales_report.pdf";
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  } catch (error) {
+    console.error("Failed to download sales PDF:", error);
+    throw error;
+  }
+};
+
+/**
+ * Downloads an Excel report of sales, filtered by cooperative.
+ * Aligns with the backend route: GET /api/sales/excel
+ */
+export const downloadSalesExcel = async () => {
+  try {
+    const response = await axiosInstance.get(`${API_URL}/excel`, {
+      // Corrected URL
+      responseType: "blob", // Crucial for binary file downloads
+    });
+
+    // response.data is ALREADY a Blob object
+    const excelBlob = response.data;
+
+    const url = window.URL.createObjectURL(excelBlob); // Use the Blob directly
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "sales_report.xlsx");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url); // Clean up the object URL
+  } catch (error) {
+    console.error("Failed to download sales Excel:", error);
+    // You might want to throw the error or return a structured error response
+    throw error;
   }
 };

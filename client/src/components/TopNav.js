@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { getCooperativeById } from "../../src/services/cooperativeService";
 import { useAuth } from "../contexts/AuthContext";
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "http://172.20.10.2:8000";
 
 function TopNav({ onMenuClick }) {
   const [cooperativeName, setCooperativeName] = useState("");

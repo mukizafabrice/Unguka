@@ -118,3 +118,56 @@ export const getProductions = async () => {
   const response = await axiosInstance.get(`${API_URL}/productions`);
   return response.data;
 };
+
+const API_BASE_URL = "productions";
+
+export const downloadProductionsPDF = async () => {
+  try {
+    const response = await axiosInstance.get(`${API_BASE_URL}/pdf`, {
+      responseType: "blob", // This is crucial for binary file downloads
+    });
+
+    // The response.data is already a Blob object.
+    const pdfBlob = response.data;
+
+    // Create a temporary URL for the blob
+    const url = window.URL.createObjectURL(pdfBlob);
+
+    // Create a temporary link element to trigger the download
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "productions_report.pdf"; // The default filename
+    document.body.appendChild(a);
+    a.click(); // Programmatically click the link to start the download
+
+    // Clean up the temporary URL and element to free up memory
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  } catch (error) {
+    console.error("Error downloading PDF:", error);
+    throw error;
+  }
+};
+
+export const downloadProductionsExcel = async () => {
+  try {
+    const response = await axiosInstance.get(`${API_BASE_URL}/excel`, {
+      responseType: "blob", // Crucial for binary file downloads
+    });
+
+    const excelBlob = response.data; // response.data is already a Blob
+    const url = window.URL.createObjectURL(excelBlob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "productions_report.xlsx"; // Suggested filename
+    document.body.appendChild(a);
+    a.click();
+
+    window.URL.revokeObjectURL(url); // Clean up the URL
+    a.remove();
+  } catch (error) {
+    console.error("Error downloading Excel:", error);
+    throw error;
+  }
+};

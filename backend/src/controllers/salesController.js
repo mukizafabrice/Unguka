@@ -1,18 +1,16 @@
 import Sales from "../models/Sales.js";
 import Stock from "../models/Stock.js";
-import Cash from "../models/Cash.js";
-import Loan from "../models/Loan.js"; // Assuming you have a Loan model
-import Product from "../models/Product.js"; // To populate product details via stock
-import Season from "../models/Season.js"; // To populate season details
+import Loan from "../models/Loan.js";
+import Season from "../models/Season.js";
 import mongoose from "mongoose";
 
-// Helper function to format phone numbers (consistent with schema validation)
+// Helper: Validate phone number
 const isValidPhoneNumber = (phoneNumber) => {
   return /^(07[2-8]\d{7}|\+2507[2-8]\d{7})$/.test(phoneNumber);
 };
 
 // CREATE SALE
-export const createSale = async (req, res) => { // Renamed from createSales for consistency
+export const createSale = async (req, res) => {
   const {
     stockId,
     seasonId,
@@ -21,61 +19,75 @@ export const createSale = async (req, res) => { // Renamed from createSales for 
     buyer,
     phoneNumber,
     paymentType,
-    cooperativeId, // ⭐ NEW: Expect cooperativeId from request body
+    cooperativeId,
   } = req.body;
 
   try {
-    // --- Input Validation and Type Conversion ---
+    // Validation
     if (
       !mongoose.Types.ObjectId.isValid(stockId) ||
       !mongoose.Types.ObjectId.isValid(seasonId) ||
-      !mongoose.Types.ObjectId.isValid(cooperativeId) // Validate cooperativeId
+      !mongoose.Types.ObjectId.isValid(cooperativeId)
     ) {
-      return res.status(400).json({ success: false, message: "Invalid ID provided for stock, season, or cooperative." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid ID provided." });
     }
 
     const parsedQuantity = Number(quantity);
     const parsedUnitPrice = Number(unitPrice);
 
-    if (!Number.isFinite(parsedQuantity) || !Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
-      return res.status(400).json({ success: false, message: "Quantity must be a positive integer." });
+    if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be a positive integer.",
+      });
     }
     if (!Number.isFinite(parsedUnitPrice) || parsedUnitPrice < 0) {
-      return res.status(400).json({ success: false, message: "Unit Price must be a non-negative number." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Unit Price must be non-negative." });
     }
-    if (!buyer || buyer.trim().length === 0) {
-      return res.status(400).json({ success: false, message: "Buyer name is required." });
+    if (!buyer?.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Buyer name is required." });
     }
-    if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
-      return res.status(400).json({ success: false, message: "Valid phone number is required." });
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Valid phone number required." });
     }
     if (!["cash", "loan"].includes(paymentType)) {
-      return res.status(400).json({ success: false, message: "Invalid payment type. Must be 'cash' or 'loan'." });
+      return res.status(400).json({
+        success: false,
+        message: "Payment type must be 'cash' or 'loan'.",
+      });
     }
-    // --- End of Input Validation ---
 
     const totalPrice = parsedQuantity * parsedUnitPrice;
 
-    // 1. Verify stock exists for the given stockId and cooperativeId
-    const stock = await Stock.findOne({ _id: stockId, cooperativeId }); // ⭐ Filter by cooperativeId
-    if (!stock) {
-      return res.status(404).json({ success: false, message: "Stock record not found for this product in this cooperative." });
-    }
-    if (stock.quantity < parsedQuantity) {
-      return res.status(400).json({ success: false, message: "Insufficient stock quantity for this sale." });
+    // Stock check
+    const stock = await Stock.findOne({ _id: stockId, cooperativeId });
+    if (!stock || stock.quantity < parsedQuantity) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Insufficient stock." });
     }
 
-    // 2. Verify season exists for the given seasonId and cooperativeId
-    const season = await Season.findOne({ _id: seasonId, cooperativeId }); // ⭐ Filter by cooperativeId
+    // Season check
+    const season = await Season.findOne({ _id: seasonId, cooperativeId });
     if (!season) {
-      return res.status(404).json({ success: false, message: "Season not found in this cooperative." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Season not found." });
     }
 
-    // 3. Create the new sales record
+    // Create sale
     const newSale = new Sales({
       stockId,
       seasonId,
-      cooperativeId, // ⭐ NEW: Assign cooperativeId to the sale
+      cooperativeId,
       quantity: parsedQuantity,
       unitPrice: parsedUnitPrice,
       totalPrice,
@@ -85,391 +97,461 @@ export const createSale = async (req, res) => { // Renamed from createSales for 
       status: paymentType === "cash" ? "paid" : "unpaid",
     });
 
-    // Handle cash or loan payment
-    if (paymentType === "cash") {
-      // Assuming Cash model has a single record per cooperative or a global one.
-      // If it's per cooperative, find/create for this cooperativeId.
-      let cash = await Cash.findOne({ cooperativeId }); // ⭐ Filter by cooperativeId
-      if (!cash) {
-          // If no cash record for this cooperative, initialize it
-          cash = new Cash({ cooperativeId, amount: 0 });
-      }
-      cash.amount += totalPrice; // Add money to cash
-      await cash.save();
-    } else if (paymentType === "loan") {
-      // Create a loan record
+    // Loan handling
+    if (paymentType === "loan") {
       const newLoan = new Loan({
-        userId: null, // As buyer is a string, not necessarily a registered user
-        cooperativeId, // ⭐ Loan is tied to cooperative
+        userId: null,
+        cooperativeId,
         amount: totalPrice,
         status: "pending",
-        description: `Loan for sale of ${parsedQuantity} units of ${stock.productId.productName} to ${buyer}`,
+        description: `Loan for sale of ${parsedQuantity} units to ${buyer}`,
       });
       await newLoan.save();
     }
 
-    // 4. Update stock: decrease quantity and total price
+    // Stock adjustment
     stock.quantity -= parsedQuantity;
-    stock.totalPrice -= totalPrice; // This assumes totalPrice on stock reflects remaining value
+    stock.totalPrice -= totalPrice;
     await stock.save();
 
-    await newSale.save(); // Save the new sale after all other operations are successful
+    await newSale.save();
 
     res.status(201).json({
       success: true,
-      message: "Sale created and stock/cash/loan adjusted successfully",
+      message: "Sale created and stock adjusted successfully",
       data: newSale,
     });
   } catch (error) {
-    console.error("Error creating sale record:", error);
-    if (error.name === "ValidationError") {
-      return res.status(400).json({ success: false, message: error.message, errors: error.errors });
-    }
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    console.error("Error creating sale:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Get all sales records
+// GET ALL SALES
 export const getAllSales = async (req, res) => {
   try {
-    const { cooperativeId } = req.query; // ⭐ Get cooperativeId from query
+    const { cooperativeId } = req.query;
 
-    let query = {};
-    if (cooperativeId) {
-      query.cooperativeId = cooperativeId; // ⭐ Filter main sales query by cooperativeId
-    }
-
+    const query = cooperativeId ? { cooperativeId } : {};
     const sales = await Sales.find(query)
       .populate({
-        path: 'stockId',
-        select: 'productId quantity',
-        populate: {
-          path: 'productId',
-          model: 'Product',
-          select: 'productName'
-        }
+        path: "stockId",
+        select: "productId quantity",
+        populate: { path: "productId", select: "productName" },
       })
       .populate("seasonId", "name year")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, data: sales, message: "Sales records fetched successfully" });
+    res.status(200).json({ success: true, data: sales });
   } catch (error) {
-    console.error("Error fetching all sales records:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    console.error("Error fetching sales:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Get a single sales record by ID
+// GET SALE BY ID
 export const getSaleById = async (req, res) => {
   const { id } = req.params;
-  const { cooperativeId } = req.query; // ⭐ Get cooperativeId from query for authorization
+  const { cooperativeId } = req.query;
 
   try {
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "Invalid sale ID format." });
-    }
-    if (cooperativeId && !mongoose.Types.ObjectId.isValid(cooperativeId)) { // Validate cooperativeId if provided
-      return res.status(400).json({ success: false, message: "Invalid cooperative ID format." });
-    }
-
-    let query = { _id: id };
-    if (cooperativeId) {
-      query.cooperativeId = cooperativeId; // ⭐ Filter by cooperativeId
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid sale ID." });
     }
 
-    const sale = await Sales.findOne(query) // ⭐ Use findOne with the cooperativeId filter
+    const query = cooperativeId ? { _id: id, cooperativeId } : { _id: id };
+    const sale = await Sales.findOne(query)
       .populate({
         path: "stockId",
-        populate: {
-          path: "productId",
-          select: "productName",
-        },
+        populate: { path: "productId", select: "productName" },
         select: "productId",
       })
-      .populate("seasonId", "name year"); // Populate season name and year
+      .populate("seasonId", "name year");
 
-    if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found or unauthorized access." });
-    }
+    if (!sale)
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found." });
 
-    res.status(200).json({ success: true, data: sale, message: "Sale retrieved successfully" });
+    res.status(200).json({ success: true, data: sale });
   } catch (error) {
-    console.error("Error fetching sale record by ID:", error);
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: "Invalid ID format for sale or related document." });
-    }
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    console.error("Error fetching sale by ID:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Get sales by phone number
+// GET SALES BY PHONE
 export const getSalesByPhoneNumber = async (req, res) => {
   const { phoneNumber } = req.params;
-  const { cooperativeId } = req.query; // ⭐ Get cooperativeId from query for authorization
+  const { cooperativeId } = req.query;
 
   try {
-    if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
-      return res.status(400).json({ success: false, message: "Valid phone number is required." });
-    }
-    if (cooperativeId && !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res.status(400).json({ success: false, message: "Invalid cooperative ID format." });
-    }
-
-    let query = { phoneNumber };
-    if (cooperativeId) {
-      query.cooperativeId = cooperativeId; // ⭐ Filter by cooperativeId
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid phone number." });
     }
 
-    const sales = await Sales.find(query) // ⭐ Use the filtered query
+    const query = cooperativeId
+      ? { phoneNumber, cooperativeId }
+      : { phoneNumber };
+    const sales = await Sales.find(query)
       .populate({
         path: "stockId",
-        populate: {
-          path: "productId",
-          select: "productName",
-        },
+        populate: { path: "productId", select: "productName" },
         select: "productId",
       })
       .populate("seasonId", "name year")
       .sort({ createdAt: -1 });
 
     if (!sales.length) {
-      return res.status(404).json({ success: false, message: "No sales found for this phone number in this cooperative." });
+      return res.status(404).json({
+        success: false,
+        message: "No sales found for this phone number.",
+      });
     }
 
-    res.status(200).json({ success: true, data: sales, message: "Sales retrieved successfully" });
+    res.status(200).json({ success: true, data: sales });
   } catch (error) {
-    console.error("Error fetching sales by phone number:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    console.error("Error fetching sales by phone:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Update a sale record
+// UPDATE SALE
 export const updateSale = async (req, res) => {
   const { id } = req.params;
-  const { cooperativeId, ...updates } = req.body; // ⭐ Get cooperativeId from body for authorization
+  const { cooperativeId, ...updates } = req.body;
 
   try {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "Invalid sale ID format." });
-    }
-    if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res.status(400).json({ success: false, message: "Valid cooperative ID is required for update." });
-    }
-
-    const sale = await Sales.findOne({ _id: id, cooperativeId }); // ⭐ Filter by cooperativeId
-    if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found or unauthorized to update." });
+    if (
+      !mongoose.Types.ObjectId.isValid(id) ||
+      !mongoose.Types.ObjectId.isValid(cooperativeId)
+    ) {
+      return res.status(400).json({ success: false, message: "Invalid ID." });
     }
 
-    const stock = await Stock.findOne({ _id: sale.stockId, cooperativeId }); // ⭐ Filter by cooperativeId
-    if (!stock) {
-      // This scenario indicates a data inconsistency, but should ideally not happen if data integrity is maintained
-      return res.status(404).json({ success: false, message: "Associated stock not found for this sale in this cooperative." });
-    }
+    const sale = await Sales.findOne({ _id: id, cooperativeId });
+    if (!sale)
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found." });
 
-    // Initialize old values
-    const oldQuantity = sale.quantity;
-    const oldTotalPrice = sale.totalPrice;
+    const stock = await Stock.findOne({ _id: sale.stockId, cooperativeId });
+    if (!stock)
+      return res
+        .status(404)
+        .json({ success: false, message: "Stock not found." });
 
-    // Determine new quantity and calculate price difference
-    let newQuantity = updates.quantity !== undefined ? Number(updates.quantity) : oldQuantity;
-    let newUnitPrice = updates.unitPrice !== undefined ? Number(updates.unitPrice) : sale.unitPrice;
-
-    if (!Number.isFinite(newQuantity) || !Number.isInteger(newQuantity) || newQuantity <= 0) {
-      return res.status(400).json({ success: false, message: "Quantity must be a positive integer." });
-    }
-    if (!Number.isFinite(newUnitPrice) || newUnitPrice < 0) {
-      return res.status(400).json({ success: false, message: "Unit Price must be a non-negative number." });
-    }
-
+    // Adjust quantity & price
+    const newQuantity = updates.quantity
+      ? Number(updates.quantity)
+      : sale.quantity;
+    const newUnitPrice = updates.unitPrice
+      ? Number(updates.unitPrice)
+      : sale.unitPrice;
     const newTotalPrice = newQuantity * newUnitPrice;
-    const quantityDifference = newQuantity - oldQuantity;
-    const priceDifference = newTotalPrice - oldTotalPrice;
 
-    // Adjust stock quantity based on difference
-    if (quantityDifference !== 0) {
-      if (stock.quantity < quantityDifference) {
-        return res.status(400).json({ success: false, message: "Not enough stock to increase sale quantity." });
-      }
-      stock.quantity -= quantityDifference;
+    const quantityDiff = newQuantity - sale.quantity;
+    const priceDiff = newTotalPrice - sale.totalPrice;
+
+    if (quantityDiff > 0 && stock.quantity < quantityDiff) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Not enough stock." });
     }
 
-    // Adjust stock totalPrice based on difference
-    if (priceDifference !== 0) {
-        stock.totalPrice -= priceDifference;
-    }
+    stock.quantity -= quantityDiff;
+    stock.totalPrice -= priceDiff;
 
-    // Update paymentType and status if provided
-    if (updates.paymentType) {
-      if (!["cash", "loan"].includes(updates.paymentType)) {
-        return res.status(400).json({ success: false, message: "Invalid payment type. Must be 'cash' or 'loan'." });
-      }
-      // If payment type changes from loan to cash, adjust cash balance
-      if (sale.paymentType === "loan" && updates.paymentType === "cash") {
-        let cash = await Cash.findOne({ cooperativeId }); // ⭐ Filter by cooperativeId
-        if (!cash) {
-            cash = new Cash({ cooperativeId, amount: 0 }); // Initialize if not found
-        }
-        cash.amount += newTotalPrice; // Add full total price to cash
-        await cash.save();
-        sale.status = "paid"; // Mark as paid if payment type is now cash
-      }
-      // If payment type changes from cash to loan (less common for existing sales)
-      if (sale.paymentType === "cash" && updates.paymentType === "loan") {
-          let cash = await Cash.findOne({ cooperativeId });
-          if (cash) {
-              cash.amount -= oldTotalPrice; // Deduct old total price from cash
-              await cash.save();
-          }
-          sale.status = "unpaid"; // Mark as unpaid
-      }
-      sale.paymentType = updates.paymentType;
-    } else { // If paymentType is not updated, but quantity/unitPrice is, keep status consistent
-        sale.status = sale.paymentType === "cash" ? "paid" : "unpaid";
-    }
+    sale.quantity = newQuantity;
+    sale.unitPrice = newUnitPrice;
+    sale.totalPrice = newTotalPrice;
+    sale.status = sale.paymentType === "cash" ? "paid" : "unpaid";
 
-    // Apply updates to the sale object fields
-    Object.assign(sale, updates);
-    sale.quantity = newQuantity; // Ensure updated quantity is set
-    sale.unitPrice = newUnitPrice; // Ensure updated unitPrice is set
-    sale.totalPrice = newTotalPrice; // Ensure updated totalPrice is set
-
-    // Validate phone number if updated
     if (updates.phoneNumber && !isValidPhoneNumber(updates.phoneNumber)) {
-        return res.status(400).json({ success: false, message: "Valid phone number is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid phone number." });
     }
+
+    Object.assign(sale, updates);
 
     await stock.save();
-    await sale.save(); // Save the updated sale record
-
-    res.status(200).json({
-      success: true,
-      message: "Sale updated and stock/cash/loan adjusted successfully",
-      data: sale,
-    });
-  } catch (error) {
-    console.error("Error updating sale record:", error);
-    if (error.name === "ValidationError") {
-      return res.status(400).json({ success: false, message: error.message, errors: error.errors });
-    }
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: "Invalid ID format." });
-    }
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
-  }
-};
-
-// Update sale status to 'paid' (specifically for loan repayment)
-export const updateSaleToPaid = async (req, res) => {
-  const { id } = req.params;
-  const { cooperativeId } = req.body; // ⭐ Get cooperativeId from body
-
-  try {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "Invalid sale ID format." });
-    }
-    if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res.status(400).json({ success: false, message: "Valid cooperative ID is required." });
-    }
-
-    const sale = await Sales.findOne({ _id: id, cooperativeId }); // ⭐ Filter by cooperativeId
-    if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found or unauthorized to update." });
-    }
-
-    if (sale.status === "paid") {
-      return res.status(400).json({ success: false, message: "Sale is already marked as paid." });
-    }
-
-    // Find the cash document for the cooperative
-    let cash = await Cash.findOne({ cooperativeId }); // ⭐ Filter by cooperativeId
-    if (!cash) {
-        cash = new Cash({ cooperativeId, amount: 0 }); // Initialize if not found
-    }
-
-    // Add sale's totalPrice to cash.amount
-    cash.amount += sale.totalPrice;
-    await cash.save();
-
-    // Update sale status to paid
-    sale.status = "paid";
     await sale.save();
 
     res.status(200).json({
       success: true,
-      message: "Sale updated to paid and cash amount updated.",
+      message: "Sale updated successfully",
       data: sale,
     });
   } catch (error) {
-    console.error("Error updating sale to paid:", error);
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: "Invalid ID format." });
-    }
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    console.error("Error updating sale:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Delete a sale record
-export const deleteSale = async (req, res) => {
+// UPDATE SALE TO PAID (loan repayment)
+export const updateSaleToPaid = async (req, res) => {
   const { id } = req.params;
-  const { cooperativeId } = req.body; // ⭐ Get cooperativeId from body for authorization
+  const { cooperativeId } = req.body;
 
   try {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "Invalid sale ID format." });
-    }
-    if (!cooperativeId || !mongoose.Types.ObjectId.isValid(cooperativeId)) {
-      return res.status(400).json({ success: false, message: "Valid cooperative ID is required for deletion." });
-    }
-
-    const sale = await Sales.findOne({ _id: id, cooperativeId }); // ⭐ Filter by cooperativeId
-    if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found or unauthorized to delete." });
+    if (
+      !mongoose.Types.ObjectId.isValid(id) ||
+      !mongoose.Types.ObjectId.isValid(cooperativeId)
+    ) {
+      return res.status(400).json({ success: false, message: "Invalid ID." });
     }
 
-    // Find the associated stock
-    const stock = await Stock.findOne({ _id: sale.stockId, cooperativeId }); // ⭐ Filter by cooperativeId
-    if (!stock) {
-        // Log this, but don't prevent deletion of the sale if stock is already gone (data inconsistency)
-        console.warn(`Stock ID ${sale.stockId} not found for sale ${id}. Cannot revert stock changes.`);
-    }
+    const sale = await Sales.findOne({ _id: id, cooperativeId });
+    if (!sale)
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found." });
 
-    // Only adjust cash if sale was paid
     if (sale.status === "paid") {
-      let cashRecord = await Cash.findOne({ cooperativeId }); // ⭐ Filter by cooperativeId
-      if (!cashRecord) {
-        // If cash record is missing, it's a critical error unless you want to auto-create
-        console.error("Cash record not found for cooperative. Cannot revert cash changes.");
-        return res.status(500).json({ success: false, message: "Cash record not found for cooperative. Cannot complete deletion." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Sale already paid." });
+    }
+
+    sale.status = "paid";
+    await sale.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "Sale marked as paid.", data: sale });
+  } catch (error) {
+    console.error("Error updating sale to paid:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+// DELETE SALE
+export const deleteSale = async (req, res) => {
+  const { id } = req.params;
+  const { cooperativeId } = req.body;
+
+  try {
+    if (
+      !mongoose.Types.ObjectId.isValid(id) ||
+      !mongoose.Types.ObjectId.isValid(cooperativeId)
+    ) {
+      return res.status(400).json({ success: false, message: "Invalid ID." });
+    }
+
+    const sale = await Sales.findOne({ _id: id, cooperativeId });
+    if (!sale)
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found." });
+
+    const stock = await Stock.findOne({ _id: sale.stockId, cooperativeId });
+    if (stock) {
+      stock.quantity += sale.quantity;
+      stock.totalPrice += sale.totalPrice;
+      await stock.save();
+    }
+
+    await Sales.findOneAndDelete({ _id: id, cooperativeId });
+
+    res
+      .status(200)
+      .json({ success: true, message: "Sale deleted and stock adjusted." });
+  } catch (error) {
+    console.error("Error deleting sale:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+// controllers/salesReportController.js
+import PDFDocument from "pdfkit";
+
+export const downloadSalesPDF = async (req, res) => {
+  try {
+    const { cooperativeId } = req.user;
+    const sales = await Sales.find({ cooperativeId })
+      .populate({
+        path: "stockId",
+        select: "productId",
+        populate: {
+          path: "productId",
+          select: "productName",
+        },
+      })
+      .populate("seasonId", "name year")
+      .populate("cooperativeId", "name")
+      .sort({ createdAt: -1 });
+
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=sales.pdf");
+    doc.pipe(res);
+
+    // --- Table Headers Configuration ---
+    const tableColumns = [
+      { header: "Product", width: 60 },
+      { header: "Qty", width: 50 },
+      { header: "Unit Price", width: 50 },
+      { header: "Total", width: 50 },
+      { header: "Buyer", width: 70 },
+      { header: "Payment", width: 50 },
+      { header: "Status", width: 60 },
+      { header: "Season", width: 70 },
+      { header: "Date", width: 70 },
+    ];
+
+    // Helper function to draw headers on any page
+    const drawHeaders = (document, yPosition) => {
+      let currentX = 50;
+      document.fontSize(9).font("Helvetica-Bold");
+      tableColumns.forEach((col) => {
+        document.text(col.header, currentX, yPosition, {
+          width: col.width,
+          align: "left",
+        });
+        currentX += col.width;
+      });
+      document.moveDown();
+      document
+        .strokeColor("#ccc")
+        .lineWidth(1)
+        .moveTo(50, document.y)
+        .lineTo(550, document.y)
+        .stroke();
+      document.moveDown();
+    };
+
+    // --- Main Document Content ---
+    doc.fontSize(18).text("Sales Report", { align: "center", bold: true });
+    doc.moveDown(2);
+
+    drawHeaders(doc, doc.y);
+
+    // --- Table Rows ---
+    doc.font("Helvetica").fontSize(9);
+    let yPosition = doc.y;
+
+    sales.forEach((s) => {
+      // Check for page break
+      if (yPosition > 700) {
+        doc.addPage();
+        yPosition = 50;
+        drawHeaders(doc, yPosition);
+        yPosition = doc.y; // Update yPosition after drawing headers
       }
 
-      // Deduct sale totalPrice from cash amount
-      cashRecord.amount -= sale.totalPrice;
-      if (cashRecord.amount < 0) cashRecord.amount = 0; // Prevent negative cash
-      await cashRecord.save();
-    }
-    // If it was a loan, you might need to find and mark the corresponding loan as cancelled/deleted
-    // This depends on your Loan model and how it references Sales.
+      const rowData = [
+        s.stockId?.productId?.productName || "N/A",
+        s.quantity.toString(),
+        s.unitPrice.toString(),
+        s.totalPrice.toString(),
+        s.buyer,
+        s.paymentType,
+        s.status,
+        `${s.seasonId?.name} ${s.seasonId?.year || ""}`.trim(), // Correctly concatenate season name and year
+        new Date(s.createdAt).toLocaleDateString("en-GB"),
+      ];
 
-    // Revert stock quantity and total price (if stock was found)
-    if (stock) {
-        stock.quantity += sale.quantity; // Add back quantity
-        stock.totalPrice += sale.totalPrice; // Add back total value
-        await stock.save();
-    }
+      let currentX = 50;
+      rowData.forEach((cell, index) => {
+        const col = tableColumns[index];
+        doc.text(cell, currentX, yPosition, {
+          width: col.width,
+          align: "left",
+        });
+        currentX += col.width;
+      });
 
-    // Delete the sale
-    await Sales.findOneAndDelete({ _id: id, cooperativeId }); // ⭐ Use findOneAndDelete with cooperativeId
-
-    res.status(200).json({
-      success: true,
-      message: "Sale deleted and related records adjusted successfully.",
+      yPosition += 20; // Fixed row height
     });
-  } catch (error) {
-    console.error("Failed to delete sale record:", error);
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: "Invalid ID format." });
-    }
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+
+    doc.end();
+  } catch (err) {
+    console.error("PDF generation error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+import ExcelJS from "exceljs";
+// Generate Excel for Sales filtered by cooperative
+export const downloadSalesExcel = async (req, res) => {
+  try {
+    const { cooperativeId } = req.user;
+    const sales = await Sales.find({ cooperativeId })
+      .populate({
+        path: "stockId",
+        select: "productId",
+        populate: {
+          path: "productId",
+          select: "productName",
+        },
+      })
+      .populate("seasonId", "name")
+      .populate("cooperativeId", "name");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sales");
+
+    // Headers
+    worksheet.columns = [
+      { header: "Product", key: "product", width: 20 },
+      { header: "Quantity", key: "quantity", width: 12 },
+      { header: "Unit Price", key: "unitPrice", width: 12 },
+      { header: "Total Price", key: "totalPrice", width: 15 },
+      { header: "Buyer", key: "buyer", width: 20 },
+      { header: "Phone", key: "phoneNumber", width: 20 },
+      { header: "Payment Type", key: "paymentType", width: 15 },
+      { header: "Status", key: "status", width: 12 },
+      { header: "Season", key: "season", width: 20 },
+      { header: "Cooperative", key: "cooperative", width: 20 },
+      { header: "Date", key: "date", width: 20 },
+    ];
+
+    // Data rows
+    sales.forEach((s) => {
+      worksheet.addRow({
+        product: s.stockId?.productId?.productName, // Corrected typo here
+        quantity: s.quantity,
+        unitPrice: s.unitPrice,
+        totalPrice: s.totalPrice,
+        buyer: s.buyer,
+        phoneNumber: s.phoneNumber,
+        paymentType: s.paymentType,
+        status: s.status,
+        season: s.seasonId?.name,
+        cooperative: s.cooperativeId?.name,
+        date: new Date(s.createdAt).toLocaleDateString("en-GB"),
+      });
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=sales.xlsx");
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("Excel generation error:", err);
+    res.status(500).json({ error: err.message });
   }
 };

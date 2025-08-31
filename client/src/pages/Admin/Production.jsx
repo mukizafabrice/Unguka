@@ -9,6 +9,8 @@ import {
   createProduction,
   updateProduction,
   deleteProduction,
+  downloadProductionsExcel,
+  downloadProductionsPDF,
 } from "../../services/productionService";
 
 import {
@@ -45,6 +47,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import GridOnIcon from "@mui/icons-material/GridOn";
 import ClearIcon from "@mui/icons-material/Clear"; // For Clear Filters button
 
 import AddProductionModal from "../../features/modals/AddProductionModal";
@@ -455,6 +459,27 @@ function Production() {
                     Clear Filters
                   </Button>
                 )}
+                <Stack direction={isMobile ? "column" : "row"} spacing={2}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={downloadProductionsPDF}
+                    sx={{ minWidth: 140 }}
+                  >
+                    PDF
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    startIcon={<GridOnIcon />}
+                    onClick={downloadProductionsExcel}
+                    sx={{ minWidth: 140 }}
+                  >
+                    {" "}
+                    Excel
+                  </Button>
+                </Stack>
               </Stack>
             </Box>
           </Paper>

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import PurchaseInput from "../models/PurchaseInput.js";
 import Product from "../models/Product.js";
 import Stock from "../models/Stock.js";
-import Cash from "../models/Cash.js";
+// import Cash from "../models/Cash.js";
 import Loan from "../models/Loan.js";
 
 export const createPurchaseInput = async (req, res) => {
@@ -63,7 +63,7 @@ export const createPurchaseInput = async (req, res) => {
     const stock = await Stock.findOne({
       productId: productId,
       cooperativeId: cooperativeId,
-    }); // ⭐ UPDATED: Filter by cooperativeId
+    }); 
     if (!stock) {
       return res.status(404).json({
         message: "Stock for this product not found in your cooperative.",
@@ -80,15 +80,15 @@ export const createPurchaseInput = async (req, res) => {
     await stock.save();
 
     // Update cooperative's cash balance
-    if (amountPaid > 0) {
-      let cash = await Cash.findOne({ cooperativeId: cooperativeId });
-      if (!cash) {
-        // If no cash document exists for this cooperative, create one
-        cash = new Cash({ amount: 0, cooperativeId: cooperativeId });
-      }
-      cash.amount += amountPaid;
-      await cash.save();
-    }
+    // if (amountPaid > 0) {
+    //   let cash = await Cash.findOne({ cooperativeId: cooperativeId });
+    //   if (!cash) {
+    //     // If no cash document exists for this cooperative, create one
+    //     cash = new Cash({ amount: 0, cooperativeId: cooperativeId });
+    //   }
+    //   cash.amount += amountPaid;
+    //   await cash.save();
+    // }
 
     const status = amountRemaining > 0 ? "loan" : "paid";
     let finalAmountRemaining = amountRemaining;
@@ -146,7 +146,6 @@ export const createPurchaseInput = async (req, res) => {
 // Get all Purchase Inputs
 export const getAllPurchaseInputs = async (req, res) => {
   try {
-    // ⭐ NEW: Allow filtering by cooperativeId and userId from query parameters
     const { cooperativeId, userId } = req.query;
     let query = {};
 
@@ -218,8 +217,8 @@ export const updatePurchaseInput = async (req, res) => {
       quantity,
       unitPrice,
       amountPaid,
-      interest, // Added interest here as it might be updated
-      cooperativeId, // ⭐ NEW: Expect cooperativeId for authorization
+      interest,
+      cooperativeId,
     } = req.body;
 
     // Validate IDs
@@ -307,18 +306,18 @@ export const updatePurchaseInput = async (req, res) => {
     }
 
     // Adjust cash
-    let cash = await Cash.findOne({ cooperativeId: cooperativeId }); // ⭐ UPDATED: Find cash for specific cooperative
-    if (cash) {
-      cash.amount += amountPaidDifference; // Increases if positive, decreases if negative
-      await cash.save();
-    } else {
-      console.error(
-        `Cash document not found for cooperative ${cooperativeId}.`
-      );
-      return res
-        .status(404)
-        .json({ message: "Associated cooperative cash account not found." });
-    }
+    // let cash = await Cash.findOne({ cooperativeId: cooperativeId });
+    // if (cash) {
+    //   cash.amount += amountPaidDifference;
+    //   await cash.save();
+    // } else {
+    //   console.error(
+    //     `Cash document not found for cooperative ${cooperativeId}.`
+    //   );
+    //   return res
+    //     .status(404)
+    //     .json({ message: "Associated cooperative cash account not found." });
+    // }
 
     let finalAmountRemaining = newAmountRemaining;
     let loanRevenue = 0;
@@ -384,7 +383,7 @@ export const updatePurchaseInput = async (req, res) => {
       .populate("userId", "names phoneNumber")
       .populate("productId", "productName") // Updated to productName as per Product model
       .populate("seasonId", "name year")
-      .populate("cooperativeId", "name registrationNumber"); // ⭐ NEW: Populate cooperative info
+      .populate("cooperativeId", "name registrationNumber");
 
     res.status(200).json({
       message: "Purchase updated successfully",
@@ -406,7 +405,7 @@ export const updatePurchaseInput = async (req, res) => {
 export const deletePurchaseInput = async (req, res) => {
   try {
     const { id } = req.params; // PurchaseInput ID to delete
-    const { cooperativeId } = req.body; // ⭐ NEW: Expect cooperativeId for authorization
+    const { cooperativeId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res
@@ -423,7 +422,7 @@ export const deletePurchaseInput = async (req, res) => {
     const purchase = await PurchaseInput.findOne({
       _id: id,
       cooperativeId: cooperativeId,
-    }); // ⭐ UPDATED: Filter by cooperativeId
+    });
     if (!purchase) {
       return res.status(404).json({
         message: "Purchase input not found or unauthorized to delete.",
@@ -434,7 +433,7 @@ export const deletePurchaseInput = async (req, res) => {
     const stock = await Stock.findOne({
       productId: purchase.productId,
       cooperativeId: cooperativeId,
-    }); // ⭐ UPDATED: Filter by cooperativeId
+    });
     if (stock) {
       stock.quantity += purchase.quantity; // Add back the purchased quantity
       await stock.save();
@@ -446,29 +445,29 @@ export const deletePurchaseInput = async (req, res) => {
     }
 
     // Revert cash changes
-    if (purchase.amountPaid > 0) {
-      let cash = await Cash.findOne({ cooperativeId: cooperativeId }); // ⭐ UPDATED: Find cash for specific cooperative
-      if (cash) {
-        cash.amount -= purchase.amountPaid; // Subtract the amount paid
-        await cash.save();
-      } else {
-        console.warn(
-          `Cash document not found for cooperative ${cooperativeId} during deletion cleanup.`
-        );
-      }
-    }
+    // if (purchase.amountPaid > 0) {
+    //   let cash = await Cash.findOne({ cooperativeId: cooperativeId });
+    //   if (cash) {
+    //     cash.amount -= purchase.amountPaid;
+    //     await cash.save();
+    //   } else {
+    //     console.warn(
+    //       `Cash document not found for cooperative ${cooperativeId} during deletion cleanup.`
+    //     );
+    //   }
+    // }
 
     // Delete associated loan (if any)
     await Loan.findOneAndDelete({
       purchaseInputId: purchase._id,
       cooperativeId: cooperativeId,
-    }); // ⭐ UPDATED: Filter by cooperativeId
+    });
 
     // Finally, delete the purchase input
     await PurchaseInput.findOneAndDelete({
       _id: id,
       cooperativeId: cooperativeId,
-    }); // ⭐ UPDATED: Filter by cooperativeId
+    });
 
     res.status(200).json({
       message: "Purchase deleted and related data adjusted successfully.",

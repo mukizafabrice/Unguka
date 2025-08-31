@@ -29,10 +29,15 @@ import { Add, Search, Visibility } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import { fetchPayments } from "../../services/paymentService";
+import {
+  fetchPayments,
+  downloadPaymentsExcel,
+  downloadPaymentsPDF,
+} from "../../services/paymentService";
 import { useAuth } from "../../contexts/AuthContext";
 import AddPaymentModal from "../../features/modals/AddPaymentModal";
-
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import GridOnIcon from "@mui/icons-material/GridOn";
 // Styled components
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   backgroundColor: theme.palette.grey[50],
@@ -298,6 +303,27 @@ const Payment = () => {
               <MenuItem value="paid">Paid</MenuItem>
               <MenuItem value="partial">Partial</MenuItem>
             </TextField>
+            <Stack direction={isMobile ? "column" : "row"} spacing={2}>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={downloadPaymentsPDF}
+                sx={{ minWidth: 140 }}
+              >
+                PDF
+              </Button>
+              <Button
+                variant="outlined"
+                color="success"
+                startIcon={<GridOnIcon />}
+                onClick={downloadPaymentsExcel}
+                sx={{ minWidth: 140 }}
+              >
+                {" "}
+                Excel
+              </Button>
+            </Stack>
           </Stack>
 
           {loading ? (

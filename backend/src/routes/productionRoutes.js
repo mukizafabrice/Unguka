@@ -4,6 +4,8 @@ import {
   getAllProductions,
   Productions,
   getProductions,
+  exportProductionsToExcel,
+  exportProductionsToPDF,
   getProductionsByUserId,
   updateProduction,
   deleteProduction,
@@ -38,6 +40,18 @@ router.get(
   checkCooperativeAccess("query"),
   getProductions
 );
+router.get(
+  "/excel",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  exportProductionsToExcel
+);
+router.get(
+  "/pdf",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  exportProductionsToPDF
+);
 
 router.get("/:id", getProductionsByUserId);
 
@@ -56,5 +70,7 @@ router.delete(
   checkCooperativeAccess("body"),
   deleteProduction
 );
+
+// Export fees to Excel and PDF - These must be protected!
 
 export default router;

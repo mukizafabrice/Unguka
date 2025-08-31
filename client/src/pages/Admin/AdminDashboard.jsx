@@ -14,6 +14,7 @@ import { fetchAllProductions } from "../../services/productionService";
 import { fetchCash } from "../../services/cashService";
 import { fetchProducts } from "../../services/productService";
 import { fetchUsers } from "../../services/userService";
+import { fetchFeeTypes } from "../../services/feeTypeService";
 import { useAuth } from "../../contexts/AuthContext";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -23,11 +24,25 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 function AdminDashboard() {
+  const { user } = useAuth();
+  const cooperativeId = user?.cooperativeId;
+  //fetch feeType
+  const [countFeeTypes, setCountFeeTypes] = useState(0);
+  useEffect(() => {
+    const countFeeTypes = async () => {
+      try {
+        const response = await fetchFeeTypes(cooperativeId);
+
+        setCountFeeTypes(response.data.length);
+      } catch (error) {
+        console.error("Failed to fetch feeType count:", error);
+      }
+    };
+    countFeeTypes();
+  }, [cooperativeId]);
   //fetch sales
   const [countSales, setCountSales] = useState(0);
 
-  const { user } = useAuth();
-  const cooperativeId = user?.cooperativeId;
   useEffect(() => {
     const countSales = async () => {
       try {
@@ -136,8 +151,8 @@ function AdminDashboard() {
           <div className="row flex-nowrap overflow-auto pb-2 gx-3">
             <div className="col-lg-3 col-md-4 col-sm-6 mb-3">
               <StatCard
-                title="CASH IN HAND"
-                value={formatCurrency(cash.amount)}
+                title="Fee Types"
+                value={countFeeTypes}
                 color="black"
                 icon={Wallet}
               />

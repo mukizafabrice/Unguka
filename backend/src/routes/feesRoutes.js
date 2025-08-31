@@ -1,21 +1,47 @@
-// Example of your routes
-import express from "express"; // Your existing middleware
-
+// 📂 routes/feesRoutes.js
+import express from "express";
 import {
   recordPayment,
   getFeesByUserAndSeason,
   getAllFees,
   getAllFeesById,
+  exportFeesToExcel,
+  exportFeesToPDF,
   updateFee,
   payFee,
   deleteFee,
 } from "../controllers/feesController.js";
+
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
-import { checkCooperativeAccess } from "../middleware/coopAccessMiddleware.js";
+
 const router = express.Router();
 
-// Route to record a new payment
+// Get all fees (manager/superadmin)
+router.get(
+  "/", // ⚠️ Removed :cooperativeId from the URL for security
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  getAllFees
+);
+
+// Get fees for a specific user and season
+router.get(
+  "/user/:userId/season/:seasonId",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  getFeesByUserAndSeason
+);
+
+// Get fees for a specific user
+router.get(
+  "/user/:userId",
+  protect,
+  authorizeRoles(["superadmin", "manager", "member"]), // Added member role
+  getAllFeesById
+);
+
+// Record a new payment
 router.post(
   "/",
   protect,
@@ -23,32 +49,15 @@ router.post(
   recordPayment
 );
 
-// Route to get all fees for a specific cooperative (managers/superadmins only)
-// Note: The cooperativeId in params is now a hint, with the controller doing the final security check
-router.get(
-  "/:cooperativeId",
-  protect,
-  authorizeRoles(["superadmin", "manager"]),
-  getAllFees
-);
-
-// Get fees by user ID and a specific cooperative
-router.get("/user/:userId", getAllFeesById);
-
-// Get fees by user and season in a specific cooperative
-router.get(
-  "/:cooperativeId/user/:userId/season/:seasonId",
-  protect,
-  authorizeRoles(["superadmin", "manager"]),
-  getFeesByUserAndSeason
-);
-
+// Update a fee record
 router.put(
   "/:id",
   protect,
   authorizeRoles(["superadmin", "manager"]),
   updateFee
 );
+
+// Process a payment
 router.put(
   "/pay/:feeId",
   protect,
@@ -56,11 +65,26 @@ router.put(
   payFee
 );
 
+// Delete a fee record
 router.delete(
   "/:id",
   protect,
   authorizeRoles(["superadmin", "manager"]),
   deleteFee
+);
+
+// Export fees to Excel and PDF - These must be protected!
+router.get(
+  "/excel",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  exportFeesToExcel
+);
+router.get(
+  "/pdf",
+  protect,
+  authorizeRoles(["superadmin", "manager"]),
+  exportFeesToPDF
 );
 
 export default router;

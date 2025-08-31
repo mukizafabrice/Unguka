@@ -1,3 +1,4 @@
+// src/pages/Sales.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -9,6 +10,8 @@ import {
   deleteSale,
   updateSale,
   createSale,
+  downloadSalesPDF, // <- This function now takes cooperativeId
+  downloadSalesExcel, // <- This function now takes cooperativeId
 } from "../../services/salesService";
 
 import {
@@ -46,6 +49,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import GridOnIcon from "@mui/icons-material/GridOn";
 
 // Assuming these modals are correctly implemented and accept the cooperativeId prop
 import UpdateSaleModal from "../../features/modals/UpdateSaleModal";
@@ -361,6 +366,26 @@ function Sales() {
     }).format(amount);
   };
 
+  // --- NEW HANDLERS FOR PDF AND EXCEL DOWNLOAD ---
+  const handleDownloadPDF = () => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is required to download PDF report.");
+      return;
+    }
+    // Call the service function, passing the cooperativeId
+    downloadSalesPDF(cooperativeId);
+  };
+
+  const handleDownloadExcel = () => {
+    if (!cooperativeId) {
+      toast.error("Cooperative ID is required to download Excel report.");
+      return;
+    }
+    // Call the service function, passing the cooperativeId
+    downloadSalesExcel(cooperativeId);
+  };
+  // -------------------------------------------------
+
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
       <Card sx={{ borderRadius: 2, boxShadow: 4 }}>
@@ -379,7 +404,7 @@ function Sales() {
         />
         <CardContent
           sx={{
-            maxHeight: isMobile ? "calc(100vh - 180px)" : "calc(100vh - 120px)", // Adjusted maxHeight
+            maxHeight: isMobile ? "calc(100vh - 180px)" : "calc(100vh - 120px)",
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
@@ -463,6 +488,29 @@ function Sales() {
             >
               Sort by Date {sortOrder === "asc" ? "(Oldest)" : "(Newest)"}
             </Button>
+            <Stack direction={isMobile ? "column" : "row"} spacing={2}>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<PictureAsPdfIcon />}
+                // Update onClick handler to call the new function
+                onClick={handleDownloadPDF}
+                sx={{ minWidth: 140 }}
+              >
+                PDF
+              </Button>
+              <Button
+                variant="outlined"
+                color="success"
+                startIcon={<GridOnIcon />}
+                // Update onClick handler to call the new function
+                onClick={handleDownloadExcel}
+                sx={{ minWidth: 140 }}
+              >
+                {" "}
+                Excel
+              </Button>
+            </Stack>
           </Stack>
 
           {loading ? (
@@ -476,18 +524,13 @@ function Sales() {
                 sx={{
                   boxShadow: 3,
                   borderRadius: 2,
-                  overflowX: "auto", // Ensure horizontal scrolling is possible
+                  overflowX: "auto",
                   maxHeight: { xs: "50vh", md: "70vh" },
                 }}
               >
-                <Table
-                  size="small"
-                  // minWidth ensures table doesn't shrink too much, enabling horizontal scroll
-                  sx={{ minWidth: 700, tableLayout: "auto" }} // Changed to 'auto' or 'fixed' as needed
-                >
+                <Table size="small" sx={{ minWidth: 700, tableLayout: "auto" }}>
                   <TableHead>
                     <TableRow>
-                      {/* Removed explicit width percentages, let content and table minWidth manage */}
                       <StyledTableHeaderCell>ID</StyledTableHeaderCell>
                       <StyledTableHeaderCell>Product</StyledTableHeaderCell>
                       <StyledTableHeaderCell>Season</StyledTableHeaderCell>
@@ -613,18 +656,16 @@ function Sales() {
         sale={selectedSale}
         onClose={() => setShowUpdateModal(false)}
         onSubmit={handleUpdateSale}
-        // Pass cooperativeId to the modal if it needs to fetch related data (e.g., stocks, seasons)
         cooperativeId={cooperativeId}
       />
       <AddSaleModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddSale}
-        // Pass cooperativeId to the modal for new sale creation
         cooperativeId={cooperativeId}
       />
 
-      {/* NEW: Confirmation Dialog for Deletion */}
+      {/* Confirmation Dialog for Deletion */}
       <Dialog
         open={showConfirmDeleteDialog}
         onClose={handleCancelDelete}

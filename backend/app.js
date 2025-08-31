@@ -51,7 +51,7 @@ app.use(express.urlencoded({ extended: true })); // Parses URL-encoded request b
 
 // 2. CORS Configuration: IMPORTANT - Configure CORS only once and correctly
 // Define only origins here
-const allowedOrigins = ["http://localhost:3000", "http://192.168.1.201:3000"];
+const allowedOrigins = ["http://localhost:3000", "http://172.20.10.2:3000"];
 
 app.use(
   cors({

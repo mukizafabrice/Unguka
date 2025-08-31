@@ -39,6 +39,8 @@ import PaymentIcon from "@mui/icons-material/Payment";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import UpdateFeeModal from "../../features/modals/UpdateFeeModal";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import GridOnIcon from "@mui/icons-material/GridOn";
 import AddFeeModal from "../../features/modals/AddFeeModal";
 import PayFeeModal from "../../features/modals/PayFeeModal";
 
@@ -57,7 +59,11 @@ import { fetchUsers } from "../../services/userService";
 import { fetchSeasons } from "../../services/seasonService";
 import { fetchFeeTypes } from "../../services/feeTypeService";
 import { getCooperativeById } from "../../services/cooperativeService";
-import { addPaymentToFee } from "../../services/feesService";
+import {
+  addPaymentToFee,
+  downloadFeesExcel,
+  downloadFeesPDF,
+} from "../../services/feesService";
 import { ClassNames } from "@emotion/react";
 
 // --- Styled Components ---
@@ -184,7 +190,10 @@ function Fees() {
         fetchUsers(cooperativeId),
         fetchSeasons(cooperativeId),
         fetchFeeTypes(cooperativeId),
-        fetchAllFees(cooperativeId),
+
+        // ✅ CORRECTED: Call the function without the cooperativeId argument.
+        fetchAllFees(),
+
         getCooperativeById(cooperativeId),
       ]);
 
@@ -553,6 +562,28 @@ function Fees() {
             >
               Sort by Date {sortOrder === "asc" ? "(Oldest)" : "(Newest)"}
             </Button>
+
+            <Stack direction={isMobile ? "column" : "row"} spacing={2}>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={downloadFeesPDF}
+                sx={{ minWidth: 140 }}
+              >
+                PDF
+              </Button>
+              <Button
+                variant="outlined"
+                color="success"
+                startIcon={<GridOnIcon />}
+                onClick={downloadFeesExcel}
+                sx={{ minWidth: 140 }}
+              >
+                {" "}
+                Excel
+              </Button>
+            </Stack>
           </Stack>
           {loading ? (
             <Box display="flex" justifyContent="center" my={5}>

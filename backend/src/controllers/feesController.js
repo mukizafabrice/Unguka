@@ -232,19 +232,187 @@ export const payFee = async (req, res) => {
 
     await feeRecord.save();
 
-    const updatedCash = await Cash.findOneAndUpdate(
-      { cooperativeId },
-      { $inc: { amount: paymentAmount } },
-      { new: true, upsert: true }
-    );
+    // const updatedCash = await Cash.findOneAndUpdate(
+    //   { cooperativeId },
+    //   { $inc: { amount: paymentAmount } },
+    //   { new: true, upsert: true }
+    // );
 
     res.status(200).json({
       message: "Payment recorded successfully.",
       feeRecord,
-      cash: updatedCash,
+      // cash: updatedCash,
     });
   } catch (error) {
     console.error("Error processing fee payment:", error);
     res.status(500).json({ message: "Server error." });
+  }
+};
+
+// feesController.js (relevant parts only)
+
+import ExcelJS from "exceljs";
+import PDFDocument from "pdfkit";
+
+// ✅ REVISED: Export Fees to Excel
+export const exportFeesToExcel = async (req, res) => {
+  try {
+    const { cooperativeId } = req.user; // Get cooperativeId from the token
+
+    // Fetch only the fees for the logged-in user's cooperative
+    const fees = await Fees.find({ cooperativeId })
+      .populate("cooperativeId", "name")
+      .populate("userId", "names email")
+      .populate("seasonId", "name year")
+      .populate("feeTypeId", "name");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Fees");
+
+    // Define columns
+    worksheet.columns = [
+      { header: "User", key: "user", width: 25 },
+      { header: "Season", key: "season", width: 20 },
+      { header: "Fee Type", key: "feeType", width: 20 },
+      { header: "Amount Owed", key: "amountOwed", width: 15 },
+      { header: "Amount Paid", key: "amountPaid", width: 15 },
+      { header: "Remaining", key: "remaining", width: 15 },
+      { header: "Status", key: "status", width: 15 },
+    ];
+
+    // Add data to rows
+    fees.forEach((f) => {
+      worksheet.addRow({
+        user: f.userId?.names || "N/A",
+        season: `${f.seasonId?.name || ""} (${f.seasonId?.year || ""})`.trim(),
+        feeType: f.feeTypeId?.name || "N/A",
+        amountOwed: f.amountOwed,
+        amountPaid: f.amountPaid,
+        remaining: f.remainingAmount,
+        status: f.status,
+      });
+    });
+
+    // Set headers for the file download
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=fees.xlsx");
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    handleServerError(res, err, "Error generating Excel");
+  }
+};
+
+export const exportFeesToPDF = async (req, res) => {
+  try {
+    const { cooperativeId } = req.user;
+
+    const fees = await Fees.find({ cooperativeId })
+      .populate("userId", "names email")
+      .populate("seasonId", "name year")
+      .populate("feeTypeId", "name");
+
+    const doc = new PDFDocument({ margin: 50, size: "A4" }); // Increased margins for better spacing
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=fees.pdf");
+    doc.pipe(res);
+
+    // --- Header and Title ---
+    const top = 50;
+    doc
+      .fontSize(18)
+      .text("Fees Report", { align: "center", bold: true, y: top });
+    doc.moveDown(2);
+
+    // --- Table Header ---
+    const tableTop = doc.y;
+    const tableColumns = [
+      { key: "User", width: 100 },
+      { key: "Fee Type", width: 100 },
+      { key: "Owed", width: 60 },
+      { key: "Paid", width: 60 },
+      { key: "Remaining", width: 70 },
+      { key: "Status", width: 70 },
+      { key: "Created At", width: 90 },
+    ];
+
+    doc.fillColor("#000").fontSize(10);
+    let currentX = 50;
+
+    tableColumns.forEach((col) => {
+      doc.text(col.key, currentX, tableTop, {
+        width: col.width,
+        align: "left",
+      });
+      currentX += col.width;
+    });
+
+    doc.moveDown();
+    doc
+      .strokeColor("#ccc")
+      .lineWidth(1)
+      .moveTo(50, doc.y)
+      .lineTo(550, doc.y)
+      .stroke();
+    doc.moveDown();
+
+    // --- Table Rows ---
+    let yPosition = doc.y;
+    fees.forEach((f) => {
+      if (yPosition > 700) {
+        doc.addPage();
+        yPosition = 50;
+        doc.moveDown();
+        doc
+          .fontSize(10)
+          .text("User", 50, yPosition, { continued: true })
+          .text("Fee Type", 150, yPosition, { continued: true })
+          .text("Owed", 250, yPosition, { continued: true })
+          .text("Paid", 300, yPosition, { continued: true })
+          .text("Remaining", 350, yPosition, { continued: true })
+          .text("Status", 450, yPosition, { continued: true })
+          .text("Created At", 500, yPosition);
+        doc.moveDown();
+        doc
+          .strokeColor("#ccc")
+          .lineWidth(1)
+          .moveTo(50, doc.y)
+          .lineTo(550, doc.y)
+          .stroke();
+        doc.moveDown();
+        yPosition = doc.y;
+      }
+
+      const rowData = [
+        f.userId?.names || "N/A",
+        f.feeTypeId?.name || "N/A",
+        f.amountOwed.toString(),
+        f.amountPaid.toString(),
+        f.remainingAmount.toString(),
+        f.status,
+        new Date(f.createdAt).toLocaleDateString("en-GB"),
+      ];
+
+      currentX = 50;
+      rowData.forEach((cell, index) => {
+        const col = tableColumns[index];
+        doc.text(cell, currentX, yPosition, {
+          width: col.width,
+          align: "left",
+        });
+        currentX += col.width;
+      });
+
+      yPosition += 20;
+    });
+
+    doc.end();
+  } catch (err) {
+    handleServerError(res, err, "Error generating PDF");
   }
 };

@@ -493,7 +493,7 @@ function PaymentDetails() {
                           </Typography>
                         }
                         secondary={`Principal: ${formatCurrency(
-                          loan.amountBorrowed
+                          loan.loanOwed
                         )}`}
                       />
                       <Typography

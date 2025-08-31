@@ -1,6 +1,6 @@
 import Loan from "../models/Loan.js";
 import PurchaseInput from "../models/PurchaseInput.js";
-import Cash from "../models/Cash.js";
+// import Cash from "../models/Cash.js";
 import LoanTransaction from "../models/LoanTransaction.js";
 import User from "../models/User.js";
 import Season from "../models/Season.js";
@@ -165,14 +165,14 @@ export const updateLoan = async (req, res) => {
           .json({ message: "Invalid amountPaid. Must be a positive number." });
       }
 
-      const cash = await Cash.findOne({ cooperativeId });
-      if (!cash) {
-        return res
-          .status(404)
-          .json({ message: "Cash record not found for this cooperative." });
-      }
-      cash.amount += amountToPay;
-      await cash.save();
+      // const cash = await Cash.findOne({ cooperativeId });
+      // if (!cash) {
+      //   return res
+      //     .status(404)
+      //     .json({ message: "Cash record not found for this cooperative." });
+      // }
+      // cash.amount += amountToPay;
+      // await cash.save();
 
       loan.amountOwed = Math.max(0, loan.amountOwed - amountToPay);
 
