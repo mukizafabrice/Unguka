@@ -11,6 +11,7 @@ export const registerProduct = async (req, res) => {
       .status(400)
       .json({ message: "Product name and Cooperative ID are required." });
   }
+  console.log("Registering product:", productName, cooperativeId);
 
   const productToLower = productName.toLowerCase();
 
@@ -18,7 +19,7 @@ export const registerProduct = async (req, res) => {
     // Check for an existing product with the same name *within the specific cooperative*.
     // This leverages the compound unique index defined in the Product model.
     const existingProduct = await Product.findOne({
-      productName: productToLower,
+      productName: { $regex: `^${productToLower}$`, $options: "i" },
       cooperativeId: cooperativeId,
     });
 

@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema({
   },
   profilePicture: {
     type: String,
-    default: "https://www.w3schools.com/howto/img_avatar.png",
+    default: "/uploads/profilePicture-1756721615094-664226910.jpg",
     validate: {
       validator: function (value) {
         return /\.(jpg|jpeg|png|gif|webp)$/i.test(value);

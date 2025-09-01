@@ -609,13 +609,11 @@ function Fees() {
                       <StyledTableHeaderCell sx={{ width: "5%" }}>
                         ID
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "10%" }}>
-                        Cooperative
-                      </StyledTableHeaderCell>
+
                       <StyledTableHeaderCell sx={{ width: "12%" }}>
                         User
                       </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "8%" }}>
+                      <StyledTableHeaderCell sx={{ width: "15%" }}>
                         Season
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell sx={{ width: "15%" }}>
@@ -660,9 +658,6 @@ function Fees() {
                           </StyledTableCell>
                           <StyledTableCell component="th" scope="row">
                             {indexOfFirstRow + index + 1}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {cooperativeName || "N/A"}
                           </StyledTableCell>
                           <StyledTableCell>
                             {fee.userId?.names || usersMap[fee.userId] || "N/A"}

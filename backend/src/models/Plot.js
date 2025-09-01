@@ -6,21 +6,18 @@ const plotSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  // ⭐ REMOVED: productId - This is no longer directly on the Plot model
+
   // productId: {
   //   type: mongoose.Schema.Types.ObjectId,
   //   ref: "Product",
   //   required: true,
   // },
-
-  // ⭐ NEW: Add cooperativeId to link plots to a specific cooperative
   cooperativeId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Cooperative", // Refers to your Cooperative model
     required: true, // Assuming every plot must belong to a cooperative
   },
 
-  // ⭐ CHANGED: Renamed 'area' to 'size'
   size: {
     type: Number,
     required: true,
