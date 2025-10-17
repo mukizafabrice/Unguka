@@ -5,7 +5,7 @@ import { Outlet } from "react-router-dom";
 import "../assets/styles/dashboard.css";
 import { useNavigate } from "react-router-dom";
 function DashboardLayout() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -18,12 +18,15 @@ function DashboardLayout() {
       navigate("/");
     }
   }, [navigate]);
+
+  const mainColClass = isSidebarOpen ? "col p-0 main-content transition" : "col-12 p-0 main-content transition";
+
   return (
     <div className="app-layout">
-      <TopNav onMenuClick={toggleSidebar} />
+      <TopNav onMenuClick={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
-      <div className="container-fluid">
-        <div className="row flex-nowrap">
+      <div className="container-fluid p-0 w-100" style={{ maxWidth: "100%" }}>
+        <div className="row g-0 w-100" style={{ width: "100%" }}>
           {/* Sidebar */}
           {isSidebarOpen && (
             <div
@@ -35,8 +38,8 @@ function DashboardLayout() {
           )}
 
           {/* Main content */}
-          <div className="col p-3 main-content transition">
-            <main className="main-content-area-dashboard overflow-auto">
+          <div className={mainColClass} style={{ minWidth: 0, width: "100%" }}>
+            <main className="main-content-area-dashboard" style={{ padding: "0 8px" }}>
               <Outlet />
             </main>
           </div>

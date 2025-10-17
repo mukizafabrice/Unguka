@@ -28,12 +28,16 @@ import feeTypeRoutes from "./src/routes/feeTypeRoutes.js";
 import loanTransactionRoutes from "./src/routes/loanTransactionRoutes.js";
 import paymentTransactionRoutes from "./src/routes/paymentTransactionRoutes.js";
 import cooperativeRoutes from "./src/routes/cooperativeRoutes.js";
+import reportRoutes from "./src/routes/reportRoutes.js";
 
 // Load environment variables at the very beginning
 dotenv.config();
 
 // Connect to the database
 connectDB();
+
+// Import season service for auto-creation
+import { autoCreateSeasons } from "./src/services/seasonService.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -51,7 +55,7 @@ app.use(express.urlencoded({ extended: true })); // Parses URL-encoded request b
 
 // 2. CORS Configuration: IMPORTANT - Configure CORS only once and correctly
 // Define only origins here
-const allowedOrigins = ["http://localhost:3000", "http://172.20.10.2:3000"];
+const allowedOrigins = ["http://localhost:3000", "http://192.168.43.129:3000"];
 
 app.use(
   cors({
@@ -105,8 +109,16 @@ app.use("/api/purchaseOuts", purchaseOutRoutes);
 app.use("/api/feeTypes", feeTypeRoutes);
 app.use("/api/loanTransactions", loanTransactionRoutes);
 app.use("/api/paymentTransactions", paymentTransactionRoutes);
+app.use("/api/reports", reportRoutes);
 
 // --- Server Start ---
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", async () => {
   console.log(`Server running at http://0.0.0.0:${PORT}`);
+
+  // Automatically create seasons for all cooperatives on server startup
+  try {
+    await autoCreateSeasons();
+  } catch (error) {
+    console.error("Failed to auto-create seasons on startup:", error);
+  }
 });

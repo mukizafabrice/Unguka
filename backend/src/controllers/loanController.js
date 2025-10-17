@@ -4,6 +4,68 @@ import PurchaseInput from "../models/PurchaseInput.js";
 import LoanTransaction from "../models/LoanTransaction.js";
 import User from "../models/User.js";
 import Season from "../models/Season.js";
+import Production from "../models/Production.js";
+import Plot from "../models/Plot.js";
+import Sales from "../models/Sales.js";
+
+// Helper: compute max loan based on recent yield, land size and average market price
+const computeMaxLoanForMember = async (userId, cooperativeId, seasonId) => {
+  // 1) Land area (sum of member plots)
+  const plots = await Plot.find({ userId });
+  const totalLandArea = plots.reduce((sum, p) => sum + (Number(p.size) || 0), 0);
+
+  // 2) Member recent production (optionally by season)
+  const productionQuery = { userId };
+  if (seasonId) productionQuery.seasonId = seasonId;
+  const memberProductions = await Production.find(productionQuery);
+  const totalMemberKg = memberProductions.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
+
+  // Yield per are (fallback to cooperative average if member yield unavailable)
+  let memberYieldPerAre = totalLandArea > 0 ? totalMemberKg / totalLandArea : 0;
+
+  if (memberYieldPerAre <= 0) {
+    // Fallback: cooperative average yield over recent productions (last season if provided)
+    const coopProdQuery = { cooperativeId };
+    if (seasonId) coopProdQuery.seasonId = seasonId;
+    const coopProductions = await Production.find(coopProdQuery);
+
+    // Approximate land contributing: sum of plot sizes of producers who produced
+    const producerUserIds = [...new Set(coopProductions.map(p => String(p.userId)))];
+    const coopPlots = await Plot.find({ cooperativeId, userId: { $in: producerUserIds } });
+    const coopLand = coopPlots.reduce((s, p) => s + (Number(p.size) || 0), 0);
+    const coopKg = coopProductions.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
+    memberYieldPerAre = coopLand > 0 ? coopKg / coopLand : 0;
+  }
+
+  // 3) Average market price per kg from recent sales (cooperative-wide)
+  const salesQuery = { cooperativeId };
+  if (seasonId) salesQuery.seasonId = seasonId;
+  const sales = await Sales.find(salesQuery);
+  const totalSalesQty = sales.reduce((s, sale) => s + (Number(sale.quantity) || 0), 0);
+  const totalSalesValue = sales.reduce((s, sale) => s + (Number(sale.totalPrice) || 0), 0);
+  const avgPricePerKg = totalSalesQty > 0 ? totalSalesValue / totalSalesQty : 0;
+
+  // If we lack price signal, be conservative and set max loan to 0
+  if (avgPricePerKg <= 0 || memberYieldPerAre <= 0 || totalLandArea <= 0) {
+    return {
+      expectedProductionKg: 0,
+      expectedProductionValue: 0,
+      maxLoan: 0,
+      inputs: { totalLandArea, memberYieldPerAre, avgPricePerKg }
+    };
+  }
+
+  const expectedProductionKg = memberYieldPerAre * totalLandArea;
+  const expectedProductionValue = expectedProductionKg * avgPricePerKg;
+  const maxLoan = 0.5 * expectedProductionValue;
+
+  return {
+    expectedProductionKg,
+    expectedProductionValue,
+    maxLoan,
+    inputs: { totalLandArea, memberYieldPerAre, avgPricePerKg }
+  };
+};
 
 export const createLoan = async (req, res) => {
   const { userId, seasonId, amountOwed, interest } = req.body;
@@ -34,8 +96,24 @@ export const createLoan = async (req, res) => {
         message: "User not found or not a member of your cooperative.",
       });
     }
+
+    // 3b. Predict max allowable loan based on production capacity
+    const prediction = await computeMaxLoanForMember(userId, cooperativeId, seasonId);
+    if (prediction && prediction.maxLoan !== undefined) {
+      if (Number(amountOwed) > prediction.maxLoan) {
+        return res.status(400).json({
+          success: false,
+          message: "Requested amount exceeds 50% of expected production value.",
+          maxLoan: Math.floor(prediction.maxLoan),
+          expectedProductionKg: Math.floor(prediction.expectedProductionKg),
+          expectedProductionValue: Math.floor(prediction.expectedProductionValue),
+          inputs: prediction.inputs,
+        });
+      }
+    }
+
     // 1. Corrected the interest calculation to include the principal amount
-    const newAmountOwed = amountOwed * (1 + interest / 100);
+    const newAmountOwed = amountOwed * (1 + (Number(interest) || 0) / 100);
 
     // 4. Create the loan document
     const newLoan = new Loan({
@@ -54,6 +132,7 @@ export const createLoan = async (req, res) => {
       success: true,
       message: "New loan created successfully.",
       loan: newLoan,
+      prediction,
     });
   } catch (error) {
     console.error("Error creating new loan:", error);

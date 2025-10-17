@@ -21,6 +21,7 @@ import {
   Wallet,
   PackagePlus,
   PackageMinus,
+  BarChart3,
 } from "lucide-react";
 
 import "../assets/styles/dashboard.css";
@@ -249,6 +250,16 @@ function SideNav({ isHide }) {
               </li>
             </ul>
           )}
+        </li>
+        <li>
+          <NavLink
+            to="/admin/dashboard/reports"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <BarChart3 size={18} className="me-2" /> Reports
+          </NavLink>
         </li>
         <li>
           <NavLink

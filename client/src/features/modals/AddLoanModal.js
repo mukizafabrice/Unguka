@@ -139,7 +139,18 @@ function AddLoanModal({ show, onClose, onSubmit }) {
                 </MenuItem>
               ))}
             </TextField>
-
+            <TextField
+              fullWidth
+              label="Maximum Amount can be borrowed"
+              type="number"
+              name="amountOwed"
+              value={formData.amountOwed}
+              onChange={handleChange}
+              placeholder="Enter amount owed"
+              required
+              margin="dense"
+              
+            />
             {/* Amount Owed */}
             <TextField
               fullWidth

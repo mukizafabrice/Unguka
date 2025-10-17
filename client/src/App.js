@@ -27,6 +27,7 @@ import PurchaseInput from "./pages/Admin/PurchaseInputs";
 import PurchaseOut from "./pages/Admin/PurchaseOut";
 import Announcement from "./pages/Admin/Announcement";
 import LoanTransaction from "./pages/Admin/LoanTransaction";
+import Reports from "./pages/Admin/Reports";
 //member routed
 import MemberDashboard from "./pages/Member/MemberDashboard";
 import MemberSeason from "./pages/Member/MemberSeason";
@@ -42,6 +43,7 @@ import MemberPayment from "./pages/Member/MemberPayment";
 import MemberPaymentTransaction from "./pages/Member/PaymentTransaction";
 import MemberLoanTransaction from "./pages/Member/LoanTransaction";
 import PaymentSummary from "./pages/Member/PaymentSummary";
+import MemberReports from "./pages/Member/MemberReports";
 import MemberLayout from "./layouts/MemberLayout";
 import User from "./pages/Admin/User";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -110,6 +112,7 @@ function App() {
               element={<PaymentTransaction />}
             />
             <Route path="user" element={<User />} />
+            <Route path="reports" element={<Reports />} />
           </Route>
 
           {/* Member Dashboard Route wrapped in DashboardLayout */}
@@ -141,6 +144,7 @@ function App() {
               path="loan-transaction/:loanId"
               element={<MemberLoanTransaction />}
             />
+            <Route path="reports" element={<MemberReports />} />
           </Route>
           <Route
             path="/super/dashboard"

@@ -6,9 +6,6 @@ import { useAuth } from "../../contexts/AuthContext";
 
 import {
   fetchSeasons,
-  createSeason,
-  updateSeason,
-  deleteSeason,
 } from "../../services/seasonService";
 
 import {
@@ -17,34 +14,20 @@ import {
   CardHeader,
   CardContent,
   Typography,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  TextField,
-  InputAdornment,
   Stack,
   useMediaQuery,
-  styled,
-  Pagination,
-  CircularProgress, 
+  CircularProgress,
   MenuItem,
   Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  FormHelperText,
+  Grid,
+  Paper,
+  styled,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import SearchIcon from "@mui/icons-material/Search";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
-import AddSeasonModal from "../../features/modals/AddSeasonModal";
-import UpdateSeasonModal from "../../features/modals/UpdateSeasonModal";
 
 // Styled components consistent with other dashboards
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
@@ -55,37 +38,17 @@ const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   },
 }));
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  padding: "8px 16px",
-  borderBottom: `1px solid ${theme.palette.divider}`,
-  backgroundColor: theme.palette.background.paper,
-  color: theme.palette.text.primary,
-  wordWrap: "break-word",
-  whiteSpace: "normal",
-  [theme.breakpoints.down("sm")]: {
-    padding: "4px 6px",
-    fontSize: "0.65rem",
+// Styled components for season cards
+const SeasonCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[2],
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    boxShadow: theme.shadows[4],
+    transform: 'translateY(-2px)',
   },
-}));
-
-const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
-  padding: "12px 16px",
-  backgroundColor: "#f5f5f5", // ⭐ Set background color for header cells
-  color: theme.palette.text.primary,
-  fontWeight: 600,
-  borderBottom: `2px solid ${theme.palette.divider}`,
-  "&:first-of-type": {
-    borderTopLeftRadius: theme.shape.borderRadius,
-  },
-  "&:last-of-type": {
-    borderTopRightRadius: theme.shape.borderRadius,
-  },
-  wordWrap: "break-word",
-  whiteSpace: "normal",
-  [theme.breakpoints.down("sm")]: {
-    padding: "6px 6px",
-    fontSize: "0.65rem",
-  },
+  background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.grey[50]} 100%)`,
 }));
 
 // Helper function for status chip color (assuming season status like 'active' or 'inactive')
@@ -101,23 +64,14 @@ const getStatusColor = (status) => {
 };
 
 function Season() {
- 
+
   const { user } = useAuth();
   const cooperativeId = user?.cooperativeId;
 
   const [seasons, setSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedSeason, setSelectedSeason] = useState(null);
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 7;
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("name");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [currentSeason, setCurrentSeason] = useState(null);
+  const [selectedSeasonId, setSelectedSeasonId] = useState("");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
   
@@ -134,15 +88,20 @@ function Season() {
       const response = await fetchSeasons(cooperativeId);
       if (response.success && Array.isArray(response.data)) {
         setSeasons(response.data);
+        // Find and set the current active season
+        const activeSeason = response.data.find(season => season.status === 'active');
+        setCurrentSeason(activeSeason || null);
       } else {
         console.error("Failed to fetch seasons:", response.message);
         toast.error(response.message || "Failed to load seasons.");
         setSeasons([]);
+        setCurrentSeason(null);
       }
     } catch (error) {
       console.error("Failed to fetch seasons (catch block):", error);
       toast.error("An unexpected error occurred while loading seasons.");
       setSeasons([]);
+      setCurrentSeason(null);
     } finally {
       setLoading(false);
     }
@@ -155,153 +114,32 @@ function Season() {
     }
   }, [cooperativeId, loadSeasons]);
 
-  // Handler for adding a new season
-  const handleAddSeason = async (newSeasonData) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot add season.");
-      return;
-    }
-    try {
-      const dataToSend = { ...newSeasonData, cooperativeId };
-      const response = await createSeason(dataToSend); 
-      if (response.success) {
-        toast.success(response.message || "Season added successfully!");
-        setShowAddModal(false);
-        await loadSeasons();
-      } else {
-        toast.error(response.message || "Failed to add season.");
-      }
-    } catch (error) {
-      console.error("Failed to add season:", error);
-      toast.error("An unexpected error occurred while adding season.");
-    }
-  };
 
-  const handleOpenUpdateModal = (season) => {
-    setSelectedSeason(season);
-    setShowUpdateModal(true);
-  };
 
-  // Handler for updating a season
-  const handleUpdateSeason = async (seasonId, updatedSeasonData) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot update season.");
-      return;
-    }
-    try {
-      const dataToSend = { ...updatedSeasonData, cooperativeId };
-      const response = await updateSeason(seasonId, dataToSend); 
-      if (response.success) {
-        toast.success(response.message || "Season updated successfully!");
-        setShowUpdateModal(false);
-        setSelectedSeason(null);
-        await loadSeasons();
-      } else {
-        toast.error(response.message || "Failed to update season.");
-      }
-    } catch (error) {
-      console.error("Failed to update season:", error);
-      toast.error("An unexpected error occurred while updating season.");
-    }
-  };
+  // Get selected season details
+  const selectedSeason = useMemo(() => {
+    if (!selectedSeasonId) return null;
+    return seasons.find(season => season._id === selectedSeasonId) || null;
+  }, [seasons, selectedSeasonId]);
 
-  // Handler for deleting a season
-  const handleDeleteSeason = async (id) => {
-    if (!cooperativeId) {
-      toast.error("Cooperative ID is missing. Cannot delete season.");
-      return;
-    }
-    // ⭐ Use a confirmation dialog instead of window.confirm for consistency
-    if (
-      window.confirm(
-        "Are you sure you want to delete this season? This action cannot be undone."
-      )
-    ) {
-      try {
-        // ⭐ Pass cooperativeId to deleteSeason for backend authorization
-        const response = await deleteSeason(id, cooperativeId); // ⭐ Corrected service call
-        if (response.success) {
-          toast.success(response.message || "Season deleted successfully!");
-          await loadSeasons();
-        } else {
-          toast.error(response.message || "Failed to delete season.");
-        }
-      } catch (error) {
-        console.error("Failed to delete season:", error);
-        toast.error("An unexpected error occurred while deleting season.");
-      }
-    }
-  };
-
-  // Filter and sort seasons based on search, status filter, and sort order
-  const filteredAndSortedSeasons = useMemo(() => {
-    let filtered = seasons;
-
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter((season) => {
-        const lowerCaseSearchTerm = searchTerm.toLowerCase();
-        switch (searchField) {
-          case "name":
-            return season.name?.toLowerCase().includes(lowerCaseSearchTerm);
-          case "year":
-            return season.year?.toString().includes(lowerCaseSearchTerm);
-          case "status":
-            return season.status?.toLowerCase().includes(lowerCaseSearchTerm);
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(
-        (season) => season.status?.toLowerCase() === statusFilter.toLowerCase()
-      );
-    }
-
-    // Apply sorting by name/year
-    filtered.sort((a, b) => {
-      let comparison = 0;
-      if (searchField === "name") {
-        const nameA = a.name || "";
-        const nameB = b.name || "";
-        comparison = nameA.localeCompare(nameB);
-      } else if (searchField === "year") {
-        comparison = (a.year || 0) - (b.year || 0); // Numerical sort for year
-      } else {
-        // Default sort by name if search field is not name/year
-        const nameA = a.name || "";
-        const nameB = b.name || "";
-        comparison = nameA.localeCompare(nameB);
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
-
-    return filtered;
-  }, [seasons, searchTerm, searchField, statusFilter, sortOrder]);
-
-  const totalPages = Math.ceil(filteredAndSortedSeasons.length / rowsPerPage);
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = filteredAndSortedSeasons.slice(
-    indexOfFirstRow,
-    indexOfLastRow
-  );
-
-  // Reset page to 1 whenever filters or sorting changes
+  // Set current season as default selected when seasons data loads
   useEffect(() => {
-    setCurrentPage(1);
-  }, [filteredAndSortedSeasons]);
+    if (seasons.length > 0 && currentSeason && !selectedSeasonId) {
+      setSelectedSeasonId(currentSeason._id);
+    }
+  }, [seasons, currentSeason, selectedSeasonId]);
 
-  const handlePageChange = useCallback((event, newPage) => {
-    setCurrentPage(newPage);
-  }, []);
-
-  const handleSort = () => {
-    setSortOrder((prevSortOrder) => (prevSortOrder === "asc" ? "desc" : "asc"));
-  };
+  // Reset selected season when seasons data changes
+  useEffect(() => {
+    if (seasons.length > 0 && !seasons.find(s => s._id === selectedSeasonId)) {
+      // If current season exists, select it; otherwise clear selection
+      if (currentSeason) {
+        setSelectedSeasonId(currentSeason._id);
+      } else {
+        setSelectedSeasonId("");
+      }
+    }
+  }, [seasons, selectedSeasonId, currentSeason]);
 
   return (
     <Box px={isMobile ? 2 : 3} pt={0}>
@@ -309,14 +147,22 @@ function Season() {
         <StyledCardHeader
           title={<Typography variant="h6">Seasons Dashboard</Typography>}
           action={
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setShowAddModal(true)}
-              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-            >
-              Add Season
-            </Button>
+            currentSeason ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Current Season:
+                </Typography>
+                <Chip
+                  label={`${currentSeason.name} ${currentSeason.year}`}
+                  color="primary"
+                  variant="filled"
+                />
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No active season
+              </Typography>
+            )
           }
         />
         <CardContent
@@ -328,84 +174,54 @@ function Season() {
           }}
         >
           <Box mb={3} sx={{ flexShrink: 0 }}>
-            <Typography variant="body2" color="text.secondary">
-              Manage and track different agricultural seasons, including their
-              names, years, and statuses for your cooperative.
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              View and manage agricultural seasons for your cooperative. Seasons are automatically created and the current active season is highlighted.
             </Typography>
-          </Box>
 
-          {/* Search, Filter, and Sort Section */}
-          <Stack
-            direction={isMobile ? "column" : "row"}
-            spacing={2}
-            mb={3}
-            alignItems={isMobile ? "stretch" : "center"}
-            sx={{ flexShrink: 0 }}
-          >
-            <TextField
-              select
-              label="Search By"
-              size="small"
-              value={searchField}
-              onChange={(e) => setSearchField(e.target.value)}
-              sx={{ minWidth: 120, flexShrink: 0 }}
-            >
-              <MenuItem value="name">Season Name</MenuItem>
-              <MenuItem value="year">Year</MenuItem>
-              <MenuItem value="status">Status</MenuItem>
-            </TextField>
-            <TextField
-              label={`Search ${
-                searchField === "name"
-                  ? "Season Name"
-                  : searchField === "year"
-                  ? "Year"
-                  : "Status"
-              }`}
-              variant="outlined"
-              size="small"
-              fullWidth={isMobile}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <TextField
-              select
-              label="Status Filter"
-              size="small"
-              fullWidth={isMobile}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              sx={{ minWidth: isMobile ? "100%" : 180 }}
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="inactive">Inactive</MenuItem>{" "}
-              {/* ⭐ Changed from 'closed' to 'inactive' */}
-            </TextField>
-            <Button
-              variant="outlined"
-              size="medium"
-              onClick={handleSort}
-              startIcon={
-                sortOrder === "asc" ? (
-                  <ArrowUpwardIcon />
-                ) : (
-                  <ArrowDownwardIcon />
-                )
-              }
-              sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-            >
-              Sort by {searchField === "year" ? "Year" : "Name"}{" "}
-              {sortOrder === "asc" ? "(Asc)" : "(Desc)"}
-            </Button>
-          </Stack>
+            <FormControl fullWidth size="small" sx={{ maxWidth: 300, mb: 2 }}>
+              <InputLabel>Select Season</InputLabel>
+              <Select
+                value={selectedSeasonId}
+                label="Select Season"
+                onChange={(e) => setSelectedSeasonId(e.target.value)}
+                sx={{
+                  backgroundColor: 'background.paper',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.main',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.dark',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.main',
+                    borderWidth: 2,
+                  },
+                }}
+              >
+                <MenuItem value="">
+                  <em>All Seasons</em>
+                </MenuItem>
+                {seasons.map((season) => (
+                  <MenuItem key={season._id} value={season._id}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2">
+                        {season.name} {season.year}
+                      </Typography>
+                      <Chip
+                        label={season.status}
+                        size="small"
+                        color={getStatusColor(season.status)}
+                        variant={season.status === 'active' ? 'filled' : 'outlined'}
+                      />
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                Choose a season to view its details
+              </FormHelperText>
+            </FormControl>
+          </Box>
 
           {loading ? (
             <Box
@@ -416,146 +232,121 @@ function Season() {
             >
               <CircularProgress color="primary" />
             </Box>
+          ) : selectedSeason ? (
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <SeasonCard>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    Season Details
+                  </Typography>
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Season Name
+                      </Typography>
+                      <Typography variant="h6">
+                        {selectedSeason.name}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Year
+                      </Typography>
+                      <Typography variant="h6">
+                        {selectedSeason.year}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Status
+                      </Typography>
+                      <Chip
+                        label={selectedSeason.status}
+                        color={getStatusColor(selectedSeason.status)}
+                        variant={selectedSeason.status === 'active' ? 'filled' : 'outlined'}
+                        size="medium"
+                      />
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Created
+                      </Typography>
+                      <Typography variant="body1">
+                        {new Date(selectedSeason.createdAt).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </SeasonCard>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <SeasonCard>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    Season Information
+                  </Typography>
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Cooperative
+                      </Typography>
+                      <Typography variant="body1">
+                        {selectedSeason.cooperativeId?.name || 'N/A'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Registration Number
+                      </Typography>
+                      <Typography variant="body1">
+                        {selectedSeason.cooperativeId?.registrationNumber || 'N/A'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Season Period
+                      </Typography>
+                      <Typography variant="body1">
+                        {selectedSeason.name === 'Season-A'
+                          ? 'September - January'
+                          : 'February - July'
+                        }
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Current Status
+                      </Typography>
+                      <Typography variant="body1" color={selectedSeason.status === 'active' ? 'success.main' : 'text.secondary'}>
+                        {selectedSeason.status === 'active'
+                          ? 'This is the currently active season'
+                          : 'This season is currently inactive'
+                        }
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </SeasonCard>
+              </Grid>
+            </Grid>
           ) : (
             <Box
-              sx={{
-                flexGrow: 1,
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              <TableContainer
-                component={Paper}
-                sx={{
-                  overflowX: "auto",
-                  borderRadius: 2,
-                  boxShadow: 2,
-                  flexGrow: 1,
-                }}
-              >
-                <Table size="small" sx={{ tableLayout: "fixed" }}>
-                  <TableHead>
-                    <TableRow>
-                      <StyledTableHeaderCell sx={{ width: "5%" }}>
-                        ID
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "30%" }}>
-                        Season Name
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "15%" }}>
-                        Year
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell sx={{ width: "20%" }}>
-                        Status
-                      </StyledTableHeaderCell>
-                      <StyledTableHeaderCell
-                        align="center"
-                        sx={{ width: "30%" }}
-                      >
-                        Action
-                      </StyledTableHeaderCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {currentRows.length > 0 ? (
-                      currentRows.map((season, index) => (
-                        <TableRow hover key={season._id}>
-                          <StyledTableCell>
-                            {(currentPage - 1) * rowsPerPage + index + 1}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {season.name || "N/A"}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            {season.year || "N/A"}
-                          </StyledTableCell>
-                          <StyledTableCell>
-                            <Chip
-                              label={season.status || "N/A"}
-                              size="small"
-                              color={getStatusColor(season.status)}
-                            />
-                          </StyledTableCell>
-                          <StyledTableCell align="center">
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              justifyContent="center"
-                            >
-                              <IconButton
-                                aria-label="update"
-                                color="primary"
-                                size="small"
-                                onClick={() => handleOpenUpdateModal(season)}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                aria-label="delete"
-                                color="error"
-                                size="small"
-                                onClick={() => handleDeleteSeason(season._id)}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Stack>
-                          </StyledTableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                          <Typography variant="body1" color="text.secondary">
-                            No seasons found.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-
-          {totalPages > 1 && (
-            <Box
-              mt={3}
               display="flex"
+              flexDirection="column"
+              alignItems="center"
               justifyContent="center"
-              sx={{ flexShrink: 0 }}
+              py={8}
+              sx={{ flexGrow: 1 }}
             >
-              <Pagination
-                count={totalPages}
-                page={currentPage}
-                onChange={handlePageChange}
-                color="primary"
-                showFirstButton
-                showLastButton
-                siblingCount={isMobile ? 0 : 1}
-                boundaryCount={isMobile ? 0 : 1}
-              />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                Select a Season
+              </Typography>
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                Choose a season from the dropdown above to view its detailed information.
+              </Typography>
             </Box>
           )}
         </CardContent>
       </Card>
 
-      {/* Add Season Modal Component */}
-      <AddSeasonModal
-        show={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddSeason}
-        cooperativeId={cooperativeId} // ⭐ Pass cooperativeId to AddSeasonModal
-      />
 
-      {/* Update Season Modal Component */}
-      <UpdateSeasonModal
-        show={showUpdateModal}
-        season={selectedSeason}
-        onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdateSeason}
-        cooperativeId={cooperativeId} // ⭐ Pass cooperativeId to UpdateSeasonModal
-      />
 
       {/* ⭐ Removed duplicate ToastContainer: Your App.js should contain the global one. */}
       {/* <ToastContainer

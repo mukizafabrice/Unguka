@@ -4,6 +4,8 @@ import "react-toastify/dist/ReactToastify.css";
 import {
   fetchAnnouncements,
   createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
 } from "../../services/announcementService";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -21,10 +23,20 @@ import {
   ListItemText,
   useMediaQuery,
   styled,
-  Alert, // For displaying errors
+  Alert,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import CampaignIcon from "@mui/icons-material/Campaign"; // Icon for Announcements
+import CampaignIcon from "@mui/icons-material/Campaign";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 // Styled components consistent with other dashboards
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
@@ -58,6 +70,13 @@ function Announcement() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const { user } = useAuth();
   const cooperativeId = user?.cooperativeId;
@@ -94,16 +113,15 @@ function Announcement() {
 
     try {
       setLoading(true);
-      // Ensure user is retrieved safely; consider using a global auth context if available
       const user = JSON.parse(localStorage.getItem("user"));
-      const userId = user?.id; // Get userId if available
+      const userId = user?.id;
 
       await createAnnouncement({ title, description, userId, cooperativeId });
 
       setTitle("");
       setDescription("");
-      toast.success("Announcement sent successfully!"); // Added success toast
-      await fetchAllAnnouncements(); // Re-fetch all announcements
+      toast.success("Announcement sent successfully!");
+      await fetchAllAnnouncements();
     } catch (err) {
       console.error("Failed to create announcement:", err);
       setError(
@@ -111,10 +129,77 @@ function Announcement() {
           err.response?.data?.message || err.message
         }`
       );
-      toast.error("Failed to send announcement. Please try again."); // Toast for error
+      toast.error("Failed to send announcement. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (announcement) => {
+    setEditingAnnouncement(announcement);
+    setEditTitle(announcement.title);
+    setEditDescription(announcement.description);
+    setEditDialogOpen(true);
+    setMenuAnchor(null);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editTitle.trim() || !editDescription.trim()) {
+      toast.error("Both title and description are required.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await updateAnnouncement(editingAnnouncement._id, {
+        title: editTitle,
+        description: editDescription,
+      });
+
+      toast.success("Announcement updated successfully!");
+      setEditDialogOpen(false);
+      setEditingAnnouncement(null);
+      await fetchAllAnnouncements();
+    } catch (err) {
+      console.error("Failed to update announcement:", err);
+      toast.error("Failed to update announcement. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = (announcement) => {
+    setSelectedAnnouncement(announcement);
+    setDeleteDialogOpen(true);
+    setMenuAnchor(null);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      setLoading(true);
+      await deleteAnnouncement(selectedAnnouncement._id);
+
+      toast.success("Announcement deleted successfully!");
+      setDeleteDialogOpen(false);
+      setSelectedAnnouncement(null);
+      await fetchAllAnnouncements();
+    } catch (err) {
+      console.error("Failed to delete announcement:", err);
+      toast.error("Failed to delete announcement. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMenuClick = (event, announcement) => {
+    setMenuAnchor(event.currentTarget);
+    setSelectedAnnouncement(announcement);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setSelectedAnnouncement(null);
   };
 
   return (
@@ -236,34 +321,44 @@ function Announcement() {
                 <List sx={{ flexGrow: 1, overflowY: "auto", py: 0 }}>
                   {announcements.map((item) => (
                     <StyledListGroupItem key={item._id}>
-                      <ListItemText
-                        primary={
-                          <Typography
-                            variant="h6"
-                            component="h3"
-                            fontWeight="bold"
-                            color="text.primary"
-                          >
-                            {item.title}
-                          </Typography>
-                        }
-                        secondary={
-                          <>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", width: "100%" }}>
+                        <ListItemText
+                          sx={{ flex: 1 }}
+                          primary={
                             <Typography
-                              component="p"
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ mt: 0.5, mb: 1 }}
+                              variant="h6"
+                              component="h3"
+                              fontWeight="bold"
+                              color="text.primary"
                             >
-                              {item.description}
+                              {item.title}
                             </Typography>
-                            <Typography variant="caption" color="text.disabled">
-                              Posted on{" "}
-                              {new Date(item.createdAt).toLocaleString()}
-                            </Typography>
-                          </>
-                        }
-                      />
+                          }
+                          secondary={
+                            <>
+                              <Typography
+                                component="p"
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mt: 0.5, mb: 1 }}
+                              >
+                                {item.description}
+                              </Typography>
+                              <Typography variant="caption" color="text.disabled">
+                                Posted on{" "}
+                                {new Date(item.createdAt).toLocaleString()}
+                              </Typography>
+                            </>
+                          }
+                        />
+                        <IconButton
+                          onClick={(e) => handleMenuClick(e, item)}
+                          size="small"
+                          sx={{ ml: 1, mt: -1 }}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </Box>
                     </StyledListGroupItem>
                   ))}
                 </List>
@@ -288,6 +383,74 @@ function Announcement() {
           </StyledCard>
         </Box>
       </Stack>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Announcement</DialogTitle>
+        <form onSubmit={handleEditSubmit}>
+          <DialogContent>
+            <TextField
+              label="Title"
+              variant="outlined"
+              fullWidth
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              margin="normal"
+              required
+            />
+            <TextField
+              label="Description"
+              variant="outlined"
+              fullWidth
+              multiline
+              rows={4}
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              margin="normal"
+              required
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={loading}>
+              {loading ? <CircularProgress size={20} /> : "Update"}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Delete Announcement</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the announcement "{selectedAnnouncement?.title}"?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained" disabled={loading}>
+            {loading ? <CircularProgress size={20} /> : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Context Menu */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => handleEdit(selectedAnnouncement)}>
+          <EditIcon sx={{ mr: 1 }} />
+          Edit
+        </MenuItem>
+        <MenuItem onClick={() => handleDelete(selectedAnnouncement)} sx={{ color: "error.main" }}>
+          <DeleteIcon sx={{ mr: 1 }} />
+          Delete
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }

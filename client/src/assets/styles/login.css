@@ -4,62 +4,335 @@
   box-sizing: border-box;
 }
 
-/* Your existing CSS */
-.login-button {
-  background: #282c34 !important;
-  color: white;
-  border-radius: 10px;
-  padding: 12px 0;
-  font-weight: 600;
-  font-size: 1.1rem;
-  border: none;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease-in-out;
-  cursor: pointer;
+/* Coopra login page layout */
+.login-page-wrapper {
   display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f7f7fb 0%, #eef1f7 100%);
+}
+
+@media (min-width: 992px) {
+  .login-page-wrapper {
+    flex-direction: row;
+  }
+}
+
+.login-hero {
+  position: relative;
+  background: radial-gradient(1200px 600px at -10% -10%, #e5f1ff 0%, transparent 60%),
+              radial-gradient(800px 400px at 110% 10%, #ffe7ee 0%, transparent 60%),
+              linear-gradient(180deg, #0b2a3b 0%, #123a50 100%);
+  color: #e9f4ff;
+  overflow: hidden;
+  flex: 1.2;
+  min-height: 400px;
+}
+
+/* separate art layer for the icon, image injected via inline style */
+.login-hero-art {
+  position: absolute;
+  inset: 0;
+  background-size: 520px;
+  background-repeat: no-repeat;
+  background-position: right -60px bottom -40px;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+.login-hero-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 32px 36px;
+  height: 100%;
+  gap: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #34a853, #1e7e34);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 22px;
+  box-shadow: 0 8px 24px rgba(30, 126, 52, 0.35);
+}
+
+.brand-mark.sm {
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+}
+
+.brand-text h1 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: 0.5px;
+}
+
+.brand-text p {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.hero-title {
+  margin: 8px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.hero-subtitle {
+  margin: 6px 0 0;
+  font-size: 16px;
+  opacity: 0.9;
+  max-width: 560px;
+}
+
+.hero-highlights {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  max-width: 520px;
+}
+
+.hero-highlights li {
+  opacity: 0.95;
+}
+
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 20px;
+  flex: 1;
+}
+
+.login-panel-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+  padding: 28px;
+  margin: 0 auto;
+}
+
+.login-footer {
+  margin-top: 18px;
+  color: #667085;
+  font-size: 12px;
+}
+
+/* Form styling */
+.coopra-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-header {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.brand-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #0b2a3b;
+}
+
+.brand-name {
+  font-weight: 700;
+}
+
+.title {
+  margin: 8px 0 4px;
+  font-size: 22px;
+  color: #0b2a3b;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #667085;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #344054;
+  margin-bottom: 6px;
+}
+
+.input-elevated {
+  border-radius: 10px;
+  border: 1px solid #e6e8ec;
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+.input-elevated:focus {
+  border-color: #1e7e34;
+  box-shadow: 0 0 0 4px rgba(30, 126, 52, 0.15);
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #98a2b3;
+}
+
+.form-aux {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 10px;
+}
+
+.link {
+  color: #1e7e34;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+/* Existing button styles refined for consistency */
+.login-button {
+  background: linear-gradient(135deg, #1e7e34, #34a853) !important;
+  color: white;
+  border-radius: 12px;
+  padding: 12px 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  border: none;
+  box-shadow: 0 6px 18px rgba(30, 126, 52, 0.35);
+  transition: all 0.25s ease;
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
 .login-button:hover {
-  transform: scale(1.02);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(30, 126, 52, 0.4);
 }
 
 .login-button:disabled {
-  opacity: 0.7;
+  opacity: 0.8;
   cursor: not-allowed;
-  transform: scale(1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transform: none;
+  box-shadow: 0 6px 18px rgba(30, 126, 52, 0.35);
 }
 
 .login-button .spinner-border {
   margin-right: 0.5rem;
 }
 
-/* New CSS for the password input and icon */
+/* Password icon adjustments */
 .password-input-container {
-  position: relative; /* Ensure the icon is positioned relative to this container */
+  position: relative;
 }
 
 .password-input-container input {
-  padding-right: 2.5rem; /* Add extra padding to the right for the icon */
+  padding-right: 2.5rem;
 }
 
 .password-toggle-icon {
   position: absolute;
-  top: 75%; /* Vertically centers the icon */
-  right: 10px; /* Adjust right position as needed */
-  transform: translateY(-50%); /* Fine-tunes vertical centering */
+  top: 50%;
+  right: 10px;
+  transform: translateY(4%);
   cursor: pointer;
-  z-index: 10; /* Ensure icon is above input */
-  color: #6c757d; /* A subtle color for the icon */
-  font-size: 1.1rem; /* Adjust icon size */
-  display: flex; /* Helps center the SVG/icon */
+  z-index: 10;
+  color: #6c757d;
+  font-size: 1.1rem;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .password-toggle-icon:hover {
-  color: #282c34; /* Darker on hover */
+  color: #1e7e34;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .topnav { padding: 10px 15px; height: 50px; }
+  .topnav-brand-name { font-size: 1.2rem; }
+
+  .login-hero-content {
+    padding: 24px 20px;
+  }
+
+  .brand-text h1 {
+    font-size: 24px;
+  }
+
+  .hero-title {
+    font-size: 20px;
+  }
+
+  .hero-subtitle {
+    font-size: 14px;
+  }
+
+  .login-panel {
+    padding: 20px 16px;
+  }
+
+  .login-panel-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 576px) {
+  .login-hero-content {
+    padding: 16px 12px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .brand-text h1 {
+    font-size: 20px;
+  }
+
+  .hero-title {
+    font-size: 18px;
+  }
+
+  .login-panel-card {
+    padding: 16px;
+    max-width: 100%;
+  }
 }

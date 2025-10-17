@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import PasswordModal from "../features/modals/PasswordModal";
 import ProfileImageModal from "../features/modals/ProfileImageModal";
 
-const API_BASE_URL = "http://172.20.10.2:8000"; // IMPORTANT: Change this to your actual backend URL
+const API_BASE_URL = "http://192.168.255.1:8000"; // IMPORTANT: Change this to your actual backend URL
 
 function Profile() {
   const [user, setUser] = useState(null);

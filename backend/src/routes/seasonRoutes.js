@@ -15,12 +15,11 @@ import { checkCooperativeAccess } from "../middleware/coopAccessMiddleware.js";
 
 const router = express.Router();
 
-// POST /api/seasons/register - Create a new season
+// POST /api/seasons/register - Create a new season (restricted to superadmin only for manual creation)
 router.post(
   "/register",
   protect, // Ensure user is authenticated
-  authorizeRoles(["superadmin", "manager"]), // Only superadmins and managers can create seasons
-  checkCooperativeAccess("body"), // Ensure manager creates season for their own cooperative (cooperativeId in req.body)
+  authorizeRoles(["superadmin"]), // Only superadmins can manually create seasons
   createSeason
 );
 

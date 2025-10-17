@@ -5,7 +5,7 @@ import { Outlet } from "react-router-dom";
 import "../assets/styles/dashboard.css"; // optional custom styles
 import { useNavigate } from "react-router-dom";
 function DashboardLayout() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -20,7 +20,7 @@ function DashboardLayout() {
   }, [navigate]);
   return (
     <div className="app-layout">
-      <TopNav onMenuClick={toggleSidebar} />
+      <TopNav onMenuClick={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
       <div className="container-fluid">
         <div className="row flex-nowrap">

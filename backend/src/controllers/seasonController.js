@@ -75,7 +75,7 @@ export const getAllSeasons = async (req, res) => {
 
     const seasons = await Season.find(query)
       .populate("cooperativeId", "name registrationNumber")
-      .sort({ createdAt: -1 });
+      .sort({ year: -1, name: -1 }); // Sort by year descending, then by season name descending
 
     res.status(200).json({
       success: true,

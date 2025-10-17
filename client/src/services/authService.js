@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // This URL is for your login endpoint
-const LOGIN_URL = "http://172.20.10.2:8000/api/users/login";
+const LOGIN_URL = "http://192.168.255.1:8000/api/users/login";
 
 const login = async (identifier, password) => {
   try {
