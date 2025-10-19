@@ -40,11 +40,13 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 // Ensure these paths correctly point to your modal files based on your project structure.
 // If you continue to see "Could not resolve" errors, verify the file paths and names (case-sensitivity).
 import AddUserModal from "../../features/modals/AddUserModal";
 import UpdateUserModal from "../../features/modals/UpdateUserModal";
+import UserDetails from "../../components/UserDetails";
 
 // Styled components consistent with other dashboards
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
@@ -109,7 +111,9 @@ function User() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showUserDetails, setShowUserDetails] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 7;
@@ -205,6 +209,11 @@ function User() {
   const openUpdateModal = (user) => {
     setUserToEdit(user);
     setShowUpdateModal(true);
+  };
+
+  const openUserDetails = (user) => {
+    setSelectedUser(user);
+    setShowUserDetails(true);
   };
 
   // Filter and sort users based on search, role filter, and sort order
@@ -431,9 +440,9 @@ function User() {
                       </StyledTableHeaderCell>
                       <StyledTableHeaderCell
                         align="center"
-                        sx={{ width: "10%" }}
+                        sx={{ width: "15%" }}
                       >
-                        Action
+                        Actions
                       </StyledTableHeaderCell>
                     </TableRow>
                   </TableHead>
@@ -470,6 +479,15 @@ function User() {
                               justifyContent="center"
                             >
                               <IconButton
+                                aria-label="view details"
+                                color="info"
+                                size="small"
+                                onClick={() => openUserDetails(user)}
+                                title="View Details"
+                              >
+                                <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
                                 aria-label="update"
                                 color="primary"
                                 size="small"
@@ -491,7 +509,7 @@ function User() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
                             No users found.
                           </Typography>
@@ -538,7 +556,13 @@ function User() {
         onSubmit={handleUserUpdated}
         userData={userToEdit}
       />
-      {/* The ToastContainer has been removed from here as it should only be present once, typically in App.js */}
+
+      <UserDetails
+        open={showUserDetails}
+        onClose={() => setShowUserDetails(false)}
+        userId={selectedUser?._id}
+        cooperativeId={selectedUser?.cooperativeId} // Assuming cooperativeId is available on user object
+      />
     </Box>
   );
 }

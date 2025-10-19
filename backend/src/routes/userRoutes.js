@@ -13,6 +13,7 @@ import {
   changeProfileImage,
   forgotPassword,
   resetPassword,
+  memberDetail,
 } from "../controllers/userController.js";
 import { protect, authorize } from "../middleware/authMiddleware.js";
 import path from "path";
@@ -31,6 +32,7 @@ router.post("/reset-password/:token", resetPassword);
 router.post("/getUserByEmail", getUserByEmail);
 router.get("/", protect, getAllUsers);
 router.get("/:id", protect, getUserById);
+router.get("/:id/member-detail", protect, memberDetail);
 router.put("/:id", protect, updateUser);
 router.patch("/:id/admin", updateAdmin);
 router.put("/:id/change-password", changePassword);

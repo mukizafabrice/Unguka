@@ -5,6 +5,7 @@ import {
   createLoan,
   getAllLoans,
   getLoanById,
+  getLoanPrediction,
   updateLoan,
   deleteLoan,
 } from "../controllers/loanController.js";
@@ -23,6 +24,9 @@ router.get(
   getAllLoans
 );
 
+// Prediction route must come BEFORE parameterized routes
+router.get("/predict", protect, authorizeRoles(["manager"]), getLoanPrediction);
+
 // Get a specific loan by ID. Access is restricted to members, managers, and superadmins,
 // but the controller ensures they can only view loans within their cooperative.
 router.get(
@@ -31,7 +35,6 @@ router.get(
   authorizeRoles(["member", "manager", "superadmin"]),
   getLoanById
 );
-
 // Update a loan, restricted to managers.
 router.put("/:id", protect, authorizeRoles(["manager"]), updateLoan);
 

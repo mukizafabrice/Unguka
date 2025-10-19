@@ -7,68 +7,279 @@ import Season from "../models/Season.js";
 import Production from "../models/Production.js";
 import Plot from "../models/Plot.js";
 import Sales from "../models/Sales.js";
+import Stock from "../models/Stock.js";
+import {
+  getActiveSeasonForCooperative,
+  getPreviousSeasonInfo,
+} from "../services/seasonService.js";
 
 // Helper: compute max loan based on recent yield, land size and average market price
 const computeMaxLoanForMember = async (userId, cooperativeId, seasonId) => {
-  // 1) Land area (sum of member plots)
-  const plots = await Plot.find({ userId });
-  const totalLandArea = plots.reduce((sum, p) => sum + (Number(p.size) || 0), 0);
+  console.log(`\n=== LOAN PREDICTION CALCULATION FOR MEMBER ${userId} ===`);
 
-  // 2) Member recent production (optionally by season)
-  const productionQuery = { userId };
-  if (seasonId) productionQuery.seasonId = seasonId;
-  const memberProductions = await Production.find(productionQuery);
-  const totalMemberKg = memberProductions.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
-
-  // Yield per are (fallback to cooperative average if member yield unavailable)
-  let memberYieldPerAre = totalLandArea > 0 ? totalMemberKg / totalLandArea : 0;
-
-  if (memberYieldPerAre <= 0) {
-    // Fallback: cooperative average yield over recent productions (last season if provided)
-    const coopProdQuery = { cooperativeId };
-    if (seasonId) coopProdQuery.seasonId = seasonId;
-    const coopProductions = await Production.find(coopProdQuery);
-
-    // Approximate land contributing: sum of plot sizes of producers who produced
-    const producerUserIds = [...new Set(coopProductions.map(p => String(p.userId)))];
-    const coopPlots = await Plot.find({ cooperativeId, userId: { $in: producerUserIds } });
-    const coopLand = coopPlots.reduce((s, p) => s + (Number(p.size) || 0), 0);
-    const coopKg = coopProductions.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
-    memberYieldPerAre = coopLand > 0 ? coopKg / coopLand : 0;
+  // STEP 1: Determine which season's data to use for prediction
+  let targetSeasonId = seasonId;
+  let seasonUsed = "current season";
+  if (!seasonId) {
+    const prevSeasonInfo = getPreviousSeasonInfo();
+    const prevSeason = await Season.findOne({
+      cooperativeId,
+      name: prevSeasonInfo.name,
+      year: prevSeasonInfo.year,
+    });
+    targetSeasonId = prevSeason ? prevSeason._id : null;
+    seasonUsed = prevSeason ? `${prevSeason.name} ${prevSeason.year}` : "no previous season found";
   }
+  console.log(`📅 Using data from: ${seasonUsed}`);
 
-  // 3) Average market price per kg from recent sales (cooperative-wide)
-  const salesQuery = { cooperativeId };
-  if (seasonId) salesQuery.seasonId = seasonId;
-  const sales = await Sales.find(salesQuery);
-  const totalSalesQty = sales.reduce((s, sale) => s + (Number(sale.quantity) || 0), 0);
-  const totalSalesValue = sales.reduce((s, sale) => s + (Number(sale.totalPrice) || 0), 0);
-  const avgPricePerKg = totalSalesQty > 0 ? totalSalesValue / totalSalesQty : 0;
+  // STEP 2: Get member's land area
+  const plots = await Plot.find({ userId });
+  console.log(`🏞️  Found ${plots.length} plots for member:`);
+  plots.forEach((plot, index) => {
+    console.log(`   Plot ${index + 1}: ${plot.size} acres (UPI: ${plot.upi})`);
+  });
 
-  // If we lack price signal, be conservative and set max loan to 0
-  if (avgPricePerKg <= 0 || memberYieldPerAre <= 0 || totalLandArea <= 0) {
+  const totalLandArea = plots.reduce(
+    (sum, p) => sum + (Number(p.size) || 0),
+    0
+  );
+  console.log(`🏞️  Total land area: ${totalLandArea} acres`);
+
+  if (totalLandArea <= 0) {
+    console.log(`❌ No land area found - cannot provide loan`);
     return {
       expectedProductionKg: 0,
       expectedProductionValue: 0,
       maxLoan: 0,
-      inputs: { totalLandArea, memberYieldPerAre, avgPricePerKg }
+      inputs: { totalLandArea, memberYieldPerAre: 0, avgPricePerKg: 0 },
     };
   }
 
+  // STEP 3: Get member's recent production data
+  const productionQuery = { userId };
+  if (targetSeasonId) productionQuery.seasonId = targetSeasonId;
+  const memberProductions = await Production.find(productionQuery).populate('productId', 'productName');
+
+  console.log(`🌾 Member's production data (${memberProductions.length} records):`);
+  const productYields = {};
+  let totalMemberKg = 0;
+
+  for (const prod of memberProductions) {
+    const productId = String(prod.productId._id);
+    const productName = prod.productId.productName;
+    const quantity = Number(prod.quantity) || 0;
+    totalMemberKg += quantity;
+
+    console.log(`   - ${productName}: ${quantity} kg`);
+
+    if (!productYields[productId]) {
+      productYields[productId] = { totalKg: 0, count: 0, name: productName };
+    }
+    productYields[productId].totalKg += quantity;
+    productYields[productId].count += 1;
+  }
+
+  console.log(`📊 Total production: ${totalMemberKg} kg across all products`);
+
+  // STEP 4: Calculate yields per product
+  const productAvgYields = {};
+  for (const [productId, data] of Object.entries(productYields)) {
+    productAvgYields[productId] = totalLandArea > 0 ? data.totalKg / totalLandArea : 0;
+    console.log(`📈 ${data.name} yield: ${productAvgYields[productId].toFixed(2)} kg per acre`);
+  }
+
+  // STEP 5: Get overall yield (with fallback to cooperative average)
+  let memberYieldPerAre = totalLandArea > 0 ? totalMemberKg / totalLandArea : 0;
+  console.log(`🌱 Overall yield: ${memberYieldPerAre.toFixed(2)} kg per acre`);
+
+  if (memberYieldPerAre <= 0) {
+    console.log(`⚠️  No member production data - using cooperative average (reduced by 30% for safety)`);
+    // Fallback: cooperative average yield over recent productions
+    const coopProdQuery = { cooperativeId };
+    if (targetSeasonId) coopProdQuery.seasonId = targetSeasonId;
+    const coopProductions = await Production.find(coopProdQuery);
+
+    // Approximate land contributing: sum of plot sizes of producers who produced
+    const producerUserIds = [
+      ...new Set(coopProductions.map((p) => String(p.userId))),
+    ];
+    const coopPlots = await Plot.find({
+      cooperativeId,
+      userId: { $in: producerUserIds },
+    });
+    const coopLand = coopPlots.reduce((s, p) => s + (Number(p.size) || 0), 0);
+    const coopKg = coopProductions.reduce(
+      (s, p) => s + (Number(p.quantity) || 0),
+      0
+    );
+    const coopYield = coopLand > 0 ? coopKg / coopLand : 0;
+    memberYieldPerAre = coopYield * 0.7; // Reduce by 30% for safety
+    console.log(`   Cooperative average yield: ${coopYield.toFixed(2)} kg/acre`);
+    console.log(`   Conservative member yield: ${memberYieldPerAre.toFixed(2)} kg/acre`);
+  }
+
+  // STEP 6: Get market prices from recent sales
+  const salesQuery = { cooperativeId };
+  if (targetSeasonId) salesQuery.seasonId = targetSeasonId;
+  const sales = await Sales.find(salesQuery);
+
+  console.log(`💰 Analyzing ${sales.length} sales records for pricing...`);
+
+  // Calculate product-specific average prices
+  const productPrices = {};
+  let totalSalesQty = 0;
+  let totalSalesValue = 0;
+
+  for (const sale of sales) {
+    const stock = await Stock.findById(sale.stockId).populate("productId");
+    if (stock && stock.productId) {
+      const productId = String(stock.productId._id);
+      const productName = stock.productId.productName;
+      const quantity = Number(sale.quantity) || 0;
+      const unitPrice = Number(sale.unitPrice) || 0;
+
+      totalSalesQty += quantity;
+      totalSalesValue += quantity * unitPrice;
+
+      if (!productPrices[productId]) {
+        productPrices[productId] = { totalQty: 0, totalValue: 0, name: productName };
+      }
+      productPrices[productId].totalQty += quantity;
+      productPrices[productId].totalValue += quantity * unitPrice;
+    }
+  }
+
+  // Calculate average prices per product
+  const productAvgPrices = {};
+  for (const [productId, data] of Object.entries(productPrices)) {
+    productAvgPrices[productId] = data.totalQty > 0 ? data.totalValue / data.totalQty : 0;
+    console.log(`💵 ${data.name} average price: ${productAvgPrices[productId].toFixed(0)} RWF/kg`);
+  }
+
+  const avgPricePerKg = totalSalesQty > 0 ? totalSalesValue / totalSalesQty : 0;
+
+  if (avgPricePerKg <= 0) {
+    console.log(`⚠️  No sales data found - using conservative default price: 500 RWF/kg`);
+    avgPricePerKg = 500; // Conservative default price per kg in RWF
+  } else {
+    console.log(`💵 Overall average market price: ${avgPricePerKg.toFixed(0)} RWF/kg`);
+  }
+
+  // STEP 7: Calculate expected production for next season
+  console.log(`\n🔮 PREDICTION CALCULATION:`);
+
+  let expectedProductionValue = 0;
   const expectedProductionKg = memberYieldPerAre * totalLandArea;
-  const expectedProductionValue = expectedProductionKg * avgPricePerKg;
-  const maxLoan = 0.5 * expectedProductionValue;
+
+  console.log(`   Land area: ${totalLandArea} acres`);
+  console.log(`   Expected yield: ${memberYieldPerAre.toFixed(2)} kg/acre`);
+  console.log(`   Expected total production: ${expectedProductionKg.toFixed(0)} kg`);
+
+  // Calculate value using product-specific yields and prices
+  for (const [productId, yieldPerAre] of Object.entries(productAvgYields)) {
+    const pricePerKg = productAvgPrices[productId] || avgPricePerKg;
+    const expectedKg = yieldPerAre * totalLandArea;
+    const productValue = expectedKg * pricePerKg;
+    expectedProductionValue += productValue;
+    console.log(`   ${productYields[productId].name}: ${expectedKg.toFixed(0)} kg × ${pricePerKg.toFixed(0)} RWF = ${productValue.toFixed(0)} RWF`);
+  }
+
+  // If no product-specific data, fall back to overall calculation
+  if (expectedProductionValue === 0) {
+    expectedProductionValue = expectedProductionKg * avgPricePerKg;
+    console.log(`   Overall: ${expectedProductionKg.toFixed(0)} kg × ${avgPricePerKg.toFixed(0)} RWF/kg = ${expectedProductionValue.toFixed(0)} RWF`);
+  }
+
+  console.log(`💰 Expected production value: ${expectedProductionValue.toFixed(0)} RWF`);
+
+  // STEP 8: Calculate maximum loan (50% of expected production value)
+  const maxLoanBeforeExisting = 0.5 * expectedProductionValue;
+  console.log(`🏦 Maximum loan (50% of production value): ${maxLoanBeforeExisting.toFixed(0)} RWF`);
+
+  // STEP 9: Check existing loans in current season
+  const currentSeason = await getActiveSeasonForCooperative(cooperativeId);
+  let existingLoanAmount = 0;
+
+  if (currentSeason) {
+    const existingLoans = await Loan.find({
+      userId,
+      seasonId: currentSeason._id,
+      cooperativeId,
+      status: { $in: ['pending', 'approved'] } // Only count active loans
+    });
+
+    existingLoanAmount = existingLoans.reduce((sum, loan) => sum + (Number(loan.amountOwed) || 0), 0);
+    console.log(`📋 Existing loans in ${currentSeason.name} ${currentSeason.year}: ${existingLoanAmount.toFixed(0)} RWF`);
+  } else {
+    console.log(`📋 No current season found - no existing loans to consider`);
+  }
+
+  // STEP 10: Final loan limit (max loan minus existing loans)
+  const finalMaxLoan = Math.max(0, maxLoanBeforeExisting - existingLoanAmount);
+  console.log(`✅ Final maximum loan amount: ${finalMaxLoan.toFixed(0)} RWF`);
+  console.log(`   (Max possible: ${maxLoanBeforeExisting.toFixed(0)} - Existing: ${existingLoanAmount.toFixed(0)} = ${finalMaxLoan.toFixed(0)})`);
+
+  console.log(`=== END PREDICTION CALCULATION ===\n`);
 
   return {
     expectedProductionKg,
     expectedProductionValue,
-    maxLoan,
-    inputs: { totalLandArea, memberYieldPerAre, avgPricePerKg }
+    maxLoan: finalMaxLoan,
+    inputs: {
+      totalLandArea,
+      memberYieldPerAre,
+      avgPricePerKg,
+      productYields: productAvgYields,
+      productPrices: productAvgPrices,
+      existingLoansInSeason: existingLoanAmount,
+      seasonUsed: seasonUsed
+    },
   };
 };
 
+// ... existing imports ...
+// (e.g., from Loan.js, PurchaseInput.js, etc.)
+
+// Helper: compute max loan based on recent yield, land size and average market price
+// ... (The existing computeMaxLoanForMember function remains the same) ...
+
+// **NEW CONTROLLER FUNCTION**
+export const getLoanPrediction = async (req, res) => {
+  const { userId, seasonId } = req.query; // Use query params for GET request
+  const { cooperativeId, role } = req.user; // 1. Role-Based Access Control - Optional, but good practice
+
+  if (role !== "manager") {
+    return res.status(403).json({ message: "Access denied." });
+  } // 2. Input Validation
+
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required." });
+  }
+  try {
+    // 3. Compute the prediction using the existing helper (will use last season if no seasonId provided)
+    const prediction = await computeMaxLoanForMember(
+      userId,
+      cooperativeId,
+      seasonId // seasonId can be optional, will default to last season
+    );
+
+    res.status(200).json({
+      success: true,
+      prediction,
+    });
+  } catch (error) {
+    console.error("Error fetching loan prediction:", error);
+    res.status(500).json({
+      success: false,
+      message: "An internal server error occurred while predicting max loan.",
+    });
+  }
+};
+
+// ... existing createLoan function ...
+
 export const createLoan = async (req, res) => {
-  const { userId, seasonId, amountOwed, interest } = req.body;
+  const { userId, amountOwed, interest } = req.body;
   const { role, cooperativeId } = req.user;
 
   // 1. Role-Based Access Control
@@ -86,7 +297,17 @@ export const createLoan = async (req, res) => {
   }
 
   try {
-    // 3. Verify the borrower exists and belongs to the manager's cooperative
+    // 3. Get the current active season for the cooperative
+    const activeSeason = await getActiveSeasonForCooperative(cooperativeId);
+    if (!activeSeason) {
+      return res.status(404).json({
+        message:
+          "No active season found for your cooperative. Please contact an administrator.",
+      });
+    }
+    const seasonId = activeSeason._id;
+
+    // 4. Verify the borrower exists and belongs to the manager's cooperative
     const borrower = await User.findById(userId);
     if (
       !borrower ||
@@ -97,8 +318,12 @@ export const createLoan = async (req, res) => {
       });
     }
 
-    // 3b. Predict max allowable loan based on production capacity
-    const prediction = await computeMaxLoanForMember(userId, cooperativeId, seasonId);
+    // 5. Predict max allowable loan based on production capacity (using last season's data)
+    const prediction = await computeMaxLoanForMember(
+      userId,
+      cooperativeId,
+      null // Pass null to use last season's data for prediction
+    );
     if (prediction && prediction.maxLoan !== undefined) {
       if (Number(amountOwed) > prediction.maxLoan) {
         return res.status(400).json({
@@ -106,16 +331,18 @@ export const createLoan = async (req, res) => {
           message: "Requested amount exceeds 50% of expected production value.",
           maxLoan: Math.floor(prediction.maxLoan),
           expectedProductionKg: Math.floor(prediction.expectedProductionKg),
-          expectedProductionValue: Math.floor(prediction.expectedProductionValue),
+          expectedProductionValue: Math.floor(
+            prediction.expectedProductionValue
+          ),
           inputs: prediction.inputs,
         });
       }
     }
 
-    // 1. Corrected the interest calculation to include the principal amount
+    // 6. Calculate the total amount owed including interest
     const newAmountOwed = amountOwed * (1 + (Number(interest) || 0) / 100);
 
-    // 4. Create the loan document
+    // 7. Create the loan document with the current active season
     const newLoan = new Loan({
       userId,
       seasonId,
@@ -130,8 +357,13 @@ export const createLoan = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "New loan created successfully.",
+      message: `New loan created successfully for ${activeSeason.name} ${activeSeason.year}.`,
       loan: newLoan,
+      season: {
+        id: activeSeason._id,
+        name: activeSeason.name,
+        year: activeSeason.year,
+      },
       prediction,
     });
   } catch (error) {

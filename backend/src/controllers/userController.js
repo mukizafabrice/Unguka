@@ -350,10 +350,15 @@ export const getUserById = async (req, res) => {
 
     // Check if the requesting user is allowed to view this user
     const isSuperadmin = requestingUser.role === "superadmin";
-    const isSameCooperative =
-      requestingUser.cooperativeId &&
-      user.cooperativeId &&
-      requestingUser.cooperativeId.toString() === user.cooperativeId.toString();
+    const requestingCoopId = requestingUser.cooperativeId ? requestingUser.cooperativeId.toString() : null;
+    const targetCoopId = user.cooperativeId ? (user.cooperativeId._id || user.cooperativeId).toString() : null;
+    const isSameCooperative = requestingCoopId && targetCoopId && requestingCoopId === targetCoopId;
+
+    console.log("Cooperative ID comparison:", {
+      requestingCoopId,
+      targetCoopId,
+      isSameCooperative
+    });
 
     if (!isSuperadmin && !isSameCooperative) {
       return res.status(403).json({ message: "Access denied." });
@@ -742,5 +747,141 @@ export const getUserByEmail = async (req, res) => {
   } catch (error) {
     console.error("Fetching user error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// member detail controller
+export const memberDetail = async (req, res) => {
+  const { id } = req.params;
+  const requestingUser = req.user;
+
+  if (!id) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  try {
+    // Find the user and populate cooperative details
+    const user = await User.findById(id).populate("cooperativeId");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Authorization check
+    const isSuperadmin = requestingUser.role === "superadmin";
+    const isManager = requestingUser.role === "manager";
+    const requestingCoopId = requestingUser.cooperativeId ? requestingUser.cooperativeId.toString() : null;
+    const targetCoopId = user.cooperativeId ? (user.cooperativeId._id || user.cooperativeId).toString() : null;
+    const isSameCooperative = requestingCoopId && targetCoopId && requestingCoopId === targetCoopId;
+
+    console.log("Cooperative ID comparison:", {
+      requestingCoopId,
+      targetCoopId,
+      isSameCooperative
+    });
+    const isSelf = requestingUser.id === id;
+
+    // Remove debug logging
+
+    // Superadmins can view anyone
+    // Managers can view members in their cooperative (but not other managers)
+    // Members can view their own details
+    if (isSuperadmin) {
+      // Allow superadmin to view anyone
+    } else if (isManager) {
+      // Managers can only view members (not other managers) in their cooperative
+      if (!isSameCooperative) {
+        return res.status(403).json({ message: "Access denied. Managers can only view member details within their cooperative." });
+      }
+      // Allow viewing members, but not other managers
+      if (user.role === "manager" && !isSelf) {
+        return res.status(403).json({ message: "Access denied. Managers cannot view other manager details." });
+      }
+    } else if (isSelf) {
+      // Members can view their own details
+    } else {
+      console.log("Access denied: General access denied");
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    // Fetch plots owned by the user
+    const Plot = (await import("../models/Plot.js")).default;
+    const plots = await Plot.find({ userId: id }).populate("cooperativeId");
+
+    // Fetch recent productions (last 10 for recent)
+    const Production = (await import("../models/Production.js")).default;
+    const recentProductions = await Production.find({ userId: id })
+      .populate("productId")
+      .populate("seasonId")
+      .populate("cooperativeId")
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Predict expected production based on last productions
+    let expectedProduction = 0;
+    if (recentProductions.length > 0) {
+      // Simple prediction: average of last 3 productions, or last one if less
+      const numToAverage = Math.min(3, recentProductions.length);
+      const recentQuantities = recentProductions.slice(0, numToAverage).map(p => p.quantity);
+      expectedProduction = recentQuantities.reduce((sum, q) => sum + q, 0) / numToAverage;
+      expectedProduction = Math.round(expectedProduction); // Round to nearest integer
+    }
+
+    // Structure the response
+    const memberDetails = {
+      user: {
+        id: user._id,
+        names: user.names,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        nationalId: user.nationalId,
+        role: user.role,
+        profilePicture: user.profilePicture,
+        cooperative: user.cooperativeId ? {
+          id: user.cooperativeId._id,
+          name: user.cooperativeId.name,
+          registrationNumber: user.cooperativeId.registrationNumber,
+          district: user.cooperativeId.district,
+          sector: user.cooperativeId.sector,
+          contactEmail: user.cooperativeId.contactEmail,
+          contactPhone: user.cooperativeId.contactPhone,
+        } : null,
+      },
+      plots: plots.map(plot => ({
+        id: plot._id,
+        size: plot.size,
+        upi: plot.upi,
+        cooperative: plot.cooperativeId ? {
+          id: plot.cooperativeId._id,
+          name: plot.cooperativeId.name,
+        } : null,
+        createdAt: plot.createdAt,
+      })),
+      recentProductions: recentProductions.map(prod => ({
+        id: prod._id,
+        product: prod.productId ? {
+          id: prod.productId._id,
+          name: prod.productId.name,
+        } : null,
+        season: prod.seasonId ? {
+          id: prod.seasonId._id,
+          name: prod.seasonId.name,
+          year: prod.seasonId.year,
+        } : null,
+        quantity: prod.quantity,
+        unitPrice: prod.unitPrice,
+        totalPrice: prod.totalPrice,
+        paymentStatus: prod.paymentStatus,
+        createdAt: prod.createdAt,
+      })),
+      expectedProduction: {
+        predictedQuantity: expectedProduction,
+        basedOn: recentProductions.length > 0 ? `Average of last ${Math.min(3, recentProductions.length)} productions` : "No previous productions",
+      },
+    };
+
+    res.status(200).json(memberDetails);
+  } catch (error) {
+    console.error("Error fetching member details:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

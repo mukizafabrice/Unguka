@@ -208,3 +208,17 @@ export const fetchEmail = async (email) => {
     return handleServiceError(error, "Failed to fetch user by email.");
   }
 };
+
+// Get member details
+export const fetchMemberDetails = async (id) => {
+  try {
+    const response = await axiosInstance.get(`/users/${id}/member-detail`);
+    return {
+      success: true,
+      data: response.data,
+      message: "Member details fetched successfully",
+    };
+  } catch (error) {
+    return handleServiceError(error, `Failed to fetch member details for user with ID ${id}.`);
+  }
+};

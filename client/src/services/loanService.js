@@ -77,3 +77,15 @@ export const deleteLoan = async (id) => {
     throw error;
   }
 };
+export const fetchLoanPrediction = async (userId) => {
+  if (!userId) {
+    throw new Error("User ID is required to fetch loan prediction.");
+  }
+
+  const response = await axiosInstance.get("/loans/predict", {
+    params: {
+      userId,
+    },
+  });
+  return response.data; // This should contain { success: true, prediction: { maxLoan: ... } }
+};

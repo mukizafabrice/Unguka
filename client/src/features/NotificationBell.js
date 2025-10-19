@@ -66,6 +66,6 @@ function NotificationBell() {
       </div>
     </div>
   );
-} 
+}
 
 export default NotificationBell;

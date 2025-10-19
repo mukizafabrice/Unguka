@@ -122,6 +122,29 @@ export const autoCreateSeasons = async () => {
 };
 
 /**
+ * Determines the previous season based on the current date.
+ * @returns {Object} { name: 'Season-A' or 'Season-B', year: number }
+ */
+export const getPreviousSeasonInfo = () => {
+  const currentSeason = getCurrentSeasonInfo();
+  const year = currentSeason.year;
+
+  let prevSeasonName;
+  let prevYear = year;
+
+  if (currentSeason.name === "Season-A") {
+    // Current is Season-A, previous is Season-B of previous year
+    prevSeasonName = "Season-B";
+    prevYear = year - 1;
+  } else {
+    // Current is Season-B, previous is Season-A of same year
+    prevSeasonName = "Season-A";
+  }
+
+  return { name: prevSeasonName, year: prevYear };
+};
+
+/**
  * Gets the active season for a specific cooperative.
  * @param {string} cooperativeId - The cooperative ID
  * @returns {Object|null} The active season or null if not found
